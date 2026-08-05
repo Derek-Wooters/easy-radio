@@ -12,6 +12,7 @@ truth = "1.4.4"
 robolectric = "4.14.1"
 androidxTestExt = "1.2.1"
 espresso = "3.6.1"
+mockk = "1.13.13"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -38,6 +39,7 @@ truth = { group = "com.google.truth", name = "truth", version.ref = "truth" }
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestExt" }
 androidx-test-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espresso" }
+mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
