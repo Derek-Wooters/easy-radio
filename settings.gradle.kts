@@ -19,3 +19,4 @@ rootProject.name = "easy-radio"
 include(":app")
 include(":core:model")
 include(":core:media")
+include(":core:network")
