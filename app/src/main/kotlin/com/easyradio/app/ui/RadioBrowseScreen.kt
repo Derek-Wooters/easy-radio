@@ -2,7 +2,6 @@ package com.easyradio.app.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -16,7 +15,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.HorizontalDivider
@@ -24,8 +22,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,7 +35,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.easyradio.core.media.PlaybackUiState
 import com.easyradio.core.model.RadioStation
 import com.easyradio.core.network.radiobrowser.RadioStationRepository
 import com.easyradio.app.ui.theme.AvatarTint
@@ -51,10 +46,7 @@ private const val SEARCH_DEBOUNCE_MS = 400L
 @Composable
 fun RadioBrowseScreen(
     repository: RadioStationRepository,
-    currentStation: RadioStation?,
-    playbackState: PlaybackUiState,
     onStationSelected: (RadioStation) -> Unit,
-    onPauseClick: () -> Unit,
 ) {
     var query by remember { mutableStateOf("") }
     var searchResults by remember { mutableStateOf<List<RadioStation>>(emptyList()) }
@@ -70,57 +62,44 @@ fun RadioBrowseScreen(
 
     val stationsToShow = if (query.isBlank()) repository.curatedStations() else searchResults
 
-    Scaffold(
-        bottomBar = {
-            if (currentStation != null) {
-                MiniPlayer(
-                    station = currentStation,
-                    playbackState = playbackState,
-                    onPlayClick = { onStationSelected(currentStation) },
-                    onPauseClick = onPauseClick,
-                )
-            }
-        },
-    ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
-            ) {
-                Text(
-                    text = "Live Radio",
-                    style = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier.weight(1f),
-                )
-                Icon(Icons.Filled.Search, contentDescription = "Search")
-            }
-
-            OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
-                placeholder = { Text("Search stations") },
-                singleLine = true,
-                shape = RoundedCornerShape(28.dp),
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+        ) {
+            Text(
+                text = "Live Radio",
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.weight(1f),
             )
+            Icon(Icons.Filled.Search, contentDescription = "Search")
+        }
 
-            if (query.isNotBlank() && searchResults.isEmpty()) {
-                Text(
-                    text = "No stations found",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            placeholder = { Text("Search stations") },
+            singleLine = true,
+            shape = RoundedCornerShape(28.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+        )
+
+        if (query.isNotBlank() && searchResults.isEmpty()) {
+            Text(
+                text = "No stations found",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+            )
+        }
+
+        LazyColumn(contentPadding = PaddingValues(vertical = 4.dp)) {
+            items(stationsToShow, key = { it.id }) { station ->
+                StationRow(
+                    station = station,
+                    onClick = { onStationSelected(station) },
                 )
-            }
-
-            LazyColumn(contentPadding = PaddingValues(vertical = 4.dp)) {
-                items(stationsToShow, key = { it.id }) { station ->
-                    StationRow(
-                        station = station,
-                        onClick = { onStationSelected(station) },
-                    )
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
-                }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
             }
         }
     }
@@ -189,55 +168,3 @@ private fun avatarTintFor(stationId: String): AvatarTint {
     return tints[index]
 }
 
-@Composable
-private fun MiniPlayer(
-    station: RadioStation,
-    playbackState: PlaybackUiState,
-    onPlayClick: () -> Unit,
-    onPauseClick: () -> Unit,
-) {
-    val extraColors = LocalEasyRadioColors.current
-    val isPlaying = playbackState == PlaybackUiState.PLAYING || playbackState == PlaybackUiState.BUFFERING
-
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 3.dp,
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
-        ) {
-            StationAvatar(name = station.name, tint = avatarTintFor(station.id), size = 48.dp)
-
-            Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                Text(text = station.name, style = MaterialTheme.typography.titleMedium)
-                Text(
-                    text = station.tagline,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(extraColors.liveBadgeContainer)
-                    .padding(horizontal = 12.dp, vertical = 4.dp),
-            ) {
-                Text(
-                    text = "LIVE",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = extraColors.liveBadgeContent,
-                )
-            }
-
-            IconButton(onClick = if (isPlaying) onPauseClick else onPlayClick) {
-                Icon(
-                    if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                    contentDescription = if (isPlaying) "Pause" else "Play",
-                )
-            }
-        }
-    }
-}

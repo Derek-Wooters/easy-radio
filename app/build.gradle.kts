@@ -40,6 +40,8 @@ dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:media"))
     implementation(project(":core:network"))
+    implementation(project(":core:database"))
+    implementation(libs.okhttp)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

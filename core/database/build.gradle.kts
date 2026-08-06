@@ -33,7 +33,7 @@ dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:network"))
 
-    implementation(libs.androidx.room.runtime)
+    api(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
