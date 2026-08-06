@@ -170,6 +170,80 @@ class PodcastRepositoryTest {
     }
 
     @Test
+    fun `downloadEpisode saves the local file path when the download succeeds`() = runTest {
+        val episodeDao = FakeEpisodeDao()
+        episodeDao.state.value = listOf(
+            EpisodeEntity(
+                id = "ep-1", podcastId = "p1", title = "Ep 1", audioUrl = "https://example.com/ep1.mp3",
+                publishedAtEpochMillis = null, durationSeconds = null, description = "",
+            ),
+        )
+        val repository = PodcastRepository(
+            itunesApi = FakeItunesSearchApi(),
+            fetchFeed = { "" },
+            podcastDao = FakePodcastDao(),
+            episodeDao = episodeDao,
+            downloadFile = { _, _ -> "/local/path/ep1.audio" },
+        )
+        val episode = episodeDao.state.value.first().toEpisode()
+
+        val result = repository.downloadEpisode(episode)
+
+        assertThat(result).isTrue()
+        assertThat(episodeDao.state.value.first().localFilePath).isEqualTo("/local/path/ep1.audio")
+    }
+
+    @Test
+    fun `downloadEpisode returns false and does not update on failure`() = runTest {
+        val episodeDao = FakeEpisodeDao()
+        episodeDao.state.value = listOf(
+            EpisodeEntity(
+                id = "ep-1", podcastId = "p1", title = "Ep 1", audioUrl = "https://example.com/ep1.mp3",
+                publishedAtEpochMillis = null, durationSeconds = null, description = "",
+            ),
+        )
+        val repository = PodcastRepository(
+            itunesApi = FakeItunesSearchApi(),
+            fetchFeed = { "" },
+            podcastDao = FakePodcastDao(),
+            episodeDao = episodeDao,
+            downloadFile = { _, _ -> null },
+        )
+        val episode = episodeDao.state.value.first().toEpisode()
+
+        val result = repository.downloadEpisode(episode)
+
+        assertThat(result).isFalse()
+        assertThat(episodeDao.state.value.first().localFilePath).isNull()
+    }
+
+    @Test
+    fun `deleteDownload clears the local file path and deletes the file`() = runTest {
+        val episodeDao = FakeEpisodeDao()
+        episodeDao.state.value = listOf(
+            EpisodeEntity(
+                id = "ep-1", podcastId = "p1", title = "Ep 1", audioUrl = "https://example.com/ep1.mp3",
+                publishedAtEpochMillis = null, durationSeconds = null, description = "",
+                localFilePath = "/local/path/ep1.audio",
+            ),
+        )
+        var deletedPath: String? = null
+        val repository = PodcastRepository(
+            itunesApi = FakeItunesSearchApi(),
+            fetchFeed = { "" },
+            podcastDao = FakePodcastDao(),
+            episodeDao = episodeDao,
+            deleteFile = { deletedPath = it },
+        )
+        val episode = episodeDao.state.value.first().toEpisode()
+
+        repository.deleteDownload(episode)
+
+        assertThat(deletedPath).isEqualTo("/local/path/ep1.audio")
+        assertThat(episodeDao.state.value.first().localFilePath).isNull()
+    }
+
+    @Test
     fun `lastPosition returns zero when nothing was saved`() = runTest {
         val repository = PodcastRepository(FakeItunesSearchApi(), { "" }, FakePodcastDao(), FakeEpisodeDao())
 
