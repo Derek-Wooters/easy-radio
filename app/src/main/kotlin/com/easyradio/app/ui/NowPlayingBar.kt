@@ -9,8 +9,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Forward30
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +41,10 @@ fun NowPlayingBar(
     playbackState: PlaybackUiState,
     onPlayClick: () -> Unit,
     onPauseClick: () -> Unit,
+    onSkipBackClick: (() -> Unit)? = null,
+    onSkipForwardClick: (() -> Unit)? = null,
+    onSpeedClick: (() -> Unit)? = null,
+    speedLabel: String? = null,
 ) {
     val extraColors = LocalEasyRadioColors.current
     val tints = extraColors.avatarTints
@@ -94,11 +100,24 @@ fun NowPlayingBar(
                 }
             }
 
+            if (onSpeedClick != null && speedLabel != null) {
+                androidx.compose.material3.TextButton(onClick = onSpeedClick) { Text(speedLabel) }
+            }
+            if (onSkipBackClick != null) {
+                IconButton(onClick = onSkipBackClick) {
+                    Icon(Icons.Filled.Replay, contentDescription = "Skip back 15 seconds")
+                }
+            }
             IconButton(onClick = if (isPlaying) onPauseClick else onPlayClick) {
                 Icon(
                     if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                     contentDescription = if (isPlaying) "Pause" else "Play",
                 )
+            }
+            if (onSkipForwardClick != null) {
+                IconButton(onClick = onSkipForwardClick) {
+                    Icon(Icons.Filled.Forward30, contentDescription = "Skip forward 30 seconds")
+                }
             }
         }
     }

@@ -35,6 +35,7 @@ import com.easyradio.core.media.PlaybackUiState
 import com.easyradio.core.model.Episode
 import com.easyradio.core.model.Podcast
 import com.easyradio.core.model.RadioStation
+import com.easyradio.core.network.podcast.EpisodeDownloader
 import com.easyradio.core.network.podcast.ItunesSearchApiFactory
 import com.easyradio.core.network.podcast.PodcastFeedFetcher
 import com.easyradio.core.network.radiobrowser.RadioBrowserApiFactory
@@ -45,6 +46,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.io.File
 
 private enum class AppTab(val label: String) {
     RADIO("Radio"),
@@ -52,13 +54,24 @@ private enum class AppTab(val label: String) {
 }
 
 private const val PODCAST_POSITION_SAVE_INTERVAL_MS = 5_000L
+private const val SKIP_BACK_MS = 15_000L
+private const val SKIP_FORWARD_MS = 30_000L
+private val PLAYBACK_SPEEDS = listOf(1.0f, 1.25f, 1.5f, 2.0f)
 
 class MainActivity : ComponentActivity() {
 
     private val radioRepository = RadioStationRepository(api = RadioBrowserApiFactory.create())
 
     private val database by lazy {
-        Room.databaseBuilder(applicationContext, EasyRadioDatabase::class.java, "easy-radio.db").build()
+        Room.databaseBuilder(applicationContext, EasyRadioDatabase::class.java, "easy-radio.db")
+            .fallbackToDestructiveMigration()
+            .build()
+    }
+    private val episodeDownloader by lazy {
+        EpisodeDownloader(
+            client = ItunesSearchApiFactory.defaultClient(),
+            downloadsDir = File(applicationContext.filesDir, "podcast_downloads"),
+        )
     }
     private val podcastRepository by lazy {
         PodcastRepository(
@@ -66,6 +79,9 @@ class MainActivity : ComponentActivity() {
             fetchFeed = PodcastFeedFetcher(ItunesSearchApiFactory.defaultClient())::fetch,
             podcastDao = database.podcastDao(),
             episodeDao = database.episodeDao(),
+            downloadFile = episodeDownloader::download,
+            deleteFile = episodeDownloader::delete,
+            queueDao = database.queueDao(),
         )
     }
 
@@ -77,6 +93,7 @@ class MainActivity : ComponentActivity() {
     private var currentPodcast by mutableStateOf<Podcast?>(null)
 
     private var positionSaveJob: Job? = null
+    private var playbackSpeedIndex by mutableStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -131,6 +148,10 @@ class MainActivity : ComponentActivity() {
                                 playbackState = uiState,
                                 onPlayClick = { mediaController?.play() },
                                 onPauseClick = { mediaController?.pause() },
+                                onSkipBackClick = { skip(-SKIP_BACK_MS) },
+                                onSkipForwardClick = { skip(SKIP_FORWARD_MS) },
+                                onSpeedClick = ::cyclePlaybackSpeed,
+                                speedLabel = "${PLAYBACK_SPEEDS[playbackSpeedIndex]}x",
                             )
                         }
                     }
@@ -155,9 +176,16 @@ class MainActivity : ComponentActivity() {
         currentStation = null
         currentEpisode = episode
         currentPodcast = podcast
+        playbackSpeedIndex = 0
         val controller = mediaController ?: return
 
-        controller.setMediaItem(MediaItem.fromUri(episode.audioUrl))
+        val localPath = episode.localFilePath
+        val mediaItem = if (localPath != null && File(localPath).exists()) {
+            MediaItem.fromUri(android.net.Uri.fromFile(File(localPath)))
+        } else {
+            MediaItem.fromUri(episode.audioUrl)
+        }
+        controller.setMediaItem(mediaItem)
         controller.prepare()
 
         lifecycleScope.launch {
@@ -167,6 +195,21 @@ class MainActivity : ComponentActivity() {
         }
 
         startPositionSaving(episode.id)
+    }
+
+    private fun skip(deltaMs: Long) {
+        val controller = mediaController ?: return
+        val target = com.easyradio.core.media.SeekMath.clampSeek(
+            currentMs = controller.currentPosition,
+            deltaMs = deltaMs,
+            durationMs = controller.duration.coerceAtLeast(0),
+        )
+        controller.seekTo(target)
+    }
+
+    private fun cyclePlaybackSpeed() {
+        playbackSpeedIndex = (playbackSpeedIndex + 1) % PLAYBACK_SPEEDS.size
+        mediaController?.setPlaybackSpeed(PLAYBACK_SPEEDS[playbackSpeedIndex])
     }
 
     private fun startPositionSaving(episodeId: String) {
