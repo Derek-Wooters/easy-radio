@@ -24,6 +24,11 @@ data class RadioStation(
             name = "KFAN FM 100.3",
             streamUrl = "https://stream.revma.ihrhls.com/zc1209",
             tagline = "Audio Home For Minnesota Sports",
+            // Verified against the Radio-Browser entry for this exact stream url (see
+            // CuratedRadioStations doc comment for the verification method).
+            imageUrl = "https://i.iheart.com/v3/re/assets.brands/7abeb696904580c44cd523e678ac767c" +
+                "?ops=new(),flood(%22white%22),swap(),merge(%22over%22),gravity(%22center%22)," +
+                "contain(167,167),quality(80),format(%22png%22)",
         )
     }
 }
