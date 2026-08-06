@@ -1,6 +1,5 @@
 package com.easyradio.core.network.podcast
 
-import com.easyradio.core.model.Episode
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
@@ -34,21 +33,12 @@ class EpisodeDownloaderTest {
         downloadsDir.deleteRecursively()
     }
 
-    private fun episode(url: String) = Episode(
-        id = "ep-1",
-        podcastId = "podcast-1",
-        title = "Test Episode",
-        audioUrl = url,
-        publishedAtEpochMillis = null,
-        durationSeconds = null,
-    )
-
     @Test
     fun `downloads the episode body to a local file`() = runTest {
         server.enqueue(MockResponse().setResponseCode(200).setBody("fake-audio-bytes"))
         val url = server.url("/ep-1.mp3").toString()
 
-        val path = downloader.download(episode(url))
+        val path = downloader.download(id = "ep-1", audioUrl = url)
 
         assertThat(path).isNotNull()
         val file = File(path!!)
@@ -61,7 +51,7 @@ class EpisodeDownloaderTest {
         server.enqueue(MockResponse().setResponseCode(404))
         val url = server.url("/missing.mp3").toString()
 
-        val path = downloader.download(episode(url))
+        val path = downloader.download(id = "ep-1", audioUrl = url)
 
         assertThat(path).isNull()
     }
@@ -70,7 +60,7 @@ class EpisodeDownloaderTest {
     fun `delete removes the downloaded file`() = runTest {
         server.enqueue(MockResponse().setResponseCode(200).setBody("fake-audio-bytes"))
         val url = server.url("/ep-1.mp3").toString()
-        val path = downloader.download(episode(url))!!
+        val path = downloader.download(id = "ep-1", audioUrl = url)!!
 
         downloader.delete(path)
 
