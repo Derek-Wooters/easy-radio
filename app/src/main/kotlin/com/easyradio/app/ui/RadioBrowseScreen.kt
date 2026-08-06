@@ -1,19 +1,31 @@
 package com.easyradio.app.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.ListItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -21,11 +33,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.easyradio.core.media.PlaybackUiState
 import com.easyradio.core.model.RadioStation
 import com.easyradio.core.network.radiobrowser.RadioStationRepository
+import com.easyradio.app.ui.theme.AvatarTint
+import com.easyradio.app.ui.theme.LocalEasyRadioColors
 import kotlinx.coroutines.delay
 
 private const val SEARCH_DEBOUNCE_MS = 400L
@@ -65,32 +83,110 @@ fun RadioBrowseScreen(
         },
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+            ) {
+                Text(
+                    text = "Live Radio",
+                    style = MaterialTheme.typography.headlineMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                Icon(Icons.Filled.Search, contentDescription = "Search")
+            }
+
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
-                label = { Text("Search stations") },
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                placeholder = { Text("Search stations") },
+                singleLine = true,
+                shape = RoundedCornerShape(28.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
             )
 
             if (query.isNotBlank() && searchResults.isEmpty()) {
                 Text(
                     text = "No stations found",
-                    modifier = Modifier.padding(16.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
                 )
             }
 
-            LazyColumn {
+            LazyColumn(contentPadding = PaddingValues(vertical = 4.dp)) {
                 items(stationsToShow, key = { it.id }) { station ->
-                    ListItem(
-                        headlineContent = { Text(station.name) },
-                        supportingContent = { Text(station.tagline) },
-                        modifier = Modifier.clickable { onStationSelected(station) },
+                    StationRow(
+                        station = station,
+                        onClick = { onStationSelected(station) },
                     )
-                    HorizontalDivider()
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
                 }
             }
         }
     }
+}
+
+@Composable
+private fun StationRow(station: RadioStation, onClick: () -> Unit) {
+    val tint = avatarTintFor(station.id)
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+    ) {
+        StationAvatar(name = station.name, tint = tint, size = 56.dp)
+
+        Column(modifier = Modifier.weight(1f).padding(horizontal = 16.dp)) {
+            Text(text = station.name, style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = station.tagline,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        IconButton(
+            onClick = onClick,
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(Color.Transparent),
+        ) {
+            Icon(
+                Icons.Filled.PlayArrow,
+                contentDescription = "Play ${station.name}",
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun StationAvatar(name: String, tint: AvatarTint, size: androidx.compose.ui.unit.Dp) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(size)
+            .clip(RoundedCornerShape(16.dp))
+            .background(tint.container),
+    ) {
+        Text(
+            text = name.firstOrNull()?.uppercase() ?: "?",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = tint.content,
+        )
+    }
+}
+
+@Composable
+private fun avatarTintFor(stationId: String): AvatarTint {
+    val tints = LocalEasyRadioColors.current.avatarTints
+    val index = (stationId.hashCode().mod(tints.size))
+    return tints[index]
 }
 
 @Composable
@@ -100,16 +196,48 @@ private fun MiniPlayer(
     onPlayClick: () -> Unit,
     onPauseClick: () -> Unit,
 ) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+    val extraColors = LocalEasyRadioColors.current
+    val isPlaying = playbackState == PlaybackUiState.PLAYING || playbackState == PlaybackUiState.BUFFERING
+
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 3.dp,
     ) {
-        Text(text = station.name, style = MaterialTheme.typography.titleMedium)
-        Text(text = "State: $playbackState")
-        if (playbackState == PlaybackUiState.PLAYING || playbackState == PlaybackUiState.BUFFERING) {
-            Button(onClick = onPauseClick) { Text("Pause") }
-        } else {
-            Button(onClick = onPlayClick) { Text("Play") }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+        ) {
+            StationAvatar(name = station.name, tint = avatarTintFor(station.id), size = 48.dp)
+
+            Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                Text(text = station.name, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = station.tagline,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(extraColors.liveBadgeContainer)
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
+            ) {
+                Text(
+                    text = "LIVE",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = extraColors.liveBadgeContent,
+                )
+            }
+
+            IconButton(onClick = if (isPlaying) onPauseClick else onPlayClick) {
+                Icon(
+                    if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                    contentDescription = if (isPlaying) "Pause" else "Play",
+                )
+            }
         }
     }
 }

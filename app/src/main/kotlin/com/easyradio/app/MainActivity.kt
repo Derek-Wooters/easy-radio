@@ -6,7 +6,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,6 +22,7 @@ import com.easyradio.core.media.PlaybackUiState
 import com.easyradio.core.model.RadioStation
 import com.easyradio.core.network.radiobrowser.RadioBrowserApiFactory
 import com.easyradio.core.network.radiobrowser.RadioStationRepository
+import com.easyradio.app.ui.theme.EasyRadioTheme
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 
@@ -39,7 +39,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MaterialTheme {
+            EasyRadioTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     RadioBrowseScreen(
                         repository = repository,
