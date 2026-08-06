@@ -2,7 +2,6 @@ package com.easyradio.app.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -33,7 +32,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.easyradio.core.model.RadioStation
 import com.easyradio.core.network.radiobrowser.RadioStationRepository
@@ -116,7 +114,12 @@ private fun StationRow(station: RadioStation, onClick: () -> Unit) {
             .clickable(onClick = onClick)
             .padding(horizontal = 20.dp, vertical = 12.dp),
     ) {
-        StationAvatar(name = station.name, tint = tint, size = 56.dp)
+        Avatar(
+            imageUrl = station.imageUrl,
+            letter = station.name.firstOrNull()?.uppercase() ?: "?",
+            tint = tint,
+            modifier = Modifier.size(56.dp),
+        )
 
         Column(modifier = Modifier.weight(1f).padding(horizontal = 16.dp)) {
             Text(text = station.name, style = MaterialTheme.typography.titleMedium)
@@ -140,24 +143,6 @@ private fun StationRow(station: RadioStation, onClick: () -> Unit) {
                 tint = MaterialTheme.colorScheme.primary,
             )
         }
-    }
-}
-
-@Composable
-private fun StationAvatar(name: String, tint: AvatarTint, size: androidx.compose.ui.unit.Dp) {
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .size(size)
-            .clip(RoundedCornerShape(16.dp))
-            .background(tint.container),
-    ) {
-        Text(
-            text = name.firstOrNull()?.uppercase() ?: "?",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = tint.content,
-        )
     }
 }
 

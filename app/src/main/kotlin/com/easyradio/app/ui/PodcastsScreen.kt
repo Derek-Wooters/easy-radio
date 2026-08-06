@@ -1,9 +1,7 @@
 package com.easyradio.app.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -11,6 +9,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -45,8 +44,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.easyradio.app.ui.theme.LocalEasyRadioColors
 import com.easyradio.core.database.PodcastRepository
@@ -178,21 +175,13 @@ private fun PodcastGridTile(podcast: Podcast, onClick: () -> Unit) {
         modifier = Modifier.padding(6.dp).clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f)
-                .clip(RoundedCornerShape(12.dp))
-                .background(tint.container),
-        ) {
-            Text(
-                text = podcast.title.firstOrNull()?.uppercase() ?: "?",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = tint.content,
-            )
-        }
+        Avatar(
+            imageUrl = podcast.artworkUrl,
+            letter = podcast.title.firstOrNull()?.uppercase() ?: "?",
+            tint = tint,
+            cornerRadius = 12.dp,
+            modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+        )
         Text(
             text = podcast.title,
             style = MaterialTheme.typography.bodyMedium,
@@ -209,7 +198,19 @@ private fun PodcastRow(
     onClick: () -> Unit,
     onActionClick: () -> Unit,
 ) {
+    val tints = LocalEasyRadioColors.current.avatarTints
+    val tint = tints[podcast.id.hashCode().mod(tints.size)]
+
     ListItem(
+        leadingContent = {
+            Avatar(
+                imageUrl = podcast.artworkUrl,
+                letter = podcast.title.firstOrNull()?.uppercase() ?: "?",
+                tint = tint,
+                cornerRadius = 12.dp,
+                modifier = Modifier.size(48.dp),
+            )
+        },
         headlineContent = { Text(podcast.title) },
         supportingContent = { Text(podcast.author) },
         trailingContent = {

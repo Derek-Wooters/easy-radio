@@ -22,7 +22,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.easyradio.app.ui.theme.LocalEasyRadioColors
 import com.easyradio.core.media.PlaybackUiState
@@ -37,6 +36,7 @@ fun NowPlayingBar(
     title: String,
     tagline: String,
     tintSeed: String,
+    imageUrl: String?,
     badgeText: String?,
     playbackState: PlaybackUiState,
     onPlayClick: () -> Unit,
@@ -59,20 +59,12 @@ fun NowPlayingBar(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth().padding(12.dp),
         ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(tint.container),
-            ) {
-                Text(
-                    text = title.firstOrNull()?.uppercase() ?: "?",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = tint.content,
-                )
-            }
+            Avatar(
+                imageUrl = imageUrl,
+                letter = title.firstOrNull()?.uppercase() ?: "?",
+                tint = tint,
+                modifier = Modifier.size(48.dp),
+            )
 
             Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
                 Text(text = title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
