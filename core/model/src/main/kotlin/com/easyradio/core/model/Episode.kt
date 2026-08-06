@@ -8,6 +8,7 @@ data class Episode(
     val publishedAtEpochMillis: Long?,
     val durationSeconds: Int?,
     val description: String = "",
+    val localFilePath: String? = null,
 ) {
     init {
         require(id.isNotBlank()) { "Episode.id must not be blank" }

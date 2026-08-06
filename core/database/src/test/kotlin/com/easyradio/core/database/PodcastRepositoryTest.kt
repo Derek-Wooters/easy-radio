@@ -55,6 +55,10 @@ private class FakeEpisodeDao : EpisodeDao {
     }
 
     override suspend fun getPosition(episodeId: String): Long? = positions[episodeId]
+
+    override suspend fun updateLocalFilePath(episodeId: String, localFilePath: String?) {
+        state.update { list -> list.map { if (it.id == episodeId) it.copy(localFilePath = localFilePath) else it } }
+    }
 }
 
 class PodcastRepositoryTest {

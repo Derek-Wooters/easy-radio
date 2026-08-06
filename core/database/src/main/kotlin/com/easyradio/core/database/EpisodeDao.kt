@@ -20,4 +20,7 @@ interface EpisodeDao {
 
     @Query("SELECT positionMs FROM episodes WHERE id = :episodeId")
     suspend fun getPosition(episodeId: String): Long?
+
+    @Query("UPDATE episodes SET localFilePath = :localFilePath WHERE id = :episodeId")
+    suspend fun updateLocalFilePath(episodeId: String, localFilePath: String?)
 }

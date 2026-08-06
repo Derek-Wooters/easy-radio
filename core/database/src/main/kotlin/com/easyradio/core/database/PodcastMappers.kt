@@ -28,6 +28,7 @@ fun Episode.toEntity(): EpisodeEntity = EpisodeEntity(
     publishedAtEpochMillis = publishedAtEpochMillis,
     durationSeconds = durationSeconds,
     description = description,
+    localFilePath = localFilePath,
 )
 
 fun EpisodeEntity.toEpisode(): Episode = Episode(
@@ -38,4 +39,5 @@ fun EpisodeEntity.toEpisode(): Episode = Episode(
     publishedAtEpochMillis = publishedAtEpochMillis,
     durationSeconds = durationSeconds,
     description = description,
+    localFilePath = localFilePath,
 )

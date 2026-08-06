@@ -13,4 +13,5 @@ data class EpisodeEntity(
     val durationSeconds: Int?,
     val description: String,
     val positionMs: Long = 0,
+    val localFilePath: String? = null,
 )
