@@ -20,7 +20,7 @@ class PodcastRepository(
         if (query.isBlank()) return emptyList()
 
         return try {
-            itunesApi.searchPodcasts(term = query).results.mapNotNull { it.toPodcastOrNull() }
+            itunesApi.searchPodcasts(term = query).results.mapNotNull { it.toPodcastOrNull() }.distinctBy { it.id }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

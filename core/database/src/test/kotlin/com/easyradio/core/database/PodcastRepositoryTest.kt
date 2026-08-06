@@ -93,6 +93,17 @@ class PodcastRepositoryTest {
     }
 
     @Test
+    fun `search removes duplicate results with the same feed url`() = runTest {
+        val dto = ItunesPodcastDto(collectionName = "Planet Money", feedUrl = "https://feeds.npr.org/510289/podcast.xml")
+        val api = FakeItunesSearchApi(result = ItunesSearchResponseDto(results = listOf(dto, dto)))
+        val repository = PodcastRepository(api, { "" }, FakePodcastDao(), FakeEpisodeDao())
+
+        val results = repository.search("planet money")
+
+        assertThat(results).hasSize(1)
+    }
+
+    @Test
     fun `search returns an empty list for a blank query without calling the api`() = runTest {
         val api = FakeItunesSearchApi()
         val repository = PodcastRepository(api, { "" }, FakePodcastDao(), FakeEpisodeDao())
