@@ -59,6 +59,30 @@ private class FakeEpisodeDao : EpisodeDao {
     override suspend fun updateLocalFilePath(episodeId: String, localFilePath: String?) {
         state.update { list -> list.map { if (it.id == episodeId) it.copy(localFilePath = localFilePath) else it } }
     }
+
+    override suspend fun getByIds(ids: List<String>): List<EpisodeEntity> =
+        state.value.filter { it.id in ids }
+}
+
+private class FakeQueueDao : QueueDao {
+    val state = MutableStateFlow<List<QueueItemEntity>>(emptyList())
+
+    override fun observeAll() = state.map { it.sortedBy { item -> item.position } }
+
+    override suspend fun upsert(item: QueueItemEntity) {
+        state.update { list -> list.filterNot { it.episodeId == item.episodeId } + item }
+    }
+
+    override suspend fun upsertAll(items: List<QueueItemEntity>) {
+        val ids = items.map { it.episodeId }.toSet()
+        state.update { list -> list.filterNot { it.episodeId in ids } + items }
+    }
+
+    override suspend fun remove(episodeId: String) {
+        state.update { list -> list.filterNot { it.episodeId == episodeId } }
+    }
+
+    override suspend fun maxPosition(): Int = state.value.maxOfOrNull { it.position } ?: -1
 }
 
 class PodcastRepositoryTest {
@@ -241,6 +265,56 @@ class PodcastRepositoryTest {
 
         assertThat(deletedPath).isEqualTo("/local/path/ep1.audio")
         assertThat(episodeDao.state.value.first().localFilePath).isNull()
+    }
+
+    @Test
+    fun `enqueue adds the episode at the next position`() = runTest {
+        val episodeDao = FakeEpisodeDao()
+        episodeDao.state.value = listOf(
+            EpisodeEntity(id = "e1", podcastId = "p1", title = "E1", audioUrl = "https://example.com/e1.mp3", publishedAtEpochMillis = null, durationSeconds = null, description = ""),
+            EpisodeEntity(id = "e2", podcastId = "p1", title = "E2", audioUrl = "https://example.com/e2.mp3", publishedAtEpochMillis = null, durationSeconds = null, description = ""),
+        )
+        val queueDao = FakeQueueDao()
+        val repository = PodcastRepository(FakeItunesSearchApi(), { "" }, FakePodcastDao(), episodeDao, queueDao = queueDao)
+
+        repository.enqueue(episodeDao.state.value[0].toEpisode())
+        repository.enqueue(episodeDao.state.value[1].toEpisode())
+
+        val queued = repository.queue().first()
+        assertThat(queued.map { it.id }).containsExactly("e1", "e2").inOrder()
+    }
+
+    @Test
+    fun `removeFromQueue removes the episode`() = runTest {
+        val episodeDao = FakeEpisodeDao()
+        episodeDao.state.value = listOf(
+            EpisodeEntity(id = "e1", podcastId = "p1", title = "E1", audioUrl = "https://example.com/e1.mp3", publishedAtEpochMillis = null, durationSeconds = null, description = ""),
+        )
+        val queueDao = FakeQueueDao()
+        val repository = PodcastRepository(FakeItunesSearchApi(), { "" }, FakePodcastDao(), episodeDao, queueDao = queueDao)
+        repository.enqueue(episodeDao.state.value[0].toEpisode())
+
+        repository.removeFromQueue("e1")
+
+        assertThat(repository.queue().first()).isEmpty()
+    }
+
+    @Test
+    fun `reorderQueue changes playback order`() = runTest {
+        val episodeDao = FakeEpisodeDao()
+        episodeDao.state.value = listOf(
+            EpisodeEntity(id = "e1", podcastId = "p1", title = "E1", audioUrl = "https://example.com/e1.mp3", publishedAtEpochMillis = null, durationSeconds = null, description = ""),
+            EpisodeEntity(id = "e2", podcastId = "p1", title = "E2", audioUrl = "https://example.com/e2.mp3", publishedAtEpochMillis = null, durationSeconds = null, description = ""),
+        )
+        val queueDao = FakeQueueDao()
+        val repository = PodcastRepository(FakeItunesSearchApi(), { "" }, FakePodcastDao(), episodeDao, queueDao = queueDao)
+        repository.enqueue(episodeDao.state.value[0].toEpisode())
+        repository.enqueue(episodeDao.state.value[1].toEpisode())
+
+        repository.reorderQueue(listOf("e2", "e1"))
+
+        val queued = repository.queue().first()
+        assertThat(queued.map { it.id }).containsExactly("e2", "e1").inOrder()
     }
 
     @Test
