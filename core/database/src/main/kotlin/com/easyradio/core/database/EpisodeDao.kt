@@ -23,4 +23,7 @@ interface EpisodeDao {
 
     @Query("UPDATE episodes SET localFilePath = :localFilePath WHERE id = :episodeId")
     suspend fun updateLocalFilePath(episodeId: String, localFilePath: String?)
+
+    @Query("SELECT * FROM episodes WHERE id IN (:ids)")
+    suspend fun getByIds(ids: List<String>): List<EpisodeEntity>
 }

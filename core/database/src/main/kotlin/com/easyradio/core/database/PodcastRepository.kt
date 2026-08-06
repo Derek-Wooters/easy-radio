@@ -16,6 +16,7 @@ class PodcastRepository(
     private val episodeDao: EpisodeDao,
     private val downloadFile: suspend (id: String, audioUrl: String) -> String? = { _, _ -> null },
     private val deleteFile: (String) -> Unit = {},
+    private val queueDao: QueueDao = NoOpQueueDao,
 ) {
 
     suspend fun search(query: String): List<Podcast> {
@@ -77,4 +78,31 @@ class PodcastRepository(
         episode.localFilePath?.let { deleteFile(it) }
         episodeDao.updateLocalFilePath(episode.id, null)
     }
+
+    suspend fun enqueue(episode: Episode) {
+        val nextPosition = queueDao.maxPosition() + 1
+        queueDao.upsert(QueueItemEntity(episodeId = episode.id, position = nextPosition))
+    }
+
+    suspend fun removeFromQueue(episodeId: String) {
+        queueDao.remove(episodeId)
+    }
+
+    suspend fun reorderQueue(orderedEpisodeIds: List<String>) {
+        val items = orderedEpisodeIds.mapIndexed { index, id -> QueueItemEntity(episodeId = id, position = index) }
+        queueDao.upsertAll(items)
+    }
+
+    fun queue(): Flow<List<Episode>> = queueDao.observeAll().map { items ->
+        val episodesById = episodeDao.getByIds(items.map { it.episodeId }).associateBy { it.id }
+        items.mapNotNull { item -> episodesById[item.episodeId]?.toEpisode() }
+    }
+}
+
+private val NoOpQueueDao = object : QueueDao {
+    override fun observeAll(): Flow<List<QueueItemEntity>> = kotlinx.coroutines.flow.flowOf(emptyList())
+    override suspend fun upsert(item: QueueItemEntity) {}
+    override suspend fun upsertAll(items: List<QueueItemEntity>) {}
+    override suspend fun remove(episodeId: String) {}
+    override suspend fun maxPosition(): Int = -1
 }
