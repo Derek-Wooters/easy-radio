@@ -14,6 +14,8 @@ class PodcastRepository(
     private val fetchFeed: suspend (feedUrl: String) -> String,
     private val podcastDao: PodcastDao,
     private val episodeDao: EpisodeDao,
+    private val downloadFile: suspend (id: String, audioUrl: String) -> String? = { _, _ -> null },
+    private val deleteFile: (String) -> Unit = {},
 ) {
 
     suspend fun search(query: String): List<Podcast> {
@@ -64,4 +66,15 @@ class PodcastRepository(
     }
 
     suspend fun lastPosition(episodeId: String): Long = episodeDao.getPosition(episodeId) ?: 0L
+
+    suspend fun downloadEpisode(episode: Episode): Boolean {
+        val path = downloadFile(episode.id, episode.audioUrl) ?: return false
+        episodeDao.updateLocalFilePath(episode.id, path)
+        return true
+    }
+
+    suspend fun deleteDownload(episode: Episode) {
+        episode.localFilePath?.let { deleteFile(it) }
+        episodeDao.updateLocalFilePath(episode.id, null)
+    }
 }
