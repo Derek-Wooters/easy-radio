@@ -7,6 +7,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -14,9 +16,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImagePainter
-import coil.compose.SubcomposeAsyncImage
-import coil.compose.SubcomposeAsyncImageContent
+import coil3.compose.AsyncImagePainter
+import coil3.compose.SubcomposeAsyncImage
+import coil3.compose.SubcomposeAsyncImageContent
 import com.easyradio.app.ui.theme.AvatarTint
 
 /**
@@ -45,7 +47,8 @@ fun Avatar(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             ) {
-                if (painter.state is AsyncImagePainter.State.Success) {
+                val state by painter.state.collectAsState()
+                if (state is AsyncImagePainter.State.Success) {
                     SubcomposeAsyncImageContent()
                 } else {
                     AvatarLetter(letter, tint)
