@@ -54,6 +54,7 @@ dependencies {
     implementation(libs.media3.common)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
+    implementation(libs.kotlinx.coroutines.guava)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 

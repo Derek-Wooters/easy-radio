@@ -32,9 +32,9 @@ object MediaBrowseTree {
     const val RADIO_ID = "radio"
     const val PODCASTS_ID = "podcasts"
 
-    private const val STATION_PREFIX = "station/"
-    private const val PODCAST_PREFIX = "podcast/"
-    private const val EPISODE_PREFIX = "episode/"
+    const val STATION_PREFIX = "station/"
+    const val PODCAST_PREFIX = "podcast/"
+    const val EPISODE_PREFIX = "episode/"
 
     fun rootChildren(): List<BrowseNode> = listOf(
         BrowseNode(mediaId = RADIO_ID, title = "Radio", isBrowsable = true, isPlayable = false),
