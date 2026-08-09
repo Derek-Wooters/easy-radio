@@ -166,7 +166,7 @@ class EasyRadioPlaybackService : MediaLibraryService() {
         val metadata = MediaMetadata.Builder()
             .setTitle(title)
             .setSubtitle(subtitle.ifBlank { null })
-            .setArtworkUri(artworkUrl?.let(Uri::parse))
+            .setArtworkUri(artworkUrl?.let { ArtworkContentProvider.uriFor(it) })
             .setIsBrowsable(isBrowsable)
             .setIsPlayable(isPlayable)
             .setMediaType(

@@ -40,6 +40,15 @@
             </intent-filter>
         </service>
 
+        <!-- Serves cached artwork to Auto/AAOS as local content:// uris. Exported
+             so the Auto/AAOS host (a separate uid) can read the icons; it only
+             returns cached image bytes for the requested url. -->
+        <provider
+            android:name=".playback.ArtworkContentProvider"
+            android:authorities="com.easyradio.app.artwork"
+            android:exported="true"
+            android:grantUriPermissions="true" />
+
     </application>
 
 </manifest>
