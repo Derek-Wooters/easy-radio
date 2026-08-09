@@ -14,6 +14,7 @@ import com.easyradio.core.database.PodcastRepository
 import com.easyradio.core.media.BrowseNode
 import com.easyradio.core.media.MediaBrowseTree
 import com.easyradio.core.model.CuratedRadioStations
+import com.easyradio.core.model.Episode
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -89,20 +90,34 @@ class EasyRadioPlaybackService : MediaLibraryService() {
             LibraryResult.ofItemList(ImmutableList.copyOf(items), params)
         }
 
-        // A browse item carries its playback uri in RequestMetadata; when the user
-        // taps it, rebuild the MediaItem with that uri so ExoPlayer can stream it.
+        // Resolve each tapped item to a playable MediaItem with a uri. Auto's
+        // legacy onPlayFromMediaId path delivers an item with only a mediaId (no
+        // RequestMetadata), so we fall back to resolving the uri from the browse
+        // tree -- without a uri ExoPlayer's DefaultMediaSourceFactory throws.
         override fun onAddMediaItems(
             mediaSession: MediaSession,
             controller: MediaSession.ControllerInfo,
             mediaItems: MutableList<MediaItem>,
-        ): ListenableFuture<MutableList<MediaItem>> {
-            val resolved = mediaItems.map { item ->
-                val uri = item.requestMetadata.mediaUri
-                if (uri != null) item.buildUpon().setUri(uri).build() else item
-            }.toMutableList()
-            return Futures.immediateFuture(resolved)
+        ): ListenableFuture<MutableList<MediaItem>> = serviceScope.future {
+            mediaItems.map { resolvePlayableItem(it) }.toMutableList()
         }
     }
+
+    private suspend fun resolvePlayableItem(item: MediaItem): MediaItem {
+        val uri = item.requestMetadata.mediaUri?.toString() ?: resolveUri(item.mediaId)
+        return if (uri != null) item.buildUpon().setUri(uri).build() else item
+    }
+
+    private suspend fun resolveUri(mediaId: String): String? = when {
+        mediaId.startsWith(MediaBrowseTree.STATION_PREFIX) ->
+            MediaBrowseTree.playbackUri(mediaId, CuratedRadioStations.ALL, emptyList())
+        mediaId.startsWith(MediaBrowseTree.EPISODE_PREFIX) ->
+            MediaBrowseTree.playbackUri(mediaId, emptyList(), allSubscribedEpisodes())
+        else -> null
+    }
+
+    private suspend fun allSubscribedEpisodes(): List<Episode> =
+        repository.subscribedPodcasts().first().flatMap { repository.episodesFor(it.id).first() }
 
     private suspend fun childrenOf(parentId: String): List<BrowseNode> = when {
         parentId == MediaBrowseTree.ROOT_ID -> MediaBrowseTree.rootChildren()
