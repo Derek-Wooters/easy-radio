@@ -98,9 +98,28 @@ class EasyRadioPlaybackService : MediaLibraryService() {
             mediaSession: MediaSession,
             controller: MediaSession.ControllerInfo,
             mediaItems: MutableList<MediaItem>,
-        ): ListenableFuture<MutableList<MediaItem>> = serviceScope.future {
-            mediaItems.map { resolvePlayableItem(it) }.toMutableList()
+        ): ListenableFuture<MutableList<MediaItem>> {
+            // Stations (and items already carrying a uri) resolve from memory, so
+            // return them synchronously -- the player then prepares within the same
+            // play command instead of waiting on a Main-dispatched future that can
+            // land after play() has already evaluated an empty timeline. Only
+            // episode ids need the async database lookup.
+            val needsEpisodeLookup = mediaItems.any {
+                it.requestMetadata.mediaUri == null &&
+                    it.mediaId.startsWith(MediaBrowseTree.EPISODE_PREFIX)
+            }
+            return if (needsEpisodeLookup) {
+                serviceScope.future { mediaItems.map { resolvePlayableItem(it) }.toMutableList() }
+            } else {
+                Futures.immediateFuture(mediaItems.map { resolveSync(it) }.toMutableList())
+            }
         }
+    }
+
+    private fun resolveSync(item: MediaItem): MediaItem {
+        val uri = item.requestMetadata.mediaUri?.toString()
+            ?: MediaBrowseTree.playbackUri(item.mediaId, CuratedRadioStations.ALL, emptyList())
+        return if (uri != null) item.buildUpon().setUri(uri).build() else item
     }
 
     private suspend fun resolvePlayableItem(item: MediaItem): MediaItem {
