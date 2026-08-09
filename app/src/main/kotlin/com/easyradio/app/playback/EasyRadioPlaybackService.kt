@@ -38,6 +38,7 @@ class EasyRadioPlaybackService : MediaLibraryService() {
     private lateinit var player: ExoPlayer
     private lateinit var mediaSession: MediaLibrarySession
     private lateinit var repository: PodcastRepository
+    private lateinit var wearStatePublisher: WearStatePublisher
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     override fun onCreate() {
@@ -56,11 +57,14 @@ class EasyRadioPlaybackService : MediaLibraryService() {
             .build()
 
         mediaSession = MediaLibrarySession.Builder(this, player, LibraryCallback()).build()
+
+        wearStatePublisher = WearStatePublisher(this, player).also { it.attach() }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession = mediaSession
 
     override fun onDestroy() {
+        wearStatePublisher.detach()
         mediaSession.run {
             player.release()
             release()

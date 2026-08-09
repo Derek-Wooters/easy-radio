@@ -55,6 +55,8 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
     implementation(libs.kotlinx.coroutines.guava)
+    implementation(libs.kotlinx.coroutines.play.services)
+    implementation(libs.play.services.wearable)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 
