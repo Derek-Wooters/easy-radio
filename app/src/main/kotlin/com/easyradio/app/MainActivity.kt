@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Text
 import com.easyradio.app.ui.NowPlayingBar
 import androidx.compose.runtime.getValue
@@ -64,7 +64,7 @@ class MainActivity : ComponentActivity() {
 
     private val database by lazy {
         Room.databaseBuilder(applicationContext, EasyRadioDatabase::class.java, "easy-radio.db")
-            .fallbackToDestructiveMigration()
+            .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
     }
     private val episodeDownloader by lazy {
@@ -104,7 +104,7 @@ class MainActivity : ComponentActivity() {
                     var selectedTab by remember { mutableStateOf(AppTab.RADIO) }
 
                     Column(modifier = Modifier.fillMaxSize()) {
-                        TabRow(selectedTabIndex = selectedTab.ordinal) {
+                        PrimaryTabRow(selectedTabIndex = selectedTab.ordinal) {
                             AppTab.entries.forEach { tab ->
                                 Tab(
                                     selected = selectedTab == tab,
