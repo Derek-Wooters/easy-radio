@@ -5,10 +5,20 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Not automotive-only: required=false so the same APK installs on phones and AAOS. -->
+    <uses-feature
+        android:name="android.hardware.type.automotive"
+        android:required="false" />
+
     <application
         android:allowBackup="true"
         android:label="@string/app_name"
         android:theme="@style/Theme.EasyRadio">
+
+        <!-- Declares this as an Android Auto / Automotive media app. -->
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
 
         <activity
             android:name=".MainActivity"
@@ -25,7 +35,30 @@
             android:exported="true"
             android:foregroundServiceType="mediaPlayback">
             <intent-filter>
-                <action android:name="androidx.media3.session.MediaSessionService" />
+                <action android:name="androidx.media3.session.MediaLibraryService" />
+                <action android:name="android.media.browse.MediaBrowserService" />
+            </intent-filter>
+        </service>
+
+        <!-- Serves cached artwork to Auto/AAOS as local content:// uris. Exported
+             so the Auto/AAOS host (a separate uid) can read the icons; it only
+             returns cached image bytes for the requested url. -->
+        <provider
+            android:name=".playback.ArtworkContentProvider"
+            android:authorities="com.easyradio.app.artwork"
+            android:exported="true"
+            android:grantUriPermissions="true" />
+
+        <!-- Receives playback commands from the paired Wear OS watch. -->
+        <service
+            android:name=".playback.PhoneWearListenerService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
+                <data
+                    android:scheme="wear"
+                    android:host="*"
+                    android:pathPrefix="/easyradio/command" />
             </intent-filter>
         </service>
 

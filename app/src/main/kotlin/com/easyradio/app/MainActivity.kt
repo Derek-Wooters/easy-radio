@@ -23,21 +23,15 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
-import androidx.room.Room
 import com.easyradio.app.playback.EasyRadioPlaybackService
 import com.easyradio.app.ui.PodcastsScreen
 import com.easyradio.app.ui.RadioBrowseScreen
 import com.easyradio.app.ui.theme.EasyRadioTheme
-import com.easyradio.core.database.EasyRadioDatabase
-import com.easyradio.core.database.PodcastRepository
 import com.easyradio.core.media.PlaybackStateMapper
 import com.easyradio.core.media.PlaybackUiState
 import com.easyradio.core.model.Episode
 import com.easyradio.core.model.Podcast
 import com.easyradio.core.model.RadioStation
-import com.easyradio.core.network.podcast.EpisodeDownloader
-import com.easyradio.core.network.podcast.ItunesSearchApiFactory
-import com.easyradio.core.network.podcast.PodcastFeedFetcher
 import com.easyradio.core.network.radiobrowser.RadioBrowserApiFactory
 import com.easyradio.core.network.radiobrowser.RadioStationRepository
 import com.google.common.util.concurrent.ListenableFuture
@@ -62,28 +56,7 @@ class MainActivity : ComponentActivity() {
 
     private val radioRepository = RadioStationRepository(api = RadioBrowserApiFactory.create())
 
-    private val database by lazy {
-        Room.databaseBuilder(applicationContext, EasyRadioDatabase::class.java, "easy-radio.db")
-            .fallbackToDestructiveMigration(dropAllTables = true)
-            .build()
-    }
-    private val episodeDownloader by lazy {
-        EpisodeDownloader(
-            client = ItunesSearchApiFactory.defaultClient(),
-            downloadsDir = File(applicationContext.filesDir, "podcast_downloads"),
-        )
-    }
-    private val podcastRepository by lazy {
-        PodcastRepository(
-            itunesApi = ItunesSearchApiFactory.create(),
-            fetchFeed = PodcastFeedFetcher(ItunesSearchApiFactory.defaultClient())::fetch,
-            podcastDao = database.podcastDao(),
-            episodeDao = database.episodeDao(),
-            downloadFile = episodeDownloader::download,
-            deleteFile = episodeDownloader::delete,
-            queueDao = database.queueDao(),
-        )
-    }
+    private val podcastRepository by lazy { EasyRadioGraph.repository(applicationContext) }
 
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private var mediaController by mutableStateOf<MediaController?>(null)
