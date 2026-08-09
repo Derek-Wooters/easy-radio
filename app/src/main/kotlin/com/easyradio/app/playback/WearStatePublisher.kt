@@ -50,9 +50,14 @@ class WearStatePublisher(
         )
         val payload = WearSync.encodeState(state)
         scope.launch {
-            val nodes = Wearable.getNodeClient(context).connectedNodes.await()
-            for (node in nodes) {
-                messageClient.sendMessage(node.id, WearSync.STATE_PATH, payload)
+            // No watch paired, or no Wear support on this device (the Wearable API
+            // is unavailable on non-Wear-enabled builds) -> silently skip. This
+            // must never crash normal phone playback.
+            runCatching {
+                val nodes = Wearable.getNodeClient(context).connectedNodes.await()
+                for (node in nodes) {
+                    messageClient.sendMessage(node.id, WearSync.STATE_PATH, payload)
+                }
             }
         }
     }
