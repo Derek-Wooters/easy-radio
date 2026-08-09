@@ -16,7 +16,7 @@ class EpisodeDownloader(
             val request = Request.Builder().url(audioUrl).build()
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return@withContext null
-                val body = response.body ?: return@withContext null
+                val body = response.body
 
                 if (!downloadsDir.exists()) downloadsDir.mkdirs()
                 val destination = File(downloadsDir, "${id.hashCode()}.audio")

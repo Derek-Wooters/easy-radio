@@ -17,15 +17,15 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.PlaylistAdd
-import androidx.compose.material.icons.filled.QueueMusic
-import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -126,7 +126,7 @@ private fun PodcastLibraryScreen(
                 modifier = Modifier.weight(1f),
             )
             IconButton(onClick = onQueueClick) {
-                Icon(Icons.Filled.QueueMusic, contentDescription = "Up Next")
+                Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "Up Next")
             }
         }
 
@@ -246,7 +246,7 @@ private fun EpisodeListScreen(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 12.dp),
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = podcast.title, style = MaterialTheme.typography.titleLarge)
@@ -257,7 +257,7 @@ private fun EpisodeListScreen(
                 )
             }
             IconButton(onClick = { newestFirst = !newestFirst }) {
-                Icon(Icons.Filled.Sort, contentDescription = if (newestFirst) "Newest first" else "Oldest first")
+                Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = if (newestFirst) "Newest first" else "Oldest first")
             }
         }
 
@@ -278,7 +278,7 @@ private fun EpisodeListScreen(
                     trailingContent = {
                         Row {
                             IconButton(onClick = { scope.launch { repository.enqueue(episode) } }) {
-                                Icon(Icons.Filled.PlaylistAdd, contentDescription = "Add to queue")
+                                Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = "Add to queue")
                             }
                             IconButton(onClick = {
                                 if (episode.localFilePath != null) {
@@ -321,7 +321,7 @@ private fun QueueScreen(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 12.dp),
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
             }
             Text(text = "Up Next", style = MaterialTheme.typography.titleLarge)
         }

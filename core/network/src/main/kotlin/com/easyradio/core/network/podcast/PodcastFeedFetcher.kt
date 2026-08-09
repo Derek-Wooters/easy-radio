@@ -10,7 +10,7 @@ class PodcastFeedFetcher(private val client: OkHttpClient) {
     suspend fun fetch(feedUrl: String): String = withContext(Dispatchers.IO) {
         client.newCall(Request.Builder().url(feedUrl).build()).execute().use { response ->
             if (!response.isSuccessful) return@withContext ""
-            response.body?.string().orEmpty()
+            response.body.string()
         }
     }
 }
