@@ -17,6 +17,7 @@ dependencyResolutionManagement {
 rootProject.name = "easy-radio"
 
 include(":app")
+include(":wear")
 include(":core:model")
 include(":core:media")
 include(":core:network")
