@@ -163,6 +163,9 @@ class MainActivity : ComponentActivity() {
                             AppTab.SETTINGS -> SettingsScreen(
                                 settings = settings,
                                 onThemeModeChange = { lifecycleScope.launch { settingsRepository.setThemeMode(it) } },
+                                onDownloadQualityChange = {
+                                    lifecycleScope.launch { settingsRepository.setDownloadQuality(it) }
+                                },
                                 onDownloadOverWifiOnlyChange = {
                                     lifecycleScope.launch { settingsRepository.setDownloadOverWifiOnly(it) }
                                 },

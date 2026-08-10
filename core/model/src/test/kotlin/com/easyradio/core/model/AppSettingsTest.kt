@@ -18,11 +18,12 @@ class AppSettingsTest {
     }
 
     @Test
-    fun `defaults are system theme, no sleep timer, wifi-only downloads, no auto-download`() {
+    fun `defaults are system theme, no sleep timer, wifi-only high-quality downloads, no auto-download`() {
         val settings = AppSettings()
 
         assertThat(settings.themeMode).isEqualTo(ThemeMode.SYSTEM)
         assertThat(settings.sleepTimerMinutes).isEqualTo(0)
+        assertThat(settings.downloadQuality).isEqualTo(DownloadQuality.HIGH)
         assertThat(settings.downloadOverWifiOnly).isTrue()
         assertThat(settings.autoDownloadNewEpisodes).isFalse()
     }

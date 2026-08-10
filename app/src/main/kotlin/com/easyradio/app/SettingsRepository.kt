@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.easyradio.core.model.AppSettings
+import com.easyradio.core.model.DownloadQuality
 import com.easyradio.core.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -26,6 +27,7 @@ class SettingsRepository(private val context: Context) {
     private object Keys {
         val themeMode = stringPreferencesKey("theme_mode")
         val sleepTimerMinutes = intPreferencesKey("sleep_timer_minutes")
+        val downloadQuality = stringPreferencesKey("download_quality")
         val downloadOverWifiOnly = booleanPreferencesKey("download_over_wifi_only")
         val autoDownloadNewEpisodes = booleanPreferencesKey("auto_download_new_episodes")
     }
@@ -37,6 +39,9 @@ class SettingsRepository(private val context: Context) {
                 ?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() }
                 ?: defaults.themeMode,
             sleepTimerMinutes = prefs[Keys.sleepTimerMinutes] ?: defaults.sleepTimerMinutes,
+            downloadQuality = prefs[Keys.downloadQuality]
+                ?.let { runCatching { DownloadQuality.valueOf(it) }.getOrNull() }
+                ?: defaults.downloadQuality,
             downloadOverWifiOnly = prefs[Keys.downloadOverWifiOnly] ?: defaults.downloadOverWifiOnly,
             autoDownloadNewEpisodes = prefs[Keys.autoDownloadNewEpisodes] ?: defaults.autoDownloadNewEpisodes,
         )
@@ -48,6 +53,10 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setSleepTimerMinutes(minutes: Int) {
         context.settingsDataStore.edit { it[Keys.sleepTimerMinutes] = minutes }
+    }
+
+    suspend fun setDownloadQuality(quality: DownloadQuality) {
+        context.settingsDataStore.edit { it[Keys.downloadQuality] = quality.name }
     }
 
     suspend fun setDownloadOverWifiOnly(value: Boolean) {
