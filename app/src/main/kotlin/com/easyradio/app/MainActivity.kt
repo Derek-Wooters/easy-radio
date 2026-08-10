@@ -3,6 +3,7 @@ package com.easyradio.app
 import android.content.ComponentName
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
@@ -19,6 +20,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import com.easyradio.app.ui.NowPlayingBar
+import com.easyradio.app.ui.NowPlayingScreen
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -93,6 +95,7 @@ class MainActivity : ComponentActivity() {
     private var playbackSpeedIndex by mutableStateOf(0)
     private var positionMs by mutableStateOf(0L)
     private var durationMs by mutableStateOf(0L)
+    private var showNowPlaying by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -125,7 +128,50 @@ class MainActivity : ComponentActivity() {
 
             EasyRadioTheme(darkTheme = settings.themeMode.resolveDarkTheme(isSystemInDarkTheme())) {
                 var selectedTab by remember { mutableStateOf(AppTab.RADIO) }
+                val playing = uiState == PlaybackUiState.PLAYING || uiState == PlaybackUiState.BUFFERING
 
+                BackHandler(enabled = showNowPlaying) { showNowPlaying = false }
+
+                if (showNowPlaying && (currentStation != null || currentEpisode != null)) {
+                    val station = currentStation
+                    val episode = currentEpisode
+                    val podcast = currentPodcast
+                    when {
+                        station != null -> NowPlayingScreen(
+                            topLabel = "Live Radio",
+                            title = station.name,
+                            subtitle = station.tagline,
+                            imageUrl = station.imageUrl,
+                            tintSeed = station.id,
+                            isLive = true,
+                            isPlaying = playing,
+                            progress = null,
+                            positionLabel = null,
+                            durationLabel = null,
+                            speedLabel = null,
+                            onCollapse = { showNowPlaying = false },
+                            onPlayPause = { if (playing) mediaController?.pause() else playStation(station) },
+                        )
+                        episode != null -> NowPlayingScreen(
+                            topLabel = podcast?.title.orEmpty(),
+                            title = episode.title,
+                            subtitle = podcast?.title.orEmpty(),
+                            imageUrl = podcast?.artworkUrl,
+                            tintSeed = episode.podcastId,
+                            isLive = false,
+                            isPlaying = playing,
+                            progress = if (durationMs > 0) positionMs.toFloat() / durationMs else null,
+                            positionLabel = formatDuration(positionMs),
+                            durationLabel = formatDuration(durationMs),
+                            speedLabel = "${PLAYBACK_SPEEDS[playbackSpeedIndex]}x",
+                            onCollapse = { showNowPlaying = false },
+                            onPlayPause = { if (playing) mediaController?.pause() else mediaController?.play() },
+                            onSkipBack = { skip(-SKIP_BACK_MS) },
+                            onSkipForward = { skip(SKIP_FORWARD_MS) },
+                            onSpeedClick = ::cyclePlaybackSpeed,
+                        )
+                    }
+                } else {
                 Scaffold(
                     bottomBar = {
                         Column {
@@ -142,6 +188,7 @@ class MainActivity : ComponentActivity() {
                                     playbackState = uiState,
                                     onPlayClick = { playStation(station) },
                                     onPauseClick = { mediaController?.pause() },
+                                    onExpand = { showNowPlaying = true },
                                 )
                                 episode != null -> {
                                     val podcastTitle = podcast?.title.orEmpty()
@@ -166,6 +213,7 @@ class MainActivity : ComponentActivity() {
                                         onSpeedClick = ::cyclePlaybackSpeed,
                                         speedLabel = "${PLAYBACK_SPEEDS[playbackSpeedIndex]}x",
                                         progress = fraction,
+                                        onExpand = { showNowPlaying = true },
                                     )
                                 }
                             }
@@ -210,6 +258,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     }
+                }
                 }
             }
         }

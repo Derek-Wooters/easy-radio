@@ -1,6 +1,7 @@
 package com.easyradio.app.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -50,6 +51,7 @@ fun NowPlayingBar(
     onSpeedClick: (() -> Unit)? = null,
     speedLabel: String? = null,
     progress: Float? = null,
+    onExpand: (() -> Unit)? = null,
 ) {
     val extraColors = LocalEasyRadioColors.current
     val tints = extraColors.avatarTints
@@ -78,7 +80,12 @@ fun NowPlayingBar(
                     modifier = Modifier.size(48.dp),
                 )
 
-                Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .then(if (onExpand != null) Modifier.clickable(onClick = onExpand) else Modifier)
+                        .padding(horizontal = 12.dp),
+                ) {
                     Text(text = title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
                     Text(
                         text = tagline,
