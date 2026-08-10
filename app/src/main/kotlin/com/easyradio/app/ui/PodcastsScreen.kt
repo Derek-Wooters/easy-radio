@@ -1,5 +1,6 @@
 package com.easyradio.app.ui
 
+import android.text.format.DateUtils
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,7 +11,9 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -28,7 +31,9 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -38,6 +43,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -269,21 +275,42 @@ private fun EpisodeListScreen(
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 12.dp),
+            modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 20.dp, top = 12.dp, bottom = 12.dp),
         ) {
             IconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
             }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = podcast.title, style = MaterialTheme.typography.titleLarge)
+            Avatar(
+                imageUrl = podcast.artworkUrl,
+                letter = podcast.title.firstOrNull()?.uppercase() ?: "?",
+                tint = podcastTint(podcast.id),
+                cornerRadius = 10.dp,
+                modifier = Modifier.size(48.dp),
+            )
+            Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                Text(text = podcast.title, style = MaterialTheme.typography.titleLarge, maxLines = 1)
                 Text(
-                    text = podcast.author,
+                    text = podcast.author.ifBlank { "Podcast" },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
                 )
             }
-            IconButton(onClick = { newestFirst = !newestFirst }) {
-                Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = if (newestFirst) "Newest first" else "Oldest first")
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp),
+        ) {
+            Text(
+                text = "All episodes",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = { newestFirst = !newestFirst }) {
+                Text(if (newestFirst) "Newest" else "Oldest")
+                Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Toggle sort order")
             }
         }
 
@@ -298,38 +325,126 @@ private fun EpisodeListScreen(
 
         LazyColumn {
             items(episodes, key = { it.id }) { episode ->
-                ListItem(
-                    headlineContent = { Text(episode.title) },
-                    supportingContent = { Text(episode.description.take(120)) },
-                    trailingContent = {
-                        Row {
-                            IconButton(onClick = { scope.launch { repository.enqueue(episode) } }) {
-                                Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = "Add to queue")
-                            }
-                            IconButton(onClick = {
-                                if (episode.localFilePath != null) {
-                                    scope.launch { repository.deleteDownload(episode) }
-                                } else if (episode.id !in downloadingIds) {
-                                    downloadingIds = downloadingIds + episode.id
-                                    scope.launch {
-                                        repository.downloadEpisode(episode)
-                                        downloadingIds = downloadingIds - episode.id
-                                    }
-                                }
-                            }) {
-                                Icon(
-                                    if (episode.localFilePath != null) Icons.Filled.DownloadDone else Icons.Filled.Download,
-                                    contentDescription = if (episode.localFilePath != null) "Downloaded" else "Download",
-                                )
+                EpisodeRow(
+                    episode = episode,
+                    podcast = podcast,
+                    onListen = { onEpisodeSelected(episode) },
+                    onQueue = { scope.launch { repository.enqueue(episode) } },
+                    onDownload = {
+                        if (episode.localFilePath != null) {
+                            scope.launch { repository.deleteDownload(episode) }
+                        } else if (episode.id !in downloadingIds) {
+                            downloadingIds = downloadingIds + episode.id
+                            scope.launch {
+                                repository.downloadEpisode(episode)
+                                downloadingIds = downloadingIds - episode.id
                             }
                         }
                     },
-                    modifier = Modifier.clickable { onEpisodeSelected(episode) },
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
             }
         }
     }
+}
+
+@Composable
+private fun EpisodeRow(
+    episode: Episode,
+    podcast: Podcast,
+    onListen: () -> Unit,
+    onQueue: () -> Unit,
+    onDownload: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onListen)
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+    ) {
+        Row(verticalAlignment = Alignment.Top) {
+            Avatar(
+                imageUrl = podcast.artworkUrl,
+                letter = podcast.title.firstOrNull()?.uppercase() ?: "?",
+                tint = podcastTint(podcast.id),
+                cornerRadius = 8.dp,
+                modifier = Modifier.size(44.dp),
+            )
+            Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
+                Text(text = episode.title, style = MaterialTheme.typography.titleMedium, maxLines = 2)
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
+                    episodeMeta(episode)?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    if (isNewEpisode(episode)) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "NEW",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+            }
+        }
+
+        if (episode.description.isNotBlank()) {
+            Text(
+                text = episode.description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
+            FilledTonalButton(onClick = onListen) {
+                Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Listen")
+            }
+            Spacer(modifier = Modifier.width(4.dp))
+            IconButton(onClick = onQueue) {
+                Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = "Add to queue")
+            }
+            IconButton(onClick = onDownload) {
+                Icon(
+                    if (episode.localFilePath != null) Icons.Filled.DownloadDone else Icons.Filled.Download,
+                    contentDescription = if (episode.localFilePath != null) "Downloaded" else "Download",
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun podcastTint(podcastId: String) =
+    LocalEasyRadioColors.current.avatarTints.let { it[podcastId.hashCode().mod(it.size)] }
+
+private fun episodeMeta(episode: Episode): String? {
+    val date = episode.publishedAtEpochMillis?.let {
+        DateUtils.getRelativeTimeSpanString(it, System.currentTimeMillis(), DateUtils.DAY_IN_MILLIS).toString()
+    }
+    val duration = episode.durationSeconds?.takeIf { it > 0 }?.let { seconds ->
+        val hours = seconds / 3600
+        val minutes = (seconds % 3600) / 60
+        when {
+            hours > 0 && minutes > 0 -> "$hours hr $minutes min"
+            hours > 0 -> "$hours hr"
+            else -> "$minutes min"
+        }
+    }
+    return listOfNotNull(date, duration).takeIf { it.isNotEmpty() }?.joinToString(" · ")
+}
+
+private fun isNewEpisode(episode: Episode): Boolean {
+    val published = episode.publishedAtEpochMillis ?: return false
+    return System.currentTimeMillis() - published < 3 * DateUtils.DAY_IN_MILLIS
 }
 
 @Composable
