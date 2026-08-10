@@ -67,6 +67,14 @@ private const val SKIP_BACK_MS = 15_000L
 private const val SKIP_FORWARD_MS = 30_000L
 private val PLAYBACK_SPEEDS = listOf(1.0f, 1.25f, 1.5f, 2.0f)
 
+private fun formatDuration(ms: Long): String {
+    val totalSeconds = ms / 1000
+    val hours = totalSeconds / 3600
+    val minutes = (totalSeconds % 3600) / 60
+    val seconds = totalSeconds % 60
+    return if (hours > 0) "%d:%02d:%02d".format(hours, minutes, seconds) else "%d:%02d".format(minutes, seconds)
+}
+
 class MainActivity : ComponentActivity() {
 
     private val radioRepository = RadioStationRepository(api = RadioBrowserApiFactory.create())
@@ -83,12 +91,25 @@ class MainActivity : ComponentActivity() {
 
     private var positionSaveJob: Job? = null
     private var playbackSpeedIndex by mutableStateOf(0)
+    private var positionMs by mutableStateOf(0L)
+    private var durationMs by mutableStateOf(0L)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             val settings by settingsRepository.settings.collectAsState(initial = AppSettings())
+
+            LaunchedEffect(currentEpisode?.id, mediaController) {
+                val controller = mediaController
+                if (currentEpisode != null && controller != null) {
+                    while (true) {
+                        positionMs = controller.currentPosition.coerceAtLeast(0)
+                        durationMs = controller.duration.coerceAtLeast(0)
+                        delay(1_000)
+                    }
+                }
+            }
 
             LaunchedEffect(settings.sleepTimerMinutes) {
                 val minutes = settings.sleepTimerMinutes
@@ -122,20 +143,31 @@ class MainActivity : ComponentActivity() {
                                     onPlayClick = { playStation(station) },
                                     onPauseClick = { mediaController?.pause() },
                                 )
-                                episode != null -> NowPlayingBar(
-                                    title = episode.title,
-                                    tagline = podcast?.title.orEmpty(),
-                                    tintSeed = episode.podcastId,
-                                    imageUrl = podcast?.artworkUrl,
-                                    badgeText = null,
-                                    playbackState = uiState,
-                                    onPlayClick = { mediaController?.play() },
-                                    onPauseClick = { mediaController?.pause() },
-                                    onSkipBackClick = { skip(-SKIP_BACK_MS) },
-                                    onSkipForwardClick = { skip(SKIP_FORWARD_MS) },
-                                    onSpeedClick = ::cyclePlaybackSpeed,
-                                    speedLabel = "${PLAYBACK_SPEEDS[playbackSpeedIndex]}x",
-                                )
+                                episode != null -> {
+                                    val podcastTitle = podcast?.title.orEmpty()
+                                    val fraction = if (durationMs > 0) positionMs.toFloat() / durationMs else null
+                                    val tagline = if (durationMs > 0) {
+                                        val left = formatDuration((durationMs - positionMs).coerceAtLeast(0))
+                                        if (podcastTitle.isNotEmpty()) "$podcastTitle · $left left" else "$left left"
+                                    } else {
+                                        podcastTitle
+                                    }
+                                    NowPlayingBar(
+                                        title = episode.title,
+                                        tagline = tagline,
+                                        tintSeed = episode.podcastId,
+                                        imageUrl = podcast?.artworkUrl,
+                                        badgeText = null,
+                                        playbackState = uiState,
+                                        onPlayClick = { mediaController?.play() },
+                                        onPauseClick = { mediaController?.pause() },
+                                        onSkipBackClick = { skip(-SKIP_BACK_MS) },
+                                        onSkipForwardClick = { skip(SKIP_FORWARD_MS) },
+                                        onSpeedClick = ::cyclePlaybackSpeed,
+                                        speedLabel = "${PLAYBACK_SPEEDS[playbackSpeedIndex]}x",
+                                        progress = fraction,
+                                    )
+                                }
                             }
                             NavigationBar {
                                 AppTab.entries.forEach { tab ->
