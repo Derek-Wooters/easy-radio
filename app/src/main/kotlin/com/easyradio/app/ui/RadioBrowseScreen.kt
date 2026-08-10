@@ -1,7 +1,8 @@
 package com.easyradio.app.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -11,11 +12,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.PlayCircleOutline
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -30,8 +34,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.easyradio.core.model.RadioStation
 import com.easyradio.core.network.radiobrowser.RadioStationRepository
@@ -40,49 +42,91 @@ import com.easyradio.app.ui.theme.LocalEasyRadioColors
 import kotlinx.coroutines.delay
 
 private const val SEARCH_DEBOUNCE_MS = 400L
+private const val ALL_CITIES = "All Cities"
+private const val ALL_GENRES = "All Genres"
+private val CITY_OPTIONS = listOf(ALL_CITIES, "Minneapolis", "New York", "Los Angeles", "Chicago")
+private val GENRE_OPTIONS = listOf(ALL_GENRES, "News", "Sports", "Music", "Talk")
 
 @Composable
 fun RadioBrowseScreen(
     repository: RadioStationRepository,
     onStationSelected: (RadioStation) -> Unit,
 ) {
+    var searchVisible by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
+    var city by remember { mutableStateOf(ALL_CITIES) }
+    var genre by remember { mutableStateOf(ALL_GENRES) }
     var searchResults by remember { mutableStateOf<List<RadioStation>>(emptyList()) }
 
-    LaunchedEffect(query) {
-        if (query.isBlank()) {
+    // A free-text query takes precedence; otherwise the city/genre chips drive
+    // the search. With no query and both chips at "All", show curated stations.
+    val cityTerm = city.takeIf { it != ALL_CITIES }
+    val genreTerm = genre.takeIf { it != ALL_GENRES }
+    val term = when {
+        query.isNotBlank() -> query
+        cityTerm != null || genreTerm != null -> listOfNotNull(genreTerm, cityTerm).joinToString(" ")
+        else -> null
+    }
+
+    LaunchedEffect(term) {
+        if (term == null) {
             searchResults = emptyList()
             return@LaunchedEffect
         }
         delay(SEARCH_DEBOUNCE_MS)
-        searchResults = repository.search(query)
+        searchResults = repository.search(term)
     }
 
-    val stationsToShow = if (query.isBlank()) repository.curatedStations() else searchResults
+    val stationsToShow = if (term == null) repository.curatedStations() else searchResults
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+            modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
         ) {
             Text(
                 text = "Live Radio",
                 style = MaterialTheme.typography.headlineMedium,
                 modifier = Modifier.weight(1f),
             )
-            Icon(Icons.Filled.Search, contentDescription = "Search")
+            IconButton(onClick = {
+                searchVisible = !searchVisible
+                if (!searchVisible) query = ""
+            }) {
+                Icon(Icons.Filled.Search, contentDescription = "Search")
+            }
         }
 
-        OutlinedTextField(
-            value = query,
-            onValueChange = { query = it },
-            placeholder = { Text("Search stations") },
-            singleLine = true,
-            shape = RoundedCornerShape(28.dp),
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
-        )
+        if (searchVisible) {
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                placeholder = { Text("Search stations") },
+                singleLine = true,
+                shape = RoundedCornerShape(28.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+            )
+        }
 
-        if (query.isNotBlank() && searchResults.isEmpty()) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+        ) {
+            FilterDropdownChip(
+                selectedLabel = city,
+                active = cityTerm != null,
+                options = CITY_OPTIONS,
+                onSelect = { city = it },
+            )
+            FilterDropdownChip(
+                selectedLabel = genre,
+                active = genreTerm != null,
+                options = GENRE_OPTIONS,
+                onSelect = { genre = it },
+            )
+        }
+
+        if (term != null && searchResults.isEmpty()) {
             Text(
                 text = "No stations found",
                 style = MaterialTheme.typography.bodyMedium,
@@ -98,6 +142,35 @@ fun RadioBrowseScreen(
                     onClick = { onStationSelected(station) },
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun FilterDropdownChip(
+    selectedLabel: String,
+    active: Boolean,
+    options: List<String>,
+    onSelect: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        FilterChip(
+            selected = active,
+            onClick = { expanded = true },
+            label = { Text(selectedLabel) },
+            trailingIcon = { Icon(Icons.Filled.ArrowDropDown, contentDescription = null) },
+        )
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option) },
+                    onClick = {
+                        onSelect(option)
+                        expanded = false
+                    },
+                )
             }
         }
     }
@@ -130,17 +203,12 @@ private fun StationRow(station: RadioStation, onClick: () -> Unit) {
             )
         }
 
-        IconButton(
-            onClick = onClick,
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(Color.Transparent),
-        ) {
+        IconButton(onClick = onClick) {
             Icon(
-                Icons.Filled.PlayArrow,
+                Icons.Filled.PlayCircleOutline,
                 contentDescription = "Play ${station.name}",
                 tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(36.dp),
             )
         }
     }
@@ -152,4 +220,3 @@ private fun avatarTintFor(stationId: String): AvatarTint {
     val index = (stationId.hashCode().mod(tints.size))
     return tints[index]
 }
-
