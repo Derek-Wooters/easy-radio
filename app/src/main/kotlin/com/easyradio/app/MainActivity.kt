@@ -8,9 +8,15 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Podcasts
+import androidx.compose.material.icons.filled.Radio
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import com.easyradio.app.ui.NowPlayingBar
 import androidx.compose.runtime.getValue
@@ -48,11 +54,12 @@ import androidx.compose.runtime.collectAsState
 import com.easyradio.app.ui.SettingsScreen
 import com.easyradio.core.media.SleepTimer
 import com.easyradio.core.model.AppSettings
+import androidx.compose.ui.graphics.vector.ImageVector
 
-private enum class AppTab(val label: String) {
-    RADIO("Radio"),
-    PODCASTS("Podcasts"),
-    SETTINGS("Settings"),
+private enum class AppTab(val label: String, val icon: ImageVector) {
+    RADIO("Radio", Icons.Filled.Radio),
+    PODCASTS("Podcasts", Icons.Filled.Podcasts),
+    SETTINGS("Settings", Icons.Filled.Settings),
 }
 
 private const val PODCAST_POSITION_SAVE_INTERVAL_MS = 5_000L
@@ -96,73 +103,75 @@ class MainActivity : ComponentActivity() {
             }
 
             EasyRadioTheme(darkTheme = settings.themeMode.resolveDarkTheme(isSystemInDarkTheme())) {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    var selectedTab by remember { mutableStateOf(AppTab.RADIO) }
+                var selectedTab by remember { mutableStateOf(AppTab.RADIO) }
 
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        PrimaryTabRow(selectedTabIndex = selectedTab.ordinal) {
-                            AppTab.entries.forEach { tab ->
-                                Tab(
-                                    selected = selectedTab == tab,
-                                    onClick = { selectedTab = tab },
-                                    text = { Text(tab.label) },
+                Scaffold(
+                    bottomBar = {
+                        Column {
+                            val station = currentStation
+                            val episode = currentEpisode
+                            val podcast = currentPodcast
+                            when {
+                                station != null -> NowPlayingBar(
+                                    title = station.name,
+                                    tagline = station.tagline,
+                                    tintSeed = station.id,
+                                    imageUrl = station.imageUrl,
+                                    badgeText = "LIVE",
+                                    playbackState = uiState,
+                                    onPlayClick = { playStation(station) },
+                                    onPauseClick = { mediaController?.pause() },
+                                )
+                                episode != null -> NowPlayingBar(
+                                    title = episode.title,
+                                    tagline = podcast?.title.orEmpty(),
+                                    tintSeed = episode.podcastId,
+                                    imageUrl = podcast?.artworkUrl,
+                                    badgeText = null,
+                                    playbackState = uiState,
+                                    onPlayClick = { mediaController?.play() },
+                                    onPauseClick = { mediaController?.pause() },
+                                    onSkipBackClick = { skip(-SKIP_BACK_MS) },
+                                    onSkipForwardClick = { skip(SKIP_FORWARD_MS) },
+                                    onSpeedClick = ::cyclePlaybackSpeed,
+                                    speedLabel = "${PLAYBACK_SPEEDS[playbackSpeedIndex]}x",
                                 )
                             }
-                        }
-
-                        Box(modifier = Modifier.weight(1f)) {
-                            when (selectedTab) {
-                                AppTab.RADIO -> RadioBrowseScreen(
-                                    repository = radioRepository,
-                                    onStationSelected = ::playStation,
-                                )
-                                AppTab.PODCASTS -> PodcastsScreen(
-                                    repository = podcastRepository,
-                                    onEpisodeSelected = { podcast, episode -> playEpisode(podcast, episode) },
-                                )
-                                AppTab.SETTINGS -> SettingsScreen(
-                                    settings = settings,
-                                    onThemeModeChange = { lifecycleScope.launch { settingsRepository.setThemeMode(it) } },
-                                    onDownloadOverWifiOnlyChange = {
-                                        lifecycleScope.launch { settingsRepository.setDownloadOverWifiOnly(it) }
-                                    },
-                                    onAutoDownloadNewEpisodesChange = {
-                                        lifecycleScope.launch { settingsRepository.setAutoDownloadNewEpisodes(it) }
-                                    },
-                                    onSleepTimerMinutesChange = {
-                                        lifecycleScope.launch { settingsRepository.setSleepTimerMinutes(it) }
-                                    },
-                                )
+                            NavigationBar {
+                                AppTab.entries.forEach { tab ->
+                                    NavigationBarItem(
+                                        selected = selectedTab == tab,
+                                        onClick = { selectedTab = tab },
+                                        icon = { Icon(tab.icon, contentDescription = tab.label) },
+                                        label = { Text(tab.label) },
+                                    )
+                                }
                             }
                         }
-
-                        val station = currentStation
-                        val episode = currentEpisode
-                        val podcast = currentPodcast
-                        when {
-                            station != null -> NowPlayingBar(
-                                title = station.name,
-                                tagline = station.tagline,
-                                tintSeed = station.id,
-                                imageUrl = station.imageUrl,
-                                badgeText = "LIVE",
-                                playbackState = uiState,
-                                onPlayClick = { playStation(station) },
-                                onPauseClick = { mediaController?.pause() },
+                    },
+                ) { innerPadding ->
+                    Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+                        when (selectedTab) {
+                            AppTab.RADIO -> RadioBrowseScreen(
+                                repository = radioRepository,
+                                onStationSelected = ::playStation,
                             )
-                            episode != null -> NowPlayingBar(
-                                title = episode.title,
-                                tagline = podcast?.title.orEmpty(),
-                                tintSeed = episode.podcastId,
-                                imageUrl = podcast?.artworkUrl,
-                                badgeText = null,
-                                playbackState = uiState,
-                                onPlayClick = { mediaController?.play() },
-                                onPauseClick = { mediaController?.pause() },
-                                onSkipBackClick = { skip(-SKIP_BACK_MS) },
-                                onSkipForwardClick = { skip(SKIP_FORWARD_MS) },
-                                onSpeedClick = ::cyclePlaybackSpeed,
-                                speedLabel = "${PLAYBACK_SPEEDS[playbackSpeedIndex]}x",
+                            AppTab.PODCASTS -> PodcastsScreen(
+                                repository = podcastRepository,
+                                onEpisodeSelected = { podcast, episode -> playEpisode(podcast, episode) },
+                            )
+                            AppTab.SETTINGS -> SettingsScreen(
+                                settings = settings,
+                                onThemeModeChange = { lifecycleScope.launch { settingsRepository.setThemeMode(it) } },
+                                onDownloadOverWifiOnlyChange = {
+                                    lifecycleScope.launch { settingsRepository.setDownloadOverWifiOnly(it) }
+                                },
+                                onAutoDownloadNewEpisodesChange = {
+                                    lifecycleScope.launch { settingsRepository.setAutoDownloadNewEpisodes(it) }
+                                },
+                                onSleepTimerMinutesChange = {
+                                    lifecycleScope.launch { settingsRepository.setSleepTimerMinutes(it) }
+                                },
                             )
                         }
                     }
