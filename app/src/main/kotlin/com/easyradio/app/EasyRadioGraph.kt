@@ -21,9 +21,17 @@ object EasyRadioGraph {
     @Volatile
     private var repository: PodcastRepository? = null
 
+    @Volatile
+    private var settingsRepository: SettingsRepository? = null
+
     fun repository(context: Context): PodcastRepository =
         repository ?: synchronized(this) {
             repository ?: build(context.applicationContext).also { repository = it }
+        }
+
+    fun settings(context: Context): SettingsRepository =
+        settingsRepository ?: synchronized(this) {
+            settingsRepository ?: SettingsRepository(context.applicationContext).also { settingsRepository = it }
         }
 
     private fun build(appContext: Context): PodcastRepository {

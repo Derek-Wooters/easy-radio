@@ -41,10 +41,18 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.File
+import android.os.SystemClock
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import com.easyradio.app.ui.SettingsScreen
+import com.easyradio.core.media.SleepTimer
+import com.easyradio.core.model.AppSettings
 
 private enum class AppTab(val label: String) {
     RADIO("Radio"),
     PODCASTS("Podcasts"),
+    SETTINGS("Settings"),
 }
 
 private const val PODCAST_POSITION_SAVE_INTERVAL_MS = 5_000L
@@ -57,6 +65,7 @@ class MainActivity : ComponentActivity() {
     private val radioRepository = RadioStationRepository(api = RadioBrowserApiFactory.create())
 
     private val podcastRepository by lazy { EasyRadioGraph.repository(applicationContext) }
+    private val settingsRepository by lazy { EasyRadioGraph.settings(applicationContext) }
 
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private var mediaController by mutableStateOf<MediaController?>(null)
@@ -72,7 +81,21 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            EasyRadioTheme {
+            val settings by settingsRepository.settings.collectAsState(initial = AppSettings())
+
+            LaunchedEffect(settings.sleepTimerMinutes) {
+                val minutes = settings.sleepTimerMinutes
+                if (minutes > 0) {
+                    val start = SystemClock.elapsedRealtime()
+                    val durationMs = minutes * 60_000L
+                    while (!SleepTimer.isExpired(start, durationMs, SystemClock.elapsedRealtime())) {
+                        delay(1_000)
+                    }
+                    mediaController?.pause()
+                }
+            }
+
+            EasyRadioTheme(darkTheme = settings.themeMode.resolveDarkTheme(isSystemInDarkTheme())) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     var selectedTab by remember { mutableStateOf(AppTab.RADIO) }
 
@@ -96,6 +119,19 @@ class MainActivity : ComponentActivity() {
                                 AppTab.PODCASTS -> PodcastsScreen(
                                     repository = podcastRepository,
                                     onEpisodeSelected = { podcast, episode -> playEpisode(podcast, episode) },
+                                )
+                                AppTab.SETTINGS -> SettingsScreen(
+                                    settings = settings,
+                                    onThemeModeChange = { lifecycleScope.launch { settingsRepository.setThemeMode(it) } },
+                                    onDownloadOverWifiOnlyChange = {
+                                        lifecycleScope.launch { settingsRepository.setDownloadOverWifiOnly(it) }
+                                    },
+                                    onAutoDownloadNewEpisodesChange = {
+                                        lifecycleScope.launch { settingsRepository.setAutoDownloadNewEpisodes(it) }
+                                    },
+                                    onSleepTimerMinutesChange = {
+                                        lifecycleScope.launch { settingsRepository.setSleepTimerMinutes(it) }
+                                    },
                                 )
                             }
                         }
