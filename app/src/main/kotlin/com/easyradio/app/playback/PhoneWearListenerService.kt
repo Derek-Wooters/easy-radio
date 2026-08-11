@@ -33,12 +33,15 @@ class PhoneWearListenerService : WearableListenerService() {
         val token = SessionToken(this, ComponentName(this, EasyRadioPlaybackService::class.java))
         // MediaController is thread-confined to the app main looper; connect and
         // drive it there, blocking this background callback until it completes.
-        runBlocking(Dispatchers.Main) {
-            val controller = MediaController.Builder(this@PhoneWearListenerService, token).buildAsync().await()
-            try {
-                apply(controller, command)
-            } finally {
-                controller.release()
+        // Guard the whole exchange so a controller/connection failure can't crash.
+        runCatching {
+            runBlocking(Dispatchers.Main) {
+                val controller = MediaController.Builder(this@PhoneWearListenerService, token).buildAsync().await()
+                try {
+                    apply(controller, command)
+                } finally {
+                    controller.release()
+                }
             }
         }
     }
