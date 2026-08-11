@@ -57,6 +57,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.guava)
     implementation(libs.kotlinx.coroutines.play.services)
     implementation(libs.play.services.wearable)
+    implementation(libs.androidx.datastore.preferences)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 

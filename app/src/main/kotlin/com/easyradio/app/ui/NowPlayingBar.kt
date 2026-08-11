@@ -1,10 +1,12 @@
 package com.easyradio.app.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,6 +17,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -29,7 +32,9 @@ import com.easyradio.core.media.PlaybackUiState
 /**
  * Persistent playback bar, shared across tabs so it stays visible whether a
  * radio station or a podcast episode is playing. [badgeText] (e.g. "LIVE") is
- * only shown for radio; pass null for podcast episodes.
+ * only shown for radio; pass null for podcast episodes. [progress] (0..1) draws
+ * a thin position bar along the top for seekable content (podcasts); pass null
+ * for live radio.
  */
 @Composable
 fun NowPlayingBar(
@@ -45,6 +50,8 @@ fun NowPlayingBar(
     onSkipForwardClick: (() -> Unit)? = null,
     onSpeedClick: (() -> Unit)? = null,
     speedLabel: String? = null,
+    progress: Float? = null,
+    onExpand: (() -> Unit)? = null,
 ) {
     val extraColors = LocalEasyRadioColors.current
     val tints = extraColors.avatarTints
@@ -55,60 +62,73 @@ fun NowPlayingBar(
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 3.dp,
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
-        ) {
-            Avatar(
-                imageUrl = imageUrl,
-                letter = title.firstOrNull()?.uppercase() ?: "?",
-                tint = tint,
-                modifier = Modifier.size(48.dp),
-            )
-
-            Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                Text(text = title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-                Text(
-                    text = tagline,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
+        Column {
+            if (progress != null) {
+                LinearProgressIndicator(
+                    progress = { progress.coerceIn(0f, 1f) },
+                    modifier = Modifier.fillMaxWidth().height(2.dp),
                 )
             }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(12.dp),
+            ) {
+                Avatar(
+                    imageUrl = imageUrl,
+                    letter = title.firstOrNull()?.uppercase() ?: "?",
+                    tint = tint,
+                    modifier = Modifier.size(48.dp),
+                )
 
-            if (badgeText != null) {
-                Box(
-                    contentAlignment = Alignment.Center,
+                Column(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(50))
-                        .background(extraColors.liveBadgeContainer)
-                        .padding(horizontal = 12.dp, vertical = 4.dp),
+                        .weight(1f)
+                        .then(if (onExpand != null) Modifier.clickable(onClick = onExpand) else Modifier)
+                        .padding(horizontal = 12.dp),
                 ) {
+                    Text(text = title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
                     Text(
-                        text = badgeText,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = extraColors.liveBadgeContent,
+                        text = tagline,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
                     )
                 }
-            }
 
-            if (onSpeedClick != null && speedLabel != null) {
-                androidx.compose.material3.TextButton(onClick = onSpeedClick) { Text(speedLabel) }
-            }
-            if (onSkipBackClick != null) {
-                IconButton(onClick = onSkipBackClick) {
-                    Icon(Icons.Filled.Replay, contentDescription = "Skip back 15 seconds")
+                if (badgeText != null) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(extraColors.liveBadgeContainer)
+                            .padding(horizontal = 12.dp, vertical = 4.dp),
+                    ) {
+                        Text(
+                            text = badgeText,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = extraColors.liveBadgeContent,
+                        )
+                    }
                 }
-            }
-            IconButton(onClick = if (isPlaying) onPauseClick else onPlayClick) {
-                Icon(
-                    if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                    contentDescription = if (isPlaying) "Pause" else "Play",
-                )
-            }
-            if (onSkipForwardClick != null) {
-                IconButton(onClick = onSkipForwardClick) {
-                    Icon(Icons.Filled.Forward30, contentDescription = "Skip forward 30 seconds")
+
+                if (onSpeedClick != null && speedLabel != null) {
+                    androidx.compose.material3.TextButton(onClick = onSpeedClick) { Text(speedLabel) }
+                }
+                if (onSkipBackClick != null) {
+                    IconButton(onClick = onSkipBackClick) {
+                        Icon(Icons.Filled.Replay, contentDescription = "Skip back 15 seconds")
+                    }
+                }
+                IconButton(onClick = if (isPlaying) onPauseClick else onPlayClick) {
+                    Icon(
+                        if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                        contentDescription = if (isPlaying) "Pause" else "Play",
+                    )
+                }
+                if (onSkipForwardClick != null) {
+                    IconButton(onClick = onSkipForwardClick) {
+                        Icon(Icons.Filled.Forward30, contentDescription = "Skip forward 30 seconds")
+                    }
                 }
             }
         }
