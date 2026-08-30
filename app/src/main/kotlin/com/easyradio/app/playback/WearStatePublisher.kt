@@ -2,15 +2,13 @@ package com.easyradio.app.playback
 
 import android.content.Context
 import androidx.media3.common.Player
-import com.easyradio.core.model.wear.NowPlayingState
+import com.easyradio.core.media.NowPlayingStateMapper
 import com.easyradio.core.model.wear.WearSync
-import com.google.android.gms.wearable.Wearable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 
 /**
  * Pushes the phone's now-playing state to the paired watch over the Wearable
@@ -20,10 +18,11 @@ import kotlinx.coroutines.tasks.await
  * is not; podcasts are).
  */
 class WearStatePublisher(
-    private val context: Context,
     private val player: Player,
+    private val messageSender: WearMessageSender,
 ) {
-    private val messageClient = Wearable.getMessageClient(context)
+    constructor(context: Context, player: Player) : this(player, PlayServicesWearMessageSender(context))
+
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     private val listener = object : Player.Listener {
@@ -42,11 +41,12 @@ class WearStatePublisher(
 
     private fun publish() {
         val metadata = player.mediaMetadata
-        val state = NowPlayingState(
-            title = metadata.title?.toString() ?: "",
-            subtitle = metadata.subtitle?.toString() ?: metadata.artist?.toString() ?: "",
+        val state = NowPlayingStateMapper.map(
+            title = metadata.title?.toString(),
+            subtitle = metadata.subtitle?.toString(),
+            artist = metadata.artist?.toString(),
             isPlaying = player.isPlaying,
-            canSkip = player.isCurrentMediaItemSeekable,
+            isSeekable = player.isCurrentMediaItemSeekable,
         )
         val payload = WearSync.encodeState(state)
         scope.launch {
@@ -54,9 +54,8 @@ class WearStatePublisher(
             // is unavailable on non-Wear-enabled builds) -> silently skip. This
             // must never crash normal phone playback.
             runCatching {
-                val nodes = Wearable.getNodeClient(context).connectedNodes.await()
-                for (node in nodes) {
-                    messageClient.sendMessage(node.id, WearSync.STATE_PATH, payload)
+                for (nodeId in messageSender.connectedNodeIds()) {
+                    messageSender.sendMessage(nodeId, WearSync.STATE_PATH, payload)
                 }
             }
         }

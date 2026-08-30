@@ -24,6 +24,8 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.TextButton
 import com.easyradio.app.ui.HomeScreen
 import com.easyradio.app.ui.NowPlayingBar
@@ -155,6 +157,19 @@ class MainActivity : ComponentActivity() {
                 val playing = uiState == PlaybackUiState.PLAYING || uiState == PlaybackUiState.BUFFERING
                 val favoriteStationIds by favoriteStationRepository.favoriteIds()
                     .collectAsState(initial = emptySet())
+                val snackbarHostState = remember { SnackbarHostState() }
+
+                LaunchedEffect(uiState) {
+                    if (uiState == PlaybackUiState.ERROR) {
+                        val name = currentStation?.name ?: currentEpisode?.title
+                        val message = if (name != null) {
+                            "Couldn't play \"$name\". Check your connection and try again."
+                        } else {
+                            "Playback failed. Check your connection and try again."
+                        }
+                        snackbarHostState.showSnackbar(message)
+                    }
+                }
 
                 BackHandler(enabled = showNowPlaying) { showNowPlaying = false }
                 BackHandler(enabled = showQueue) { showQueue = false }
@@ -268,6 +283,7 @@ class MainActivity : ComponentActivity() {
                     }
                 } else {
                 Scaffold(
+                    snackbarHost = { SnackbarHost(snackbarHostState) },
                     bottomBar = {
                         Column {
                             val station = currentStation

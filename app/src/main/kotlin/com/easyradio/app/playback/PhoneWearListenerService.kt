@@ -5,8 +5,8 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
-import com.easyradio.core.media.SeekMath
-import com.easyradio.core.model.CuratedRadioStations
+import com.easyradio.core.media.WearCommandMapper
+import com.easyradio.core.media.WearPlayerAction
 import com.easyradio.core.model.wear.WearCommand
 import com.easyradio.core.model.wear.WearSync
 import com.google.android.gms.wearable.MessageEvent
@@ -14,9 +14,6 @@ import com.google.android.gms.wearable.WearableListenerService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.runBlocking
-
-private const val SKIP_FORWARD_MS = 30_000L
-private const val SKIP_BACK_MS = 15_000L
 
 /**
  * Receives [WearCommand]s the watch sends over the Wearable Data Layer and
@@ -47,20 +44,23 @@ class PhoneWearListenerService : WearableListenerService() {
     }
 
     private fun apply(controller: MediaController, command: WearCommand) {
-        when (command) {
-            WearCommand.Play -> controller.play()
-            WearCommand.Pause -> controller.pause()
-            WearCommand.SkipForward -> controller.seekTo(skipTarget(controller, SKIP_FORWARD_MS))
-            WearCommand.SkipBack -> controller.seekTo(skipTarget(controller, -SKIP_BACK_MS))
-            is WearCommand.PlayStation -> {
-                val station = CuratedRadioStations.ALL.firstOrNull { it.id == command.stationId } ?: return
+        val action = WearCommandMapper.map(
+            command = command,
+            currentPositionMs = controller.currentPosition,
+            durationMs = controller.duration.coerceAtLeast(0),
+        )
+        when (action) {
+            WearPlayerAction.Play -> controller.play()
+            WearPlayerAction.Pause -> controller.pause()
+            is WearPlayerAction.SeekTo -> controller.seekTo(action.positionMs)
+            is WearPlayerAction.PlayStream -> {
                 controller.setMediaItem(
                     MediaItem.Builder()
-                        .setUri(station.streamUrl)
+                        .setUri(action.streamUrl)
                         .setMediaMetadata(
                             MediaMetadata.Builder()
-                                .setTitle(station.name)
-                                .setSubtitle(station.tagline)
+                                .setTitle(action.title)
+                                .setSubtitle(action.subtitle)
                                 .build(),
                         )
                         .build(),
@@ -68,13 +68,7 @@ class PhoneWearListenerService : WearableListenerService() {
                 controller.prepare()
                 controller.play()
             }
+            WearPlayerAction.Ignore -> Unit
         }
     }
-
-    private fun skipTarget(controller: MediaController, deltaMs: Long): Long =
-        SeekMath.clampSeek(
-            currentMs = controller.currentPosition,
-            deltaMs = deltaMs,
-            durationMs = controller.duration.coerceAtLeast(0),
-        )
 }

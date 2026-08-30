@@ -66,6 +66,9 @@ class PodcastRepository(
     fun episodesFor(podcastId: String): Flow<List<Episode>> =
         episodeDao.observeByPodcast(podcastId).map { list -> list.map { it.toEpisode() } }
 
+    fun downloadedEpisodes(): Flow<List<Episode>> =
+        episodeDao.observeDownloaded().map { list -> list.map { it.toEpisode() } }
+
     suspend fun savePosition(episodeId: String, positionMs: Long) {
         episodeDao.updatePosition(episodeId, positionMs)
     }
