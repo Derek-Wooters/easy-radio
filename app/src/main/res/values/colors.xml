@@ -1,0 +1,6 @@
+<resources>
+    <!-- Sampled from docs/designs/1b-app-icon.png -->
+    <color name="ic_launcher_background">#201E1D</color>
+    <!-- Sampled from docs/designs/1c-splash-screen.png -->
+    <color name="splash_background">#1D1B20</color>
+</resources>

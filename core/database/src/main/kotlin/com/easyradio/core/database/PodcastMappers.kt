@@ -10,6 +10,7 @@ fun Podcast.toEntity(subscribedAtEpochMillis: Long): PodcastEntity = PodcastEnti
     artworkUrl = artworkUrl,
     feedUrl = feedUrl,
     subscribedAtEpochMillis = subscribedAtEpochMillis,
+    isPreset = isPreset,
 )
 
 fun PodcastEntity.toPodcast(): Podcast = Podcast(
@@ -18,6 +19,7 @@ fun PodcastEntity.toPodcast(): Podcast = Podcast(
     author = author,
     artworkUrl = artworkUrl,
     feedUrl = feedUrl,
+    isPreset = isPreset,
 )
 
 fun Episode.toEntity(): EpisodeEntity = EpisodeEntity(

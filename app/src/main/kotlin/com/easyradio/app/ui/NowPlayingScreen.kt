@@ -15,11 +15,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
+import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Forward30
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarOutline
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,9 +43,10 @@ import com.easyradio.app.ui.theme.LocalEasyRadioColors
 /**
  * Full-screen "now playing" surface reached by tapping the mini-player. Radio
  * shows a LIVE badge in place of the scrubber; podcasts show the position bar,
- * time labels, and the speed/skip controls. Sleep-timer and queue affordances
- * from the design are omitted here since they'd be dead controls without the
- * navigation to back them.
+ * time labels, and the speed/skip controls. Per the design, the header's
+ * trailing icon is the sleep timer for podcasts (`onSleepTimerClick`) or the
+ * queue for radio (`onQueueClick` with no sleep timer); when both are
+ * supplied (podcasts), queue moves to the control row instead.
  */
 @Composable
 fun NowPlayingScreen(
@@ -61,6 +66,10 @@ fun NowPlayingScreen(
     onSkipBack: (() -> Unit)? = null,
     onSkipForward: (() -> Unit)? = null,
     onSpeedClick: (() -> Unit)? = null,
+    onSleepTimerClick: (() -> Unit)? = null,
+    onQueueClick: (() -> Unit)? = null,
+    isFavorite: Boolean = false,
+    onFavoriteClick: (() -> Unit)? = null,
 ) {
     val extraColors = LocalEasyRadioColors.current
     val tints = extraColors.avatarTints
@@ -86,7 +95,15 @@ fun NowPlayingScreen(
                     maxLines = 1,
                     modifier = Modifier.weight(1f),
                 )
-                Spacer(modifier = Modifier.width(48.dp))
+                when {
+                    onSleepTimerClick != null -> IconButton(onClick = onSleepTimerClick) {
+                        Icon(Icons.Filled.Bedtime, contentDescription = "Sleep timer")
+                    }
+                    onQueueClick != null -> IconButton(onClick = onQueueClick) {
+                        Icon(Icons.AutoMirrored.Filled.PlaylistPlay, contentDescription = "Up Next")
+                    }
+                    else -> Spacer(modifier = Modifier.width(48.dp))
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -137,18 +154,29 @@ fun NowPlayingScreen(
                     )
                 }
             } else if (isLive) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(50))
-                        .background(extraColors.liveBadgeContainer)
-                        .padding(horizontal = 16.dp, vertical = 6.dp),
-                ) {
-                    Text(
-                        text = "LIVE",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = extraColors.liveBadgeContent,
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(extraColors.liveBadgeContainer)
+                            .padding(horizontal = 16.dp, vertical = 6.dp),
+                    ) {
+                        Text(
+                            text = "LIVE",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = extraColors.liveBadgeContent,
+                        )
+                    }
+                    if (onFavoriteClick != null) {
+                        IconButton(onClick = onFavoriteClick) {
+                            Icon(
+                                if (isFavorite) Icons.Filled.Star else Icons.Filled.StarOutline,
+                                contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
                 }
             }
 
@@ -180,6 +208,11 @@ fun NowPlayingScreen(
                 if (onSkipForward != null) {
                     IconButton(onClick = onSkipForward) {
                         Icon(Icons.Filled.Forward30, contentDescription = "Skip forward 30 seconds")
+                    }
+                }
+                if (onSleepTimerClick != null && onQueueClick != null) {
+                    IconButton(onClick = onQueueClick) {
+                        Icon(Icons.AutoMirrored.Filled.PlaylistPlay, contentDescription = "Up Next")
                     }
                 }
             }

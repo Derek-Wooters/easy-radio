@@ -43,6 +43,10 @@ class PodcastRepository(
         podcastDao.delete(podcastId)
     }
 
+    suspend fun setPreset(podcastId: String, isPreset: Boolean) {
+        podcastDao.setPreset(podcastId, isPreset)
+    }
+
     suspend fun refreshEpisodes(podcast: Podcast) {
         val xml = try {
             fetchFeed(podcast.feedUrl)

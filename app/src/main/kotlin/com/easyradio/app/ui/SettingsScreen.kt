@@ -8,8 +8,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -40,6 +44,7 @@ fun SettingsScreen(
     onDownloadOverWifiOnlyChange: (Boolean) -> Unit,
     onAutoDownloadNewEpisodesChange: (Boolean) -> Unit,
     onSleepTimerMinutesChange: (Int) -> Unit,
+    onBack: (() -> Unit)? = null,
 ) {
     Column(
         modifier = Modifier
@@ -47,7 +52,14 @@ fun SettingsScreen(
             .verticalScroll(rememberScrollState())
             .padding(20.dp),
     ) {
-        Text("Settings", style = MaterialTheme.typography.headlineMedium)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (onBack != null) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                }
+            }
+            Text("Settings", style = MaterialTheme.typography.headlineMedium)
+        }
 
         SectionTitle("Appearance")
         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {

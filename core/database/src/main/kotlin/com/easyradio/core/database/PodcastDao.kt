@@ -17,4 +17,7 @@ interface PodcastDao {
 
     @Query("DELETE FROM podcasts WHERE id = :id")
     suspend fun delete(id: String)
+
+    @Query("UPDATE podcasts SET isPreset = :isPreset WHERE id = :id")
+    suspend fun setPreset(id: String, isPreset: Boolean)
 }

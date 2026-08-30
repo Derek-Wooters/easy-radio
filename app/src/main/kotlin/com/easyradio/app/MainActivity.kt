@@ -6,21 +6,36 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Podcasts
 import androidx.compose.material.icons.filled.Radio
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import com.easyradio.app.ui.HomeScreen
 import com.easyradio.app.ui.NowPlayingBar
 import com.easyradio.app.ui.NowPlayingScreen
+import com.easyradio.app.ui.PlaylistsScreen
+import com.easyradio.app.ui.QueueScreen
+import com.easyradio.app.ui.SearchScreen
+import com.easyradio.core.database.FavoriteStationRepository
+import com.easyradio.core.database.RecentlyPlayedRepository
+import com.easyradio.core.model.RecentlyPlayedItem
+import com.easyradio.core.model.RecentlyPlayedType
+import kotlinx.coroutines.flow.first
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,9 +74,11 @@ import com.easyradio.core.model.AppSettings
 import androidx.compose.ui.graphics.vector.ImageVector
 
 private enum class AppTab(val label: String, val icon: ImageVector) {
+    HOME("Home", Icons.Filled.Home),
+    SEARCH("Search", Icons.Filled.Search),
     RADIO("Radio", Icons.Filled.Radio),
     PODCASTS("Podcasts", Icons.Filled.Podcasts),
-    SETTINGS("Settings", Icons.Filled.Settings),
+    PLAYLISTS("Playlists", Icons.AutoMirrored.Filled.PlaylistPlay),
 }
 
 private const val PODCAST_POSITION_SAVE_INTERVAL_MS = 5_000L
@@ -83,6 +100,8 @@ class MainActivity : ComponentActivity() {
 
     private val podcastRepository by lazy { EasyRadioGraph.repository(applicationContext) }
     private val settingsRepository by lazy { EasyRadioGraph.settings(applicationContext) }
+    private val favoriteStationRepository by lazy { EasyRadioGraph.favoriteStations(applicationContext) }
+    private val recentlyPlayedRepository by lazy { EasyRadioGraph.recentlyPlayed(applicationContext) }
 
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private var mediaController by mutableStateOf<MediaController?>(null)
@@ -96,8 +115,13 @@ class MainActivity : ComponentActivity() {
     private var positionMs by mutableStateOf(0L)
     private var durationMs by mutableStateOf(0L)
     private var showNowPlaying by mutableStateOf(false)
+    private var showQueue by mutableStateOf(false)
+    private var showSettings by mutableStateOf(false)
+    private var showSleepTimerPicker by mutableStateOf(false)
+    private var searchSelectedPodcast by mutableStateOf<Podcast?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
@@ -127,12 +151,70 @@ class MainActivity : ComponentActivity() {
             }
 
             EasyRadioTheme(darkTheme = settings.themeMode.resolveDarkTheme(isSystemInDarkTheme())) {
-                var selectedTab by remember { mutableStateOf(AppTab.RADIO) }
+                var selectedTab by remember { mutableStateOf(AppTab.HOME) }
                 val playing = uiState == PlaybackUiState.PLAYING || uiState == PlaybackUiState.BUFFERING
+                val favoriteStationIds by favoriteStationRepository.favoriteIds()
+                    .collectAsState(initial = emptySet())
 
                 BackHandler(enabled = showNowPlaying) { showNowPlaying = false }
+                BackHandler(enabled = showQueue) { showQueue = false }
+                BackHandler(enabled = showSettings) { showSettings = false }
 
-                if (showNowPlaying && (currentStation != null || currentEpisode != null)) {
+                if (showSleepTimerPicker) {
+                    AlertDialog(
+                        onDismissRequest = { showSleepTimerPicker = false },
+                        confirmButton = {},
+                        title = { Text("Sleep timer") },
+                        text = {
+                            Column {
+                                listOf(0, 15, 30, 45, 60).forEach { minutes ->
+                                    TextButton(onClick = {
+                                        lifecycleScope.launch { settingsRepository.setSleepTimerMinutes(minutes) }
+                                        showSleepTimerPicker = false
+                                    }) {
+                                        Text(if (minutes == 0) "Off" else "$minutes min")
+                                    }
+                                }
+                            }
+                        },
+                    )
+                }
+
+                if (showSettings) {
+                    SettingsScreen(
+                        settings = settings,
+                        onThemeModeChange = { lifecycleScope.launch { settingsRepository.setThemeMode(it) } },
+                        onDownloadQualityChange = {
+                            lifecycleScope.launch { settingsRepository.setDownloadQuality(it) }
+                        },
+                        onDownloadOverWifiOnlyChange = {
+                            lifecycleScope.launch { settingsRepository.setDownloadOverWifiOnly(it) }
+                        },
+                        onAutoDownloadNewEpisodesChange = {
+                            lifecycleScope.launch { settingsRepository.setAutoDownloadNewEpisodes(it) }
+                        },
+                        onSleepTimerMinutesChange = {
+                            lifecycleScope.launch { settingsRepository.setSleepTimerMinutes(it) }
+                        },
+                        onBack = { showSettings = false },
+                    )
+                } else if (showQueue) {
+                    QueueScreen(
+                        repository = podcastRepository,
+                        onBack = { showQueue = false },
+                        onEpisodeSelected = { episode ->
+                            val podcast = Podcast(
+                                id = episode.podcastId,
+                                title = "",
+                                author = "",
+                                artworkUrl = null,
+                                feedUrl = "https://placeholder.invalid/",
+                            )
+                            playEpisode(podcast, episode)
+                            showQueue = false
+                        },
+                    )
+                } else if (showNowPlaying && (currentStation != null || currentEpisode != null)) {
                     val station = currentStation
                     val episode = currentEpisode
                     val podcast = currentPodcast
@@ -151,6 +233,17 @@ class MainActivity : ComponentActivity() {
                             speedLabel = null,
                             onCollapse = { showNowPlaying = false },
                             onPlayPause = { if (playing) mediaController?.pause() else playStation(station) },
+                            onQueueClick = { showQueue = true },
+                            isFavorite = station.id in favoriteStationIds,
+                            onFavoriteClick = {
+                                lifecycleScope.launch {
+                                    if (station.id in favoriteStationIds) {
+                                        favoriteStationRepository.unfavorite(station.id)
+                                    } else {
+                                        favoriteStationRepository.favorite(station)
+                                    }
+                                }
+                            },
                         )
                         episode != null -> NowPlayingScreen(
                             topLabel = podcast?.title.orEmpty(),
@@ -169,6 +262,8 @@ class MainActivity : ComponentActivity() {
                             onSkipBack = { skip(-SKIP_BACK_MS) },
                             onSkipForward = { skip(SKIP_FORWARD_MS) },
                             onSpeedClick = ::cyclePlaybackSpeed,
+                            onSleepTimerClick = { showSleepTimerPicker = true },
+                            onQueueClick = { showQueue = true },
                         )
                     }
                 } else {
@@ -232,6 +327,26 @@ class MainActivity : ComponentActivity() {
                 ) { innerPadding ->
                     Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                         when (selectedTab) {
+                            AppTab.HOME -> HomeScreen(
+                                radioRepository = radioRepository,
+                                favoriteStationRepository = favoriteStationRepository,
+                                recentlyPlayedRepository = recentlyPlayedRepository,
+                                onStationSelected = ::playStation,
+                                onRecentlyPlayedSelected = ::playRecentlyPlayed,
+                                onSettingsClick = { showSettings = true },
+                                onNavigateStations = { selectedTab = AppTab.RADIO },
+                                onNavigatePodcasts = { selectedTab = AppTab.PODCASTS },
+                                onNavigatePlaylists = { selectedTab = AppTab.PLAYLISTS },
+                            )
+                            AppTab.SEARCH -> SearchScreen(
+                                radioRepository = radioRepository,
+                                podcastRepository = podcastRepository,
+                                onStationSelected = ::playStation,
+                                onPodcastSelected = { podcast ->
+                                    searchSelectedPodcast = podcast
+                                    selectedTab = AppTab.PODCASTS
+                                },
+                            )
                             AppTab.RADIO -> RadioBrowseScreen(
                                 repository = radioRepository,
                                 onStationSelected = ::playStation,
@@ -239,22 +354,13 @@ class MainActivity : ComponentActivity() {
                             AppTab.PODCASTS -> PodcastsScreen(
                                 repository = podcastRepository,
                                 onEpisodeSelected = { podcast, episode -> playEpisode(podcast, episode) },
+                                nowPlayingEpisode = currentEpisode,
+                                initialPodcast = searchSelectedPodcast,
+                                onInitialPodcastConsumed = { searchSelectedPodcast = null },
                             )
-                            AppTab.SETTINGS -> SettingsScreen(
-                                settings = settings,
-                                onThemeModeChange = { lifecycleScope.launch { settingsRepository.setThemeMode(it) } },
-                                onDownloadQualityChange = {
-                                    lifecycleScope.launch { settingsRepository.setDownloadQuality(it) }
-                                },
-                                onDownloadOverWifiOnlyChange = {
-                                    lifecycleScope.launch { settingsRepository.setDownloadOverWifiOnly(it) }
-                                },
-                                onAutoDownloadNewEpisodesChange = {
-                                    lifecycleScope.launch { settingsRepository.setAutoDownloadNewEpisodes(it) }
-                                },
-                                onSleepTimerMinutesChange = {
-                                    lifecycleScope.launch { settingsRepository.setSleepTimerMinutes(it) }
-                                },
+                            AppTab.PLAYLISTS -> PlaylistsScreen(
+                                repository = favoriteStationRepository,
+                                onStationSelected = ::playStation,
                             )
                         }
                     }
@@ -273,6 +379,52 @@ class MainActivity : ComponentActivity() {
             controller.setMediaItem(MediaItem.fromUri(station.streamUrl))
             controller.prepare()
             controller.play()
+        }
+        lifecycleScope.launch {
+            recentlyPlayedRepository.record(
+                RecentlyPlayedItem(
+                    contentId = station.id,
+                    type = RecentlyPlayedType.STATION,
+                    title = station.name,
+                    subtitle = station.tagline,
+                    imageUrl = station.imageUrl,
+                    playedAtEpochMillis = System.currentTimeMillis(),
+                    stationStreamUrl = station.streamUrl,
+                ),
+            )
+        }
+    }
+
+    private fun playRecentlyPlayed(item: RecentlyPlayedItem) {
+        when (item.type) {
+            RecentlyPlayedType.STATION -> {
+                val streamUrl = item.stationStreamUrl ?: return
+                playStation(
+                    RadioStation(
+                        id = item.contentId,
+                        name = item.title,
+                        streamUrl = streamUrl,
+                        tagline = item.subtitle,
+                        imageUrl = item.imageUrl,
+                    ),
+                )
+            }
+            RecentlyPlayedType.EPISODE -> {
+                val podcastId = item.podcastId ?: return
+                lifecycleScope.launch {
+                    val episode = podcastRepository.episodesFor(podcastId).first().find { it.id == item.contentId }
+                        ?: return@launch
+                    val podcast = podcastRepository.subscribedPodcasts().first().find { it.id == podcastId }
+                        ?: Podcast(
+                            id = podcastId,
+                            title = item.subtitle,
+                            author = "",
+                            artworkUrl = item.imageUrl,
+                            feedUrl = "https://placeholder.invalid/",
+                        )
+                    playEpisode(podcast, episode)
+                }
+            }
         }
     }
 
@@ -299,6 +451,20 @@ class MainActivity : ComponentActivity() {
         }
 
         startPositionSaving(episode.id)
+
+        lifecycleScope.launch {
+            recentlyPlayedRepository.record(
+                RecentlyPlayedItem(
+                    contentId = episode.id,
+                    type = RecentlyPlayedType.EPISODE,
+                    title = episode.title,
+                    subtitle = podcast.title,
+                    imageUrl = podcast.artworkUrl,
+                    playedAtEpochMillis = System.currentTimeMillis(),
+                    podcastId = podcast.id,
+                ),
+            )
+        }
     }
 
     private fun skip(deltaMs: Long) {

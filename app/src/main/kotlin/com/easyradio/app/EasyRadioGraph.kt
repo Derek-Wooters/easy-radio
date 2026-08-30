@@ -3,7 +3,9 @@ package com.easyradio.app
 import android.content.Context
 import androidx.room.Room
 import com.easyradio.core.database.EasyRadioDatabase
+import com.easyradio.core.database.FavoriteStationRepository
 import com.easyradio.core.database.PodcastRepository
+import com.easyradio.core.database.RecentlyPlayedRepository
 import com.easyradio.core.network.podcast.EpisodeDownloader
 import com.easyradio.core.network.podcast.ItunesSearchApiFactory
 import com.easyradio.core.network.podcast.PodcastFeedFetcher
@@ -19,14 +21,25 @@ import java.io.File
 object EasyRadioGraph {
 
     @Volatile
+    private var database: EasyRadioDatabase? = null
+
+    @Volatile
     private var repository: PodcastRepository? = null
 
     @Volatile
     private var settingsRepository: SettingsRepository? = null
 
+    @Volatile
+    private var favoriteStationRepository: FavoriteStationRepository? = null
+
+    @Volatile
+    private var recentlyPlayedRepository: RecentlyPlayedRepository? = null
+
     fun repository(context: Context): PodcastRepository =
         repository ?: synchronized(this) {
-            repository ?: build(context.applicationContext).also { repository = it }
+            repository ?: buildPodcastRepository(context.applicationContext, database(context)).also {
+                repository = it
+            }
         }
 
     fun settings(context: Context): SettingsRepository =
@@ -34,10 +47,31 @@ object EasyRadioGraph {
             settingsRepository ?: SettingsRepository(context.applicationContext).also { settingsRepository = it }
         }
 
-    private fun build(appContext: Context): PodcastRepository {
-        val database = Room.databaseBuilder(appContext, EasyRadioDatabase::class.java, "easy-radio.db")
-            .fallbackToDestructiveMigration(dropAllTables = true)
-            .build()
+    fun favoriteStations(context: Context): FavoriteStationRepository =
+        favoriteStationRepository ?: synchronized(this) {
+            favoriteStationRepository
+                ?: FavoriteStationRepository(database(context).favoriteStationDao()).also {
+                    favoriteStationRepository = it
+                }
+        }
+
+    fun recentlyPlayed(context: Context): RecentlyPlayedRepository =
+        recentlyPlayedRepository ?: synchronized(this) {
+            recentlyPlayedRepository
+                ?: RecentlyPlayedRepository(database(context).recentlyPlayedDao()).also {
+                    recentlyPlayedRepository = it
+                }
+        }
+
+    private fun database(context: Context): EasyRadioDatabase =
+        database ?: synchronized(this) {
+            database ?: Room.databaseBuilder(context.applicationContext, EasyRadioDatabase::class.java, "easy-radio.db")
+                .fallbackToDestructiveMigration(dropAllTables = true)
+                .build()
+                .also { database = it }
+        }
+
+    private fun buildPodcastRepository(appContext: Context, database: EasyRadioDatabase): PodcastRepository {
         val downloader = EpisodeDownloader(
             client = ItunesSearchApiFactory.defaultClient(),
             downloadsDir = File(appContext.filesDir, "podcast_downloads"),
