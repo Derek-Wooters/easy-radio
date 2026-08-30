@@ -22,7 +22,9 @@ private val Context.settingsDataStore: DataStore<Preferences> by preferencesData
  * fall back to the [AppSettings] defaults, so a fresh install and a forward-
  * incompatible read both degrade gracefully.
  */
-class SettingsRepository(private val context: Context) {
+class SettingsRepository(private val dataStore: DataStore<Preferences>) {
+
+    constructor(context: Context) : this(context.settingsDataStore)
 
     private object Keys {
         val themeMode = stringPreferencesKey("theme_mode")
@@ -32,7 +34,7 @@ class SettingsRepository(private val context: Context) {
         val autoDownloadNewEpisodes = booleanPreferencesKey("auto_download_new_episodes")
     }
 
-    val settings: Flow<AppSettings> = context.settingsDataStore.data.map { prefs ->
+    val settings: Flow<AppSettings> = dataStore.data.map { prefs ->
         val defaults = AppSettings()
         AppSettings(
             themeMode = prefs[Keys.themeMode]
@@ -48,22 +50,22 @@ class SettingsRepository(private val context: Context) {
     }
 
     suspend fun setThemeMode(mode: ThemeMode) {
-        context.settingsDataStore.edit { it[Keys.themeMode] = mode.name }
+        dataStore.edit { it[Keys.themeMode] = mode.name }
     }
 
     suspend fun setSleepTimerMinutes(minutes: Int) {
-        context.settingsDataStore.edit { it[Keys.sleepTimerMinutes] = minutes }
+        dataStore.edit { it[Keys.sleepTimerMinutes] = minutes }
     }
 
     suspend fun setDownloadQuality(quality: DownloadQuality) {
-        context.settingsDataStore.edit { it[Keys.downloadQuality] = quality.name }
+        dataStore.edit { it[Keys.downloadQuality] = quality.name }
     }
 
     suspend fun setDownloadOverWifiOnly(value: Boolean) {
-        context.settingsDataStore.edit { it[Keys.downloadOverWifiOnly] = value }
+        dataStore.edit { it[Keys.downloadOverWifiOnly] = value }
     }
 
     suspend fun setAutoDownloadNewEpisodes(value: Boolean) {
-        context.settingsDataStore.edit { it[Keys.autoDownloadNewEpisodes] = value }
+        dataStore.edit { it[Keys.autoDownloadNewEpisodes] = value }
     }
 }

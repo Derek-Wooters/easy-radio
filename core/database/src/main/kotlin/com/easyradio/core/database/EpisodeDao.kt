@@ -26,4 +26,7 @@ interface EpisodeDao {
 
     @Query("SELECT * FROM episodes WHERE id IN (:ids)")
     suspend fun getByIds(ids: List<String>): List<EpisodeEntity>
+
+    @Query("SELECT * FROM episodes WHERE localFilePath IS NOT NULL ORDER BY publishedAtEpochMillis DESC")
+    fun observeDownloaded(): Flow<List<EpisodeEntity>>
 }

@@ -68,7 +68,7 @@ import kotlinx.coroutines.launch
 
 private const val PODCAST_SEARCH_DEBOUNCE_MS = 400L
 
-private enum class PodcastScreenState { LIBRARY, EPISODES, QUEUE }
+private enum class PodcastScreenState { LIBRARY, EPISODES, QUEUE, DOWNLOADS }
 private enum class PodcastDetailTab(val label: String) {
     NOW_PLAYING("Now Playing"),
     EPISODES("Episodes"),
@@ -100,6 +100,7 @@ fun PodcastsScreen(
             repository = repository,
             onPodcastSelected = { selectedPodcast = it; screenState = PodcastScreenState.EPISODES },
             onQueueClick = { screenState = PodcastScreenState.QUEUE },
+            onDownloadsClick = { screenState = PodcastScreenState.DOWNLOADS },
         )
         PodcastScreenState.EPISODES -> selectedPodcast?.let { podcast ->
             EpisodeListScreen(
@@ -123,6 +124,10 @@ fun PodcastsScreen(
                 )
             },
         )
+        PodcastScreenState.DOWNLOADS -> DownloadsScreen(
+            repository = repository,
+            onBack = { screenState = PodcastScreenState.LIBRARY },
+        )
     }
 }
 
@@ -131,6 +136,7 @@ private fun PodcastLibraryScreen(
     repository: PodcastRepository,
     onPodcastSelected: (Podcast) -> Unit,
     onQueueClick: () -> Unit,
+    onDownloadsClick: () -> Unit,
 ) {
     var query by remember { mutableStateOf("") }
     var searchResults by remember { mutableStateOf<List<Podcast>>(emptyList()) }
@@ -178,6 +184,13 @@ private fun PodcastLibraryScreen(
                             onQueueClick()
                         },
                     )
+                    DropdownMenuItem(
+                        text = { Text("Downloads") },
+                        onClick = {
+                            menuExpanded = false
+                            onDownloadsClick()
+                        },
+                    )
                 }
             }
         }
@@ -196,6 +209,14 @@ private fun PodcastLibraryScreen(
         val subscribedIds = subscribed.map { it.id }.toSet()
 
         if (query.isBlank()) {
+            if (subscribed.isEmpty()) {
+                Text(
+                    text = "No podcasts yet. Search above to find shows to follow.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                )
+            }
             LazyVerticalGrid(
                 columns = GridCells.Fixed(3),
                 contentPadding = PaddingValues(12.dp),
