@@ -30,6 +30,7 @@ import androidx.compose.material3.TextButton
 import com.easyradio.app.ui.HomeScreen
 import com.easyradio.app.ui.NowPlayingBar
 import com.easyradio.app.ui.NowPlayingScreen
+import com.easyradio.app.ui.OnboardingScreen
 import com.easyradio.app.ui.PlaylistsScreen
 import com.easyradio.app.ui.QueueScreen
 import com.easyradio.app.ui.SearchScreen
@@ -121,6 +122,8 @@ class MainActivity : ComponentActivity() {
     private var showSettings by mutableStateOf(false)
     private var showSleepTimerPicker by mutableStateOf(false)
     private var searchSelectedPodcast by mutableStateOf<Podcast?>(null)
+    private var showOnboarding by mutableStateOf(false)
+    private var onboardingGenres by mutableStateOf<Set<String>>(emptySet())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
@@ -128,6 +131,13 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val settings by settingsRepository.settings.collectAsState(initial = AppSettings())
+
+            LaunchedEffect(Unit) {
+                // Wait for the first real DataStore emission rather than the collectAsState
+                // default above, so a returning user never sees a flash of onboarding while
+                // the real "already completed" value is still loading.
+                showOnboarding = !settingsRepository.settings.first().hasCompletedOnboarding
+            }
 
             LaunchedEffect(currentEpisode?.id, mediaController) {
                 val controller = mediaController
@@ -195,7 +205,26 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
-                if (showSettings) {
+                if (showOnboarding) {
+                    OnboardingScreen(
+                        selectedGenres = onboardingGenres,
+                        onToggleGenre = { genre ->
+                            onboardingGenres = if (genre in onboardingGenres) {
+                                onboardingGenres - genre
+                            } else {
+                                onboardingGenres + genre
+                            }
+                        },
+                        onSkip = {
+                            showOnboarding = false
+                            lifecycleScope.launch { settingsRepository.completeOnboarding(emptySet()) }
+                        },
+                        onContinue = {
+                            showOnboarding = false
+                            lifecycleScope.launch { settingsRepository.completeOnboarding(onboardingGenres) }
+                        },
+                    )
+                } else if (showSettings) {
                     SettingsScreen(
                         settings = settings,
                         onThemeModeChange = { lifecycleScope.launch { settingsRepository.setThemeMode(it) } },

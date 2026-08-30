@@ -26,5 +26,7 @@ class AppSettingsTest {
         assertThat(settings.downloadQuality).isEqualTo(DownloadQuality.HIGH)
         assertThat(settings.downloadOverWifiOnly).isTrue()
         assertThat(settings.autoDownloadNewEpisodes).isFalse()
+        assertThat(settings.hasCompletedOnboarding).isFalse()
+        assertThat(settings.favoriteGenres).isEmpty()
     }
 }

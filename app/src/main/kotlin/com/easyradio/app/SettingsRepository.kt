@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.easyradio.core.model.AppSettings
 import com.easyradio.core.model.DownloadQuality
@@ -32,6 +33,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val downloadQuality = stringPreferencesKey("download_quality")
         val downloadOverWifiOnly = booleanPreferencesKey("download_over_wifi_only")
         val autoDownloadNewEpisodes = booleanPreferencesKey("auto_download_new_episodes")
+        val hasCompletedOnboarding = booleanPreferencesKey("has_completed_onboarding")
+        val favoriteGenres = stringSetPreferencesKey("favorite_genres")
     }
 
     val settings: Flow<AppSettings> = dataStore.data.map { prefs ->
@@ -46,6 +49,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
                 ?: defaults.downloadQuality,
             downloadOverWifiOnly = prefs[Keys.downloadOverWifiOnly] ?: defaults.downloadOverWifiOnly,
             autoDownloadNewEpisodes = prefs[Keys.autoDownloadNewEpisodes] ?: defaults.autoDownloadNewEpisodes,
+            hasCompletedOnboarding = prefs[Keys.hasCompletedOnboarding] ?: defaults.hasCompletedOnboarding,
+            favoriteGenres = prefs[Keys.favoriteGenres] ?: defaults.favoriteGenres,
         )
     }
 
@@ -67,5 +72,12 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setAutoDownloadNewEpisodes(value: Boolean) {
         dataStore.edit { it[Keys.autoDownloadNewEpisodes] = value }
+    }
+
+    suspend fun completeOnboarding(favoriteGenres: Set<String>) {
+        dataStore.edit {
+            it[Keys.hasCompletedOnboarding] = true
+            it[Keys.favoriteGenres] = favoriteGenres
+        }
     }
 }

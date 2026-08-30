@@ -27,4 +27,6 @@ data class AppSettings(
     val downloadQuality: DownloadQuality = DownloadQuality.HIGH,
     val downloadOverWifiOnly: Boolean = true,
     val autoDownloadNewEpisodes: Boolean = false,
+    val hasCompletedOnboarding: Boolean = false,
+    val favoriteGenres: Set<String> = emptySet(),
 )

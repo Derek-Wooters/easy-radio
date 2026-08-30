@@ -73,4 +73,15 @@ class SettingsRepositoryTest {
         assertThat(settings.downloadOverWifiOnly).isFalse()
         assertThat(settings.autoDownloadNewEpisodes).isTrue()
     }
+
+    @Test
+    fun `completeOnboarding persists the completed flag and the chosen genres`() = runTest {
+        val repository = repository()
+
+        repository.completeOnboarding(setOf("Sports", "Comedy"))
+
+        val settings = repository.settings.first()
+        assertThat(settings.hasCompletedOnboarding).isTrue()
+        assertThat(settings.favoriteGenres).containsExactly("Sports", "Comedy")
+    }
 }
