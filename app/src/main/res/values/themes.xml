@@ -1,3 +1,10 @@
 <resources>
     <style name="Theme.EasyRadio" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- Shown while MainActivity's process is cold-starting; see docs/designs/1c-splash-screen.png. -->
+    <style name="Theme.EasyRadio.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.EasyRadio</item>
+    </style>
 </resources>

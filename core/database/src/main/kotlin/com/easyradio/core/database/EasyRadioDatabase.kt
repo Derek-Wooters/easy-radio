@@ -4,12 +4,20 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [PodcastEntity::class, EpisodeEntity::class, QueueItemEntity::class],
-    version = 2,
+    entities = [
+        PodcastEntity::class,
+        EpisodeEntity::class,
+        QueueItemEntity::class,
+        FavoriteStationEntity::class,
+        RecentlyPlayedEntity::class,
+    ],
+    version = 4,
     exportSchema = false,
 )
 abstract class EasyRadioDatabase : RoomDatabase() {
     abstract fun podcastDao(): PodcastDao
     abstract fun episodeDao(): EpisodeDao
     abstract fun queueDao(): QueueDao
+    abstract fun favoriteStationDao(): FavoriteStationDao
+    abstract fun recentlyPlayedDao(): RecentlyPlayedDao
 }

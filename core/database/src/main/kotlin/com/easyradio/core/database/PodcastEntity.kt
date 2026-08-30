@@ -11,4 +11,5 @@ data class PodcastEntity(
     val artworkUrl: String?,
     val feedUrl: String,
     val subscribedAtEpochMillis: Long,
+    val isPreset: Boolean = false,
 )

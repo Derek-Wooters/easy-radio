@@ -37,6 +37,10 @@ private class FakePodcastDao : PodcastDao {
     override suspend fun delete(id: String) {
         state.update { list -> list.filterNot { it.id == id } }
     }
+
+    override suspend fun setPreset(id: String, isPreset: Boolean) {
+        state.update { list -> list.map { if (it.id == id) it.copy(isPreset = isPreset) else it } }
+    }
 }
 
 private class FakeEpisodeDao : EpisodeDao {

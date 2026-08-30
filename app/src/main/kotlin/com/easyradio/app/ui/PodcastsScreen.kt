@@ -26,6 +26,7 @@ import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DownloadDone
@@ -36,12 +37,15 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SecondaryTabRow
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -65,14 +69,31 @@ import kotlinx.coroutines.launch
 private const val PODCAST_SEARCH_DEBOUNCE_MS = 400L
 
 private enum class PodcastScreenState { LIBRARY, EPISODES, QUEUE }
+private enum class PodcastDetailTab(val label: String) {
+    NOW_PLAYING("Now Playing"),
+    EPISODES("Episodes"),
+    HIGHLIGHTS("Highlights"),
+    ABOUT("About"),
+}
 
 @Composable
 fun PodcastsScreen(
     repository: PodcastRepository,
     onEpisodeSelected: (Podcast, Episode) -> Unit,
+    nowPlayingEpisode: Episode? = null,
+    initialPodcast: Podcast? = null,
+    onInitialPodcastConsumed: () -> Unit = {},
 ) {
     var screenState by remember { mutableStateOf(PodcastScreenState.LIBRARY) }
     var selectedPodcast by remember { mutableStateOf<Podcast?>(null) }
+
+    LaunchedEffect(initialPodcast) {
+        initialPodcast?.let {
+            selectedPodcast = it
+            screenState = PodcastScreenState.EPISODES
+            onInitialPodcastConsumed()
+        }
+    }
 
     when (screenState) {
         PodcastScreenState.LIBRARY -> PodcastLibraryScreen(
@@ -86,6 +107,7 @@ fun PodcastsScreen(
                 podcast = podcast,
                 onBack = { screenState = PodcastScreenState.LIBRARY },
                 onEpisodeSelected = { episode -> onEpisodeSelected(podcast, episode) },
+                nowPlayingEpisode = nowPlayingEpisode,
             )
         }
         PodcastScreenState.QUEUE -> QueueScreen(
@@ -264,6 +286,7 @@ private fun EpisodeListScreen(
     podcast: Podcast,
     onBack: () -> Unit,
     onEpisodeSelected: (Episode) -> Unit,
+    nowPlayingEpisode: Episode? = null,
 ) {
     val episodesRaw by remember(podcast.id) { repository.episodesFor(podcast.id) }
         .collectAsState(initial = emptyList())
@@ -271,6 +294,13 @@ private fun EpisodeListScreen(
     val episodes = if (newestFirst) episodesRaw else episodesRaw.asReversed()
     val scope = rememberCoroutineScope()
     var downloadingIds by remember { mutableStateOf(setOf<String>()) }
+    var selectedTab by remember { mutableStateOf(PodcastDetailTab.EPISODES) }
+
+    val subscribed by remember(repository) { repository.subscribedPodcasts() }
+        .collectAsState(initial = emptyList())
+    val subscribedEntry = subscribed.find { it.id == podcast.id }
+    val isSubscribed = subscribedEntry != null
+    val isPreset = subscribedEntry?.isPreset ?: podcast.isPreset
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -299,50 +329,138 @@ private fun EpisodeListScreen(
         }
 
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 8.dp),
         ) {
-            Text(
-                text = "All episodes",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f),
+            FilterChip(
+                selected = isSubscribed,
+                onClick = {
+                    scope.launch {
+                        if (isSubscribed) repository.unsubscribe(podcast.id) else repository.subscribe(podcast)
+                    }
+                },
+                label = { Text("Following") },
+                leadingIcon = if (isSubscribed) {
+                    { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                } else {
+                    null
+                },
             )
-            TextButton(onClick = { newestFirst = !newestFirst }) {
-                Text(if (newestFirst) "Newest" else "Oldest")
-                Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Toggle sort order")
+            FilterChip(
+                selected = isPreset,
+                onClick = { scope.launch { repository.setPreset(podcast.id, !isPreset) } },
+                label = { Text("Preset") },
+                leadingIcon = if (isPreset) {
+                    { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                } else {
+                    null
+                },
+            )
+        }
+
+        SecondaryTabRow(selectedTabIndex = selectedTab.ordinal) {
+            PodcastDetailTab.entries.forEach { tab ->
+                Tab(
+                    selected = selectedTab == tab,
+                    onClick = { selectedTab = tab },
+                    text = { Text(tab.label) },
+                )
             }
         }
 
-        if (episodes.isEmpty()) {
-            Text(
-                text = "Loading episodes...",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-            )
-        }
+        when (selectedTab) {
+            PodcastDetailTab.EPISODES -> {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 8.dp),
+                ) {
+                    Text(
+                        text = "All episodes",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = { newestFirst = !newestFirst }) {
+                        Text(if (newestFirst) "Newest" else "Oldest")
+                        Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Toggle sort order")
+                    }
+                }
 
-        LazyColumn {
-            items(episodes, key = { it.id }) { episode ->
-                EpisodeRow(
-                    episode = episode,
-                    podcast = podcast,
-                    onListen = { onEpisodeSelected(episode) },
-                    onQueue = { scope.launch { repository.enqueue(episode) } },
-                    onDownload = {
-                        if (episode.localFilePath != null) {
-                            scope.launch { repository.deleteDownload(episode) }
-                        } else if (episode.id !in downloadingIds) {
-                            downloadingIds = downloadingIds + episode.id
-                            scope.launch {
-                                repository.downloadEpisode(episode)
-                                downloadingIds = downloadingIds - episode.id
-                            }
-                        }
-                    },
+                if (episodes.isEmpty()) {
+                    Text(
+                        text = "Loading episodes...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                    )
+                }
+
+                LazyColumn {
+                    items(episodes, key = { it.id }) { episode ->
+                        EpisodeRow(
+                            episode = episode,
+                            podcast = podcast,
+                            onListen = { onEpisodeSelected(episode) },
+                            onQueue = { scope.launch { repository.enqueue(episode) } },
+                            onDownload = {
+                                if (episode.localFilePath != null) {
+                                    scope.launch { repository.deleteDownload(episode) }
+                                } else if (episode.id !in downloadingIds) {
+                                    downloadingIds = downloadingIds + episode.id
+                                    scope.launch {
+                                        repository.downloadEpisode(episode)
+                                        downloadingIds = downloadingIds - episode.id
+                                    }
+                                }
+                            },
+                        )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                    }
+                }
+            }
+            PodcastDetailTab.NOW_PLAYING -> {
+                val playingEpisode = nowPlayingEpisode?.takeIf { it.podcastId == podcast.id }
+                if (playingEpisode != null) {
+                    EpisodeRow(
+                        episode = playingEpisode,
+                        podcast = podcast,
+                        onListen = { onEpisodeSelected(playingEpisode) },
+                        onQueue = { scope.launch { repository.enqueue(playingEpisode) } },
+                        onDownload = {},
+                    )
+                } else {
+                    Text(
+                        text = "Nothing from this show is playing right now.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+                    )
+                }
+            }
+            PodcastDetailTab.HIGHLIGHTS -> {
+                Text(
+                    text = "Highlights aren't available for this show yet.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
                 )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+            }
+            PodcastDetailTab.ABOUT -> {
+                Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
+                    Text(text = podcast.title, style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        text = podcast.author.ifBlank { "Unknown creator" },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                    Text(
+                        text = podcast.feedUrl,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 12.dp),
+                    )
+                }
             }
         }
     }
@@ -448,7 +566,7 @@ private fun isNewEpisode(episode: Episode): Boolean {
 }
 
 @Composable
-private fun QueueScreen(
+fun QueueScreen(
     repository: PodcastRepository,
     onBack: () -> Unit,
     onEpisodeSelected: (Episode) -> Unit,
