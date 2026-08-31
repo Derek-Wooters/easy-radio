@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarOutline
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -57,6 +58,7 @@ fun NowPlayingScreen(
     tintSeed: String,
     isLive: Boolean,
     isPlaying: Boolean,
+    isBuffering: Boolean = false,
     progress: Float?,
     positionLabel: String?,
     durationLabel: String?,
@@ -199,11 +201,15 @@ fun NowPlayingScreen(
                     onClick = onPlayPause,
                     modifier = Modifier.size(72.dp),
                 ) {
-                    Icon(
-                        imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                        contentDescription = if (isPlaying) "Pause" else "Play",
-                        modifier = Modifier.size(32.dp),
-                    )
+                    if (isBuffering) {
+                        CircularProgressIndicator(modifier = Modifier.size(32.dp), strokeWidth = 3.dp)
+                    } else {
+                        Icon(
+                            imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                            contentDescription = if (isPlaying) "Pause" else "Play",
+                            modifier = Modifier.size(32.dp),
+                        )
+                    }
                 }
                 if (onSkipForward != null) {
                     IconButton(onClick = onSkipForward) {
