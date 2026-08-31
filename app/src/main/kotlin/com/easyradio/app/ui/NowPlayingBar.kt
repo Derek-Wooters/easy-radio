@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Forward30
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -57,6 +58,7 @@ fun NowPlayingBar(
     val tints = extraColors.avatarTints
     val tint = tints[tintSeed.hashCode().mod(tints.size)]
     val isPlaying = playbackState == PlaybackUiState.PLAYING || playbackState == PlaybackUiState.BUFFERING
+    val isBuffering = playbackState == PlaybackUiState.BUFFERING
 
     Surface(
         color = MaterialTheme.colorScheme.surface,
@@ -120,10 +122,14 @@ fun NowPlayingBar(
                     }
                 }
                 IconButton(onClick = if (isPlaying) onPauseClick else onPlayClick) {
-                    Icon(
-                        if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                        contentDescription = if (isPlaying) "Pause" else "Play",
-                    )
+                    if (isBuffering) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(
+                            if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                            contentDescription = if (isPlaying) "Pause" else "Play",
+                        )
+                    }
                 }
                 if (onSkipForwardClick != null) {
                     IconButton(onClick = onSkipForwardClick) {

@@ -55,6 +55,12 @@ class EasyRadioPlaybackService : MediaLibraryService() {
             )
             .setHandleAudioBecomingNoisy(true)
             .build()
+            .apply {
+                // Holds a CPU + WiFi wake lock while playing/buffering so a network
+                // handoff (wifi <-> cellular) or screen-off doesn't stall a live
+                // stream's reconnect longer than necessary.
+                setWakeMode(C.WAKE_MODE_NETWORK)
+            }
 
         mediaSession = MediaLibrarySession.Builder(this, player, LibraryCallback()).build()
 
