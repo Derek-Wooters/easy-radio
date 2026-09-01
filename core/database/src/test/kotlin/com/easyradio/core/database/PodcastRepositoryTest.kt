@@ -190,6 +190,66 @@ class PodcastRepositoryTest {
         assertThat(episodes.first().podcastId).isEqualTo(testPodcast.id)
     }
 
+    private fun feedXmlWithEpisodes(count: Int): String {
+        val items = (1..count).joinToString("\n") { i ->
+            val pubDate = java.time.ZonedDateTime.of(2024, 1, 1, 0, 0, 0, 0, java.time.ZoneOffset.UTC)
+                .plusDays(i.toLong())
+                .format(java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME)
+            """
+            <item>
+              <title>Episode $i</title>
+              <guid>guid-$i</guid>
+              <enclosure url="https://example.com/ep$i.mp3"/>
+              <pubDate>$pubDate</pubDate>
+            </item>
+            """.trimIndent()
+        }
+        return """
+            <rss xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0">
+              <channel>
+                $items
+              </channel>
+            </rss>
+        """.trimIndent()
+    }
+
+    @Test
+    fun `refreshEpisodes stores only the EPISODE_PAGE_SIZE most recent episodes when the feed has more`() = runTest {
+        val episodeDao = FakeEpisodeDao()
+        val repository = PodcastRepository(FakeItunesSearchApi(), { feedXmlWithEpisodes(60) }, FakePodcastDao(), episodeDao)
+
+        repository.refreshEpisodes(testPodcast)
+
+        val storedTitles = episodeDao.state.value.map { it.title }.toSet()
+        assertThat(storedTitles).hasSize(PodcastRepository.EPISODE_PAGE_SIZE)
+        // Higher episode numbers have later pubDates, so the newest 50 are episodes 60..11.
+        assertThat(storedTitles).containsAtLeastElementsIn((11..60).map { "Episode $it" })
+    }
+
+    @Test
+    fun `loadMoreEpisodes loads the next page and reports no more remain when the feed is exhausted`() = runTest {
+        val episodeDao = FakeEpisodeDao()
+        val repository = PodcastRepository(FakeItunesSearchApi(), { feedXmlWithEpisodes(60) }, FakePodcastDao(), episodeDao)
+        repository.refreshEpisodes(testPodcast)
+
+        val hasMore = repository.loadMoreEpisodes(testPodcast)
+
+        assertThat(episodeDao.state.value).hasSize(60)
+        assertThat(hasMore).isFalse()
+    }
+
+    @Test
+    fun `loadMoreEpisodes reports more remain when the feed has beyond two pages`() = runTest {
+        val episodeDao = FakeEpisodeDao()
+        val repository = PodcastRepository(FakeItunesSearchApi(), { feedXmlWithEpisodes(120) }, FakePodcastDao(), episodeDao)
+        repository.refreshEpisodes(testPodcast)
+
+        val hasMore = repository.loadMoreEpisodes(testPodcast)
+
+        assertThat(episodeDao.state.value).hasSize(2 * PodcastRepository.EPISODE_PAGE_SIZE)
+        assertThat(hasMore).isTrue()
+    }
+
     @Test
     fun `savePosition then lastPosition returns the saved value`() = runTest {
         val repository = PodcastRepository(FakeItunesSearchApi(), { "" }, FakePodcastDao(), FakeEpisodeDao())

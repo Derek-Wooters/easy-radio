@@ -7,6 +7,7 @@ import com.easyradio.core.network.podcast.PodcastFeedParser
 import com.easyradio.core.network.podcast.toPodcastOrNull
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 class PodcastRepository(
@@ -18,6 +19,9 @@ class PodcastRepository(
     private val deleteFile: (String) -> Unit = {},
     private val queueDao: QueueDao = NoOpQueueDao,
 ) {
+    companion object {
+        const val EPISODE_PAGE_SIZE = 50
+    }
 
     suspend fun search(query: String): List<Podcast> {
         if (query.isBlank()) return emptyList()
@@ -47,7 +51,29 @@ class PodcastRepository(
         podcastDao.setPreset(podcastId, isPreset)
     }
 
+    /**
+     * Fetches the feed and stores its [EPISODE_PAGE_SIZE] most recent episodes. Long-running
+     * shows can have thousands of episodes in their RSS feed; storing all of them up front would
+     * mean downloading/parsing a multi-megabyte XML document and bulk-inserting thousands of rows
+     * on every subscribe. [loadMoreEpisodes] extends this window as the user scrolls.
+     */
     suspend fun refreshEpisodes(podcast: Podcast) {
+        loadEpisodePage(podcast, upToCount = EPISODE_PAGE_SIZE)
+    }
+
+    /**
+     * Loads the next page of episodes beyond what's currently stored. Returns true if the feed
+     * has still more episodes beyond this page (so the caller can keep offering to load more).
+     */
+    suspend fun loadMoreEpisodes(podcast: Podcast): Boolean {
+        val alreadyStored = episodeDao.observeByPodcast(podcast.id).first().size
+        val targetCount = alreadyStored + EPISODE_PAGE_SIZE
+        val totalAvailable = loadEpisodePage(podcast, upToCount = targetCount)
+        return totalAvailable > targetCount
+    }
+
+    /** Fetches, parses, and stores the [upToCount] most recent episodes; returns the feed's total episode count. */
+    private suspend fun loadEpisodePage(podcast: Podcast, upToCount: Int): Int {
         val xml = try {
             fetchFeed(podcast.feedUrl)
         } catch (e: CancellationException) {
@@ -55,12 +81,15 @@ class PodcastRepository(
         } catch (e: Exception) {
             ""
         }
-        if (xml.isBlank()) return
+        if (xml.isBlank()) return 0
 
-        val episodes = PodcastFeedParser.parse(xml, podcastId = podcast.id)
-        if (episodes.isNotEmpty()) {
-            episodeDao.upsertAll(episodes.map { it.toEntity() })
+        val allEpisodes = PodcastFeedParser.parse(xml, podcastId = podcast.id)
+            .sortedByDescending { it.publishedAtEpochMillis ?: 0L }
+        val page = allEpisodes.take(upToCount)
+        if (page.isNotEmpty()) {
+            episodeDao.upsertAll(page.map { it.toEntity() })
         }
+        return allEpisodes.size
     }
 
     fun episodesFor(podcastId: String): Flow<List<Episode>> =
