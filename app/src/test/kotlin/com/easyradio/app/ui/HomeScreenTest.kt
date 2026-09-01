@@ -58,8 +58,6 @@ class HomeScreenTest {
         onStationSelected: (RadioStation) -> Unit = {},
         onSettingsClick: () -> Unit = {},
         onNavigateStations: () -> Unit = {},
-        onNavigatePodcasts: () -> Unit = {},
-        onNavigatePlaylists: () -> Unit = {},
     ) {
         composeTestRule.setContent {
             HomeScreen(
@@ -73,8 +71,6 @@ class HomeScreenTest {
                 onRecentlyPlayedSelected = {},
                 onSettingsClick = onSettingsClick,
                 onNavigateStations = onNavigateStations,
-                onNavigatePodcasts = onNavigatePodcasts,
-                onNavigatePlaylists = onNavigatePlaylists,
             )
         }
     }
@@ -103,35 +99,13 @@ class HomeScreenTest {
     }
 
     @Test
-    fun `Stations pill fires onNavigateStations`() {
+    fun `All Stations link fires onNavigateStations`() {
         var navigated = false
         setHomeScreen(onNavigateStations = { navigated = true })
 
-        composeTestRule.onNodeWithText("Stations").performClick()
+        composeTestRule.onNodeWithText("All Stations").performClick()
         composeTestRule.waitForIdle()
 
-        assert(navigated) { "Expected the Stations pill click to fire onNavigateStations" }
-    }
-
-    @Test
-    fun `Podcasts pill fires onNavigatePodcasts`() {
-        var navigated = false
-        setHomeScreen(onNavigatePodcasts = { navigated = true })
-
-        composeTestRule.onNodeWithText("Podcasts").performClick()
-        composeTestRule.waitForIdle()
-
-        assert(navigated) { "Expected the Podcasts pill click to fire onNavigatePodcasts" }
-    }
-
-    @Test
-    fun `Playlists pill fires onNavigatePlaylists`() {
-        var navigated = false
-        setHomeScreen(onNavigatePlaylists = { navigated = true })
-
-        composeTestRule.onNodeWithText("Playlists").performClick()
-        composeTestRule.waitForIdle()
-
-        assert(navigated) { "Expected the Playlists pill click to fire onNavigatePlaylists" }
+        assert(navigated) { "Expected the All Stations link click to fire onNavigateStations" }
     }
 }

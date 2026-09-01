@@ -382,8 +382,6 @@ class MainActivity : ComponentActivity() {
                                 onRecentlyPlayedSelected = ::playRecentlyPlayed,
                                 onSettingsClick = { showSettings = true },
                                 onNavigateStations = { selectedTab = AppTab.RADIO },
-                                onNavigatePodcasts = { selectedTab = AppTab.PODCASTS },
-                                onNavigatePlaylists = { selectedTab = AppTab.PLAYLISTS },
                             )
                             AppTab.SEARCH -> SearchScreen(
                                 radioRepository = radioRepository,
