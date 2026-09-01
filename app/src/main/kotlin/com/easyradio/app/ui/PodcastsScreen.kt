@@ -153,7 +153,6 @@ private fun PodcastLibraryScreen(
         searchResults = repository.search(query)
     }
 
-    var searchVisible by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -166,12 +165,6 @@ private fun PodcastLibraryScreen(
                 style = MaterialTheme.typography.headlineMedium,
                 modifier = Modifier.weight(1f),
             )
-            IconButton(onClick = {
-                searchVisible = !searchVisible
-                if (!searchVisible) query = ""
-            }) {
-                Icon(Icons.Filled.Search, contentDescription = "Search")
-            }
             Box {
                 IconButton(onClick = { menuExpanded = true }) {
                     Icon(Icons.Filled.MoreVert, contentDescription = "More")
@@ -195,16 +188,15 @@ private fun PodcastLibraryScreen(
             }
         }
 
-        if (searchVisible) {
-            OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
-                placeholder = { Text("Search podcasts") },
-                singleLine = true,
-                shape = RoundedCornerShape(28.dp),
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
-            )
-        }
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            placeholder = { Text("Search podcasts") },
+            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+            singleLine = true,
+            shape = RoundedCornerShape(28.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+        )
 
         val subscribedIds = subscribed.map { it.id }.toSet()
 

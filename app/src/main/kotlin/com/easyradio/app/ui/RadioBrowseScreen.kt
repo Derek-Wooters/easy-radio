@@ -52,7 +52,6 @@ fun RadioBrowseScreen(
     repository: RadioStationRepository,
     onStationSelected: (RadioStation) -> Unit,
 ) {
-    var searchVisible by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
     var city by remember { mutableStateOf(ALL_CITIES) }
     var genre by remember { mutableStateOf(ALL_GENRES) }
@@ -89,24 +88,17 @@ fun RadioBrowseScreen(
                 style = MaterialTheme.typography.headlineMedium,
                 modifier = Modifier.weight(1f),
             )
-            IconButton(onClick = {
-                searchVisible = !searchVisible
-                if (!searchVisible) query = ""
-            }) {
-                Icon(Icons.Filled.Search, contentDescription = "Search")
-            }
         }
 
-        if (searchVisible) {
-            OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
-                placeholder = { Text("Search stations") },
-                singleLine = true,
-                shape = RoundedCornerShape(28.dp),
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
-            )
-        }
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            placeholder = { Text("Search stations") },
+            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+            singleLine = true,
+            shape = RoundedCornerShape(28.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+        )
 
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
