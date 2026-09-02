@@ -315,17 +315,32 @@ private fun EpisodeListScreen(
     val episodeListState = rememberLazyListState()
     var hasMoreEpisodes by remember(podcast.id) { mutableStateOf(true) }
     var loadingMoreEpisodes by remember(podcast.id) { mutableStateOf(false) }
+    // loadingMoreEpisodes is deliberately NOT read here: LaunchedEffect below restarts whenever
+    // this key's value changes, so if the loading flag were part of it, setting it to true at the
+    // start of a load would flip the key and cancel that same in-flight load before it finished,
+    // leaving loadingMoreEpisodes stuck true and pagination permanently stalled.
+    //
+    // episodesRaw (not the locally-derived `episodes`) is read here deliberately: this
+    // derivedStateOf's calculation lambda is created once (remember has no keys) and closures
+    // over a plain local `val` capture its value at that first creation, which for `episodes`
+    // was the empty placeholder list from before the Flow's first real emission -- so
+    // episodes.size would silently stay 0 forever. episodesRaw is a delegated State read, so
+    // referencing it here re-reads its live value on every evaluation instead. Its size is
+    // identical to episodes.size regardless of sort order (asReversed() doesn't change count).
     val shouldLoadMoreEpisodes by remember {
         derivedStateOf {
             val lastVisible = episodeListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            hasMoreEpisodes && !loadingMoreEpisodes && episodes.isNotEmpty() && lastVisible >= episodes.size - 5
+            hasMoreEpisodes && episodesRaw.isNotEmpty() && lastVisible >= episodesRaw.size - 5
         }
     }
     LaunchedEffect(shouldLoadMoreEpisodes) {
-        if (shouldLoadMoreEpisodes) {
+        if (shouldLoadMoreEpisodes && !loadingMoreEpisodes) {
             loadingMoreEpisodes = true
-            hasMoreEpisodes = repository.loadMoreEpisodes(podcast)
-            loadingMoreEpisodes = false
+            try {
+                hasMoreEpisodes = repository.loadMoreEpisodes(podcast)
+            } finally {
+                loadingMoreEpisodes = false
+            }
         }
     }
 

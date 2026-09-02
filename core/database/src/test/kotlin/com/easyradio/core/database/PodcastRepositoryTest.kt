@@ -251,6 +251,58 @@ class PodcastRepositoryTest {
     }
 
     @Test
+    fun `loadMoreEpisodes reuses the parsed feed from refreshEpisodes instead of re-fetching`() = runTest {
+        val episodeDao = FakeEpisodeDao()
+        var fetchCount = 0
+        val repository = PodcastRepository(
+            FakeItunesSearchApi(),
+            { fetchCount++; feedXmlWithEpisodes(120) },
+            FakePodcastDao(),
+            episodeDao,
+        )
+        repository.refreshEpisodes(testPodcast)
+        assertThat(fetchCount).isEqualTo(1)
+
+        repository.loadMoreEpisodes(testPodcast)
+
+        assertThat(fetchCount).isEqualTo(1)
+        assertThat(episodeDao.state.value).hasSize(2 * PodcastRepository.EPISODE_PAGE_SIZE)
+    }
+
+    @Test
+    fun `refreshEpisodes discards the previous cache so a re-subscribe fetches fresh data`() = runTest {
+        val episodeDao = FakeEpisodeDao()
+        var fetchCount = 0
+        val repository = PodcastRepository(
+            FakeItunesSearchApi(),
+            { fetchCount++; feedXmlWithEpisodes(60) },
+            FakePodcastDao(),
+            episodeDao,
+        )
+        repository.refreshEpisodes(testPodcast)
+
+        repository.refreshEpisodes(testPodcast)
+
+        assertThat(fetchCount).isEqualTo(2)
+    }
+
+    @Test
+    fun `loadMoreEpisodes signals retry rather than exhausted when the feed fetch fails`() = runTest {
+        val episodeDao = FakeEpisodeDao()
+        val repository = PodcastRepository(
+            FakeItunesSearchApi(),
+            { throw java.io.IOException("network down") },
+            FakePodcastDao(),
+            episodeDao,
+        )
+
+        val hasMore = repository.loadMoreEpisodes(testPodcast)
+
+        assertThat(hasMore).isTrue()
+        assertThat(episodeDao.state.value).isEmpty()
+    }
+
+    @Test
     fun `savePosition then lastPosition returns the saved value`() = runTest {
         val repository = PodcastRepository(FakeItunesSearchApi(), { "" }, FakePodcastDao(), FakeEpisodeDao())
 
