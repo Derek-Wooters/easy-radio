@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -34,6 +35,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -51,6 +53,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -309,6 +312,38 @@ private fun EpisodeListScreen(
     var downloadingIds by remember { mutableStateOf(setOf<String>()) }
     var selectedTab by remember { mutableStateOf(PodcastDetailTab.EPISODES) }
 
+    val episodeListState = rememberLazyListState()
+    var hasMoreEpisodes by remember(podcast.id) { mutableStateOf(true) }
+    var loadingMoreEpisodes by remember(podcast.id) { mutableStateOf(false) }
+    // loadingMoreEpisodes is deliberately NOT read here: LaunchedEffect below restarts whenever
+    // this key's value changes, so if the loading flag were part of it, setting it to true at the
+    // start of a load would flip the key and cancel that same in-flight load before it finished,
+    // leaving loadingMoreEpisodes stuck true and pagination permanently stalled.
+    //
+    // episodesRaw (not the locally-derived `episodes`) is read here deliberately: this
+    // derivedStateOf's calculation lambda is created once (remember has no keys) and closures
+    // over a plain local `val` capture its value at that first creation, which for `episodes`
+    // was the empty placeholder list from before the Flow's first real emission -- so
+    // episodes.size would silently stay 0 forever. episodesRaw is a delegated State read, so
+    // referencing it here re-reads its live value on every evaluation instead. Its size is
+    // identical to episodes.size regardless of sort order (asReversed() doesn't change count).
+    val shouldLoadMoreEpisodes by remember {
+        derivedStateOf {
+            val lastVisible = episodeListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            hasMoreEpisodes && episodesRaw.isNotEmpty() && lastVisible >= episodesRaw.size - 5
+        }
+    }
+    LaunchedEffect(shouldLoadMoreEpisodes) {
+        if (shouldLoadMoreEpisodes && !loadingMoreEpisodes) {
+            loadingMoreEpisodes = true
+            try {
+                hasMoreEpisodes = repository.loadMoreEpisodes(podcast)
+            } finally {
+                loadingMoreEpisodes = false
+            }
+        }
+    }
+
     val subscribed by remember(repository) { repository.subscribedPodcasts() }
         .collectAsState(initial = emptyList())
     val subscribedEntry = subscribed.find { it.id == podcast.id }
@@ -408,7 +443,7 @@ private fun EpisodeListScreen(
                     )
                 }
 
-                LazyColumn {
+                LazyColumn(state = episodeListState) {
                     items(episodes, key = { it.id }) { episode ->
                         EpisodeRow(
                             episode = episode,
@@ -428,6 +463,16 @@ private fun EpisodeListScreen(
                             },
                         )
                         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                    }
+                    if (loadingMoreEpisodes) {
+                        item {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            ) {
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                            }
+                        }
                     }
                 }
             }
