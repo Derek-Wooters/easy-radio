@@ -20,4 +20,7 @@ interface PodcastDao {
 
     @Query("UPDATE podcasts SET isPreset = :isPreset WHERE id = :id")
     suspend fun setPreset(id: String, isPreset: Boolean)
+
+    @Query("UPDATE podcasts SET lastPlayedAtEpochMillis = :timestamp WHERE id = :id")
+    suspend fun updateLastPlayed(id: String, timestamp: Long)
 }

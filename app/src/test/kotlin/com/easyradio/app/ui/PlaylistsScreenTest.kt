@@ -34,6 +34,10 @@ private class FakeFavoriteStationDao : FavoriteStationDao {
     override suspend fun setPreset(id: String, isPreset: Boolean) {
         state.update { list -> list.map { if (it.id == id) it.copy(isPreset = isPreset) else it } }
     }
+
+    override suspend fun updateLastPlayed(id: String, timestamp: Long) {
+        state.update { list -> list.map { if (it.id == id) it.copy(lastPlayedAtEpochMillis = timestamp) else it } }
+    }
 }
 
 @RunWith(RobolectricTestRunner::class)

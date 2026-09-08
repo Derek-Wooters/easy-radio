@@ -12,4 +12,5 @@ data class FavoriteStationEntity(
     val imageUrl: String?,
     val favoritedAtEpochMillis: Long,
     val isPreset: Boolean = false,
+    val lastPlayedAtEpochMillis: Long? = null,
 )

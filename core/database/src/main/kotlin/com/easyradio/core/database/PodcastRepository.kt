@@ -58,6 +58,10 @@ class PodcastRepository(
         podcastDao.setPreset(podcastId, isPreset)
     }
 
+    suspend fun markPlayed(podcastId: String) {
+        podcastDao.updateLastPlayed(podcastId, System.currentTimeMillis())
+    }
+
     /**
      * Fetches the feed and stores its [EPISODE_PAGE_SIZE] most recent episodes. Long-running
      * shows can have thousands of episodes in their RSS feed; storing all of them up front would

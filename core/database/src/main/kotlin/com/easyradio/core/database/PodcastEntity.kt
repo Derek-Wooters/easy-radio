@@ -12,4 +12,5 @@ data class PodcastEntity(
     val feedUrl: String,
     val subscribedAtEpochMillis: Long,
     val isPreset: Boolean = false,
+    val lastPlayedAtEpochMillis: Long? = null,
 )

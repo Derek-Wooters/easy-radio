@@ -41,6 +41,10 @@ private class FakePodcastDao : PodcastDao {
     override suspend fun setPreset(id: String, isPreset: Boolean) {
         state.update { list -> list.map { if (it.id == id) it.copy(isPreset = isPreset) else it } }
     }
+
+    override suspend fun updateLastPlayed(id: String, timestamp: Long) {
+        state.update { list -> list.map { if (it.id == id) it.copy(lastPlayedAtEpochMillis = timestamp) else it } }
+    }
 }
 
 private class FakeEpisodeDao : EpisodeDao {
@@ -300,6 +304,18 @@ class PodcastRepositoryTest {
 
         assertThat(hasMore).isTrue()
         assertThat(episodeDao.state.value).isEmpty()
+    }
+
+    @Test
+    fun `markPlayed sets lastPlayedAtEpochMillis on the subscribed podcast`() = runTest {
+        val podcastDao = FakePodcastDao()
+        val repository = PodcastRepository(FakeItunesSearchApi(), { feedXml }, podcastDao, FakeEpisodeDao())
+        repository.subscribe(testPodcast)
+
+        repository.markPlayed(testPodcast.id)
+
+        val stored = repository.subscribedPodcasts().first().first { it.id == testPodcast.id }
+        assertThat(stored.lastPlayedAtEpochMillis).isNotNull()
     }
 
     @Test

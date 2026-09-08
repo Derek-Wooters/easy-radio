@@ -11,6 +11,7 @@ fun RadioStation.toEntity(favoritedAtEpochMillis: Long, isPreset: Boolean = fals
         imageUrl = imageUrl,
         favoritedAtEpochMillis = favoritedAtEpochMillis,
         isPreset = isPreset,
+        lastPlayedAtEpochMillis = lastPlayedAtEpochMillis,
     )
 
 fun FavoriteStationEntity.toRadioStation(): RadioStation = RadioStation(
@@ -19,4 +20,5 @@ fun FavoriteStationEntity.toRadioStation(): RadioStation = RadioStation(
     streamUrl = streamUrl,
     tagline = tagline,
     imageUrl = imageUrl,
+    lastPlayedAtEpochMillis = lastPlayedAtEpochMillis,
 )
