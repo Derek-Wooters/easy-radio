@@ -27,4 +27,8 @@ class FavoriteStationRepository(private val dao: FavoriteStationDao) {
     suspend fun setPreset(stationId: String, isPreset: Boolean) {
         dao.setPreset(stationId, isPreset)
     }
+
+    suspend fun markPlayed(stationId: String) {
+        dao.updateLastPlayed(stationId, System.currentTimeMillis())
+    }
 }

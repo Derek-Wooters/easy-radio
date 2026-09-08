@@ -20,4 +20,7 @@ interface FavoriteStationDao {
 
     @Query("UPDATE favorite_stations SET isPreset = :isPreset WHERE id = :id")
     suspend fun setPreset(id: String, isPreset: Boolean)
+
+    @Query("UPDATE favorite_stations SET lastPlayedAtEpochMillis = :timestamp WHERE id = :id")
+    suspend fun updateLastPlayed(id: String, timestamp: Long)
 }

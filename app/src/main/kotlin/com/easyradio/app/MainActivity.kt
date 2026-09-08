@@ -286,6 +286,11 @@ class MainActivity : ComponentActivity() {
                                         favoriteStationRepository.unfavorite(station.id)
                                     } else {
                                         favoriteStationRepository.favorite(station)
+                                        // This toggle only ever applies to the currently-playing
+                                        // station, so favoriting it now means it's playing now too --
+                                        // markPlayed() at playback-start time already no-op'd since
+                                        // there was no favorited row yet to update.
+                                        favoriteStationRepository.markPlayed(station.id)
                                     }
                                 }
                             },
@@ -375,13 +380,16 @@ class MainActivity : ComponentActivity() {
                     Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                         when (selectedTab) {
                             AppTab.HOME -> HomeScreen(
-                                radioRepository = radioRepository,
+                                podcastRepository = podcastRepository,
                                 favoriteStationRepository = favoriteStationRepository,
                                 recentlyPlayedRepository = recentlyPlayedRepository,
                                 onStationSelected = ::playStation,
+                                onPodcastSelected = { podcast ->
+                                    searchSelectedPodcast = podcast
+                                    selectedTab = AppTab.PODCASTS
+                                },
                                 onRecentlyPlayedSelected = ::playRecentlyPlayed,
                                 onSettingsClick = { showSettings = true },
-                                onNavigateStations = { selectedTab = AppTab.RADIO },
                             )
                             AppTab.SEARCH -> SearchScreen(
                                 radioRepository = radioRepository,
@@ -437,6 +445,8 @@ class MainActivity : ComponentActivity() {
                     stationStreamUrl = station.streamUrl,
                 ),
             )
+            // No-op if this station isn't followed -- there's no row to update.
+            favoriteStationRepository.markPlayed(station.id)
         }
     }
 
@@ -509,6 +519,8 @@ class MainActivity : ComponentActivity() {
                     podcastId = podcast.id,
                 ),
             )
+            // No-op if this podcast isn't subscribed -- there's no row to update.
+            podcastRepository.markPlayed(podcast.id)
         }
     }
 

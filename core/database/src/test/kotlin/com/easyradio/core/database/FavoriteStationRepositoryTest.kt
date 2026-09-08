@@ -25,6 +25,10 @@ private class FakeFavoriteStationDao : FavoriteStationDao {
     override suspend fun setPreset(id: String, isPreset: Boolean) {
         state.update { list -> list.map { if (it.id == id) it.copy(isPreset = isPreset) else it } }
     }
+
+    override suspend fun updateLastPlayed(id: String, timestamp: Long) {
+        state.update { list -> list.map { if (it.id == id) it.copy(lastPlayedAtEpochMillis = timestamp) else it } }
+    }
 }
 
 class FavoriteStationRepositoryTest {
@@ -78,5 +82,17 @@ class FavoriteStationRepositoryTest {
 
         assertThat(repository.presets().first().map { it.id }).containsExactly("s1")
         assertThat(repository.presetIds().first()).containsExactly("s1")
+    }
+
+    @Test
+    fun `markPlayed sets lastPlayedAtEpochMillis on the favorited station`() = runTest {
+        val dao = FakeFavoriteStationDao()
+        val repository = FavoriteStationRepository(dao)
+        repository.favorite(station("s1"))
+
+        repository.markPlayed("s1")
+
+        val stored = repository.favorites().first().first { it.id == "s1" }
+        assertThat(stored.lastPlayedAtEpochMillis).isNotNull()
     }
 }

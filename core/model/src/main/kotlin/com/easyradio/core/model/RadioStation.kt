@@ -6,6 +6,7 @@ data class RadioStation(
     val streamUrl: String,
     val tagline: String = "",
     val imageUrl: String? = null,
+    val lastPlayedAtEpochMillis: Long? = null,
 ) {
     init {
         require(id.isNotBlank()) { "RadioStation.id must not be blank" }

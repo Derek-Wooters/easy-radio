@@ -8,14 +8,12 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayCircleOutline
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,27 +29,40 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.easyradio.app.ui.theme.LocalEasyRadioColors
 import com.easyradio.core.database.FavoriteStationRepository
+import com.easyradio.core.database.PodcastRepository
 import com.easyradio.core.database.RecentlyPlayedRepository
+import com.easyradio.core.model.Podcast
 import com.easyradio.core.model.RadioStation
 import com.easyradio.core.model.RecentlyPlayedItem
-import com.easyradio.core.network.radiobrowser.RadioStationRepository
 
 /** Matches docs/designs/2a-home-discover-light.png / 2b-home-discover-dark.png. */
 @Composable
 fun HomeScreen(
-    radioRepository: RadioStationRepository,
+    podcastRepository: PodcastRepository,
     favoriteStationRepository: FavoriteStationRepository,
     recentlyPlayedRepository: RecentlyPlayedRepository,
     onStationSelected: (RadioStation) -> Unit,
+    onPodcastSelected: (Podcast) -> Unit,
     onRecentlyPlayedSelected: (RecentlyPlayedItem) -> Unit,
     onSettingsClick: () -> Unit,
-    onNavigateStations: () -> Unit,
 ) {
     val presets by remember(favoriteStationRepository) { favoriteStationRepository.presets() }
         .collectAsState(initial = emptyList())
     val recentlyPlayed by remember(recentlyPlayedRepository) { recentlyPlayedRepository.recent() }
         .collectAsState(initial = emptyList())
-    val curatedStations = remember(radioRepository) { radioRepository.curatedStations() }
+    val subscribedPodcasts by remember(podcastRepository) { podcastRepository.subscribedPodcasts() }
+        .collectAsState(initial = emptyList())
+    val followedStations by remember(favoriteStationRepository) { favoriteStationRepository.favorites() }
+        .collectAsState(initial = emptyList())
+
+    val subscribedChannels = (
+        subscribedPodcasts.mapNotNull { podcast ->
+            podcast.lastPlayedAtEpochMillis?.let { SubscribedChannel.PodcastChannel(podcast, it) }
+        } +
+            followedStations.mapNotNull { station ->
+                station.lastPlayedAtEpochMillis?.let { SubscribedChannel.StationChannel(station, it) }
+            }
+        ).sortedByDescending { it.lastPlayedAtEpochMillis }.take(4)
 
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         Row(
@@ -79,10 +90,23 @@ fun HomeScreen(
             }
         }
 
-        SectionHeader(title = "Live Radio Dial", actionLabel = "All Stations", onActionClick = onNavigateStations)
-        Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-            curatedStations.forEach { station ->
-                HomeStationRow(station = station, onClick = { onStationSelected(station) })
+        if (subscribedChannels.isNotEmpty()) {
+            SectionHeader(title = "Subscribed Channels")
+            LazyRow(contentPadding = PaddingValues(horizontal = 20.dp)) {
+                items(subscribedChannels, key = { it.id }) { channel ->
+                    HomeAvatarTile(
+                        imageUrl = channel.imageUrl,
+                        letter = channel.label.firstOrNull()?.uppercase() ?: "?",
+                        tintSeed = channel.id,
+                        label = channel.label,
+                        onClick = {
+                            when (channel) {
+                                is SubscribedChannel.StationChannel -> onStationSelected(channel.station)
+                                is SubscribedChannel.PodcastChannel -> onPodcastSelected(channel.podcast)
+                            }
+                        },
+                    )
+                }
             }
         }
 
@@ -103,8 +127,29 @@ fun HomeScreen(
     }
 }
 
+/** A followed radio station or subscribed podcast, unified for the "Subscribed Channels" row. */
+private sealed interface SubscribedChannel {
+    val id: String
+    val label: String
+    val imageUrl: String?
+    val lastPlayedAtEpochMillis: Long
+
+    data class StationChannel(val station: RadioStation, override val lastPlayedAtEpochMillis: Long) :
+        SubscribedChannel {
+        override val id get() = station.id
+        override val label get() = station.name
+        override val imageUrl get() = station.imageUrl
+    }
+
+    data class PodcastChannel(val podcast: Podcast, override val lastPlayedAtEpochMillis: Long) : SubscribedChannel {
+        override val id get() = podcast.id
+        override val label get() = podcast.title
+        override val imageUrl get() = podcast.artworkUrl
+    }
+}
+
 @Composable
-private fun SectionHeader(title: String, actionLabel: String? = null, onActionClick: (() -> Unit)? = null) {
+private fun SectionHeader(title: String) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 4.dp),
@@ -114,14 +159,6 @@ private fun SectionHeader(title: String, actionLabel: String? = null, onActionCl
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.weight(1f),
         )
-        if (actionLabel != null && onActionClick != null) {
-            Text(
-                text = actionLabel,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.clickable(onClick = onActionClick),
-            )
-        }
     }
 }
 
@@ -148,40 +185,5 @@ private fun HomeAvatarTile(imageUrl: String?, letter: String, tintSeed: String, 
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 4.dp),
         )
-    }
-}
-
-@Composable
-private fun HomeStationRow(station: RadioStation, onClick: () -> Unit) {
-    val tints = LocalEasyRadioColors.current.avatarTints
-    val tint = tints[station.id.hashCode().mod(tints.size)]
-
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 10.dp),
-    ) {
-        Avatar(
-            imageUrl = station.imageUrl,
-            letter = station.name.firstOrNull()?.uppercase() ?: "?",
-            tint = tint,
-            cornerRadius = 10.dp,
-            modifier = Modifier.size(48.dp),
-        )
-        Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
-            Text(text = station.name, style = MaterialTheme.typography.titleSmall)
-            Text(
-                text = station.tagline,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        IconButton(onClick = onClick) {
-            Icon(
-                Icons.Filled.PlayCircleOutline,
-                contentDescription = "Play ${station.name}",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(32.dp),
-            )
-        }
     }
 }
