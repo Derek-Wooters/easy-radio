@@ -75,7 +75,6 @@ private enum class PodcastScreenState { LIBRARY, EPISODES, QUEUE, DOWNLOADS }
 private enum class PodcastDetailTab(val label: String) {
     NOW_PLAYING("Now Playing"),
     EPISODES("Episodes"),
-    HIGHLIGHTS("Highlights"),
     ABOUT("About"),
 }
 
@@ -494,14 +493,6 @@ private fun EpisodeListScreen(
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
                     )
                 }
-            }
-            PodcastDetailTab.HIGHLIGHTS -> {
-                Text(
-                    text = "Highlights aren't available for this show yet.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
-                )
             }
             PodcastDetailTab.ABOUT -> {
                 Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
