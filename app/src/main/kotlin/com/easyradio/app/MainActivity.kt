@@ -402,6 +402,7 @@ class MainActivity : ComponentActivity() {
                             )
                             AppTab.RADIO -> RadioBrowseScreen(
                                 repository = radioRepository,
+                                favoriteStationRepository = favoriteStationRepository,
                                 onStationSelected = ::playStation,
                             )
                             AppTab.PODCASTS -> PodcastsScreen(
