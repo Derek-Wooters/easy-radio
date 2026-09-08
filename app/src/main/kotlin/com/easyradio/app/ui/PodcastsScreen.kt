@@ -1,6 +1,7 @@
 package com.easyradio.app.ui
 
 import android.text.format.DateUtils
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,6 +36,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.DropdownMenu
@@ -45,6 +47,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.Tab
@@ -61,6 +64,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.easyradio.app.ui.theme.LocalEasyRadioColors
 import com.easyradio.core.database.PodcastRepository
@@ -222,11 +226,16 @@ private fun PodcastLibraryScreen(
         } else {
             LazyColumn(contentPadding = PaddingValues(vertical = 4.dp)) {
                 items(searchResults, key = { it.id }) { podcast ->
+                    val isSubscribed = podcast.id in subscribedIds
                     PodcastRow(
                         podcast = podcast,
-                        isSubscribed = podcast.id in subscribedIds,
+                        isSubscribed = isSubscribed,
                         onClick = { onPodcastSelected(podcast) },
-                        onActionClick = { scope.launch { repository.subscribe(podcast) } },
+                        onActionClick = {
+                            scope.launch {
+                                if (isSubscribed) repository.unsubscribe(podcast.id) else repository.subscribe(podcast)
+                            }
+                        },
                     )
                     HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
                 }
@@ -284,11 +293,17 @@ private fun PodcastRow(
         supportingContent = { Text(podcast.author) },
         trailingContent = {
             if (isSubscribed) {
-                IconButton(onClick = onActionClick) {
-                    Icon(Icons.Filled.Delete, contentDescription = "Unsubscribe")
-                }
+                OutlinedButton(
+                    onClick = onActionClick,
+                    modifier = Modifier.width(130.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = Color.White,
+                        contentColor = Color.Red,
+                    ),
+                    border = BorderStroke(1.dp, Color.Red),
+                ) { Text("Unsubscribe") }
             } else {
-                Button(onClick = onActionClick) { Text("Subscribe") }
+                Button(onClick = onActionClick, modifier = Modifier.width(130.dp)) { Text("Subscribe") }
             }
         },
         modifier = Modifier.clickable(onClick = onClick),
