@@ -6,9 +6,11 @@ import com.easyradio.core.network.podcast.ItunesSearchApi
 import com.easyradio.core.network.podcast.PodcastFeedParser
 import com.easyradio.core.network.podcast.toPodcastOrNull
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 
 class PodcastRepository(
     private val itunesApi: ItunesSearchApi,
@@ -74,6 +76,17 @@ class PodcastRepository(
     }
 
     /**
+     * Loads the first page of episodes for [podcast] if none are stored yet -- deliberately
+     * independent of whether the user has subscribed, so browsing a podcast's episode list works
+     * before committing to follow it. A no-op once any episodes exist for this podcast, so it's
+     * safe to call every time the episode list screen is shown.
+     */
+    suspend fun ensureEpisodesLoaded(podcast: Podcast) {
+        if (episodeDao.observeByPodcast(podcast.id).first().isNotEmpty()) return
+        loadEpisodePage(podcast, upToCount = EPISODE_PAGE_SIZE)
+    }
+
+    /**
      * Loads the next page of episodes beyond what's currently stored. Returns true if the feed
      * has still more episodes beyond this page (so the caller can keep offering to load more),
      * or if the underlying fetch failed transiently -- a network blip should prompt a retry on
@@ -102,9 +115,13 @@ class PodcastRepository(
             }
             if (xml.isNullOrBlank()) return null
 
-            PodcastFeedParser.parse(xml, podcastId = podcast.id)
-                .sortedByDescending { it.publishedAtEpochMillis ?: 0L }
-                .also { feedCache[podcast.id] = it }
+            // Parsing + sorting a multi-thousand-item feed is real CPU work; keep it off
+            // whatever dispatcher called us (often Compose's main-thread scope) so a huge
+            // feed doesn't freeze the UI while it parses.
+            withContext(Dispatchers.Default) {
+                PodcastFeedParser.parse(xml, podcastId = podcast.id)
+                    .sortedByDescending { it.publishedAtEpochMillis ?: 0L }
+            }.also { feedCache[podcast.id] = it }
         }
 
         val page = allEpisodes.take(upToCount)
