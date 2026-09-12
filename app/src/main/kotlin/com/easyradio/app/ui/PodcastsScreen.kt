@@ -320,6 +320,7 @@ private fun EpisodeListScreen(
 ) {
     val episodesRaw by remember(podcast.id) { repository.episodesFor(podcast.id) }
         .collectAsState(initial = emptyList())
+    LaunchedEffect(podcast.id) { repository.ensureEpisodesLoaded(podcast) }
     var newestFirst by remember { mutableStateOf(true) }
     val episodes = if (newestFirst) episodesRaw else episodesRaw.asReversed()
     val scope = rememberCoroutineScope()

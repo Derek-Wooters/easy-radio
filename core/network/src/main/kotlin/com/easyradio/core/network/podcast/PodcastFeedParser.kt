@@ -1,91 +1,134 @@
 package com.easyradio.core.network.podcast
 
 import com.easyradio.core.model.Episode
-import org.w3c.dom.Element
+import org.xml.sax.Attributes
 import org.xml.sax.InputSource
+import org.xml.sax.helpers.DefaultHandler
 import java.io.StringReader
 import java.time.format.DateTimeFormatter
-import javax.xml.parsers.DocumentBuilderFactory
+import javax.xml.parsers.SAXParserFactory
 
+/**
+ * Streaming (SAX) RSS parser. Some hosted feeds (e.g. long-running daily radio shows) run to
+ * several megabytes and thousands of `<item>`s -- a DOM parser has to build the whole tree in
+ * memory before returning anything, which is measurably slower and heavier for feeds that size.
+ * SAX processes the document in one forward pass without materializing a full tree.
+ */
 object PodcastFeedParser {
 
     fun parse(xml: String, podcastId: String): List<Episode> {
-        val document = try {
-            val factory = DocumentBuilderFactory.newInstance()
-            factory.isNamespaceAware = true
-            factory.newDocumentBuilder().parse(InputSource(StringReader(xml)))
+        val handler = FeedHandler(podcastId)
+        return try {
+            SAXParserFactory.newInstance().newSAXParser().parse(InputSource(StringReader(xml)), handler)
+            handler.episodes
         } catch (e: Exception) {
-            return emptyList()
+            emptyList()
         }
+    }
 
-        val itemNodes = document.getElementsByTagName("item")
+    private class FeedHandler(private val podcastId: String) : DefaultHandler() {
         val episodes = mutableListOf<Episode>()
 
-        for (i in 0 until itemNodes.length) {
-            val item = itemNodes.item(i) as? Element ?: continue
-            parseItem(item, podcastId)?.let { episodes.add(it) }
+        private var inItem = false
+        private var currentTag: String? = null
+        private val text = StringBuilder()
+
+        private var title: String? = null
+        private var guid: String? = null
+        private var pubDate: String? = null
+        private var duration: String? = null
+        private var description: String? = null
+        private var audioUrl: String? = null
+
+        override fun startElement(uri: String?, localName: String?, qName: String, attributes: Attributes) {
+            if (qName == "item") {
+                inItem = true
+                title = null
+                guid = null
+                pubDate = null
+                duration = null
+                description = null
+                audioUrl = null
+            } else if (inItem && qName == "enclosure" && audioUrl == null) {
+                audioUrl = attributes.getValue("url")
+            }
+            currentTag = qName
+            text.setLength(0)
         }
 
-        return episodes
-    }
+        override fun characters(ch: CharArray, start: Int, length: Int) {
+            if (inItem) text.append(ch, start, length)
+        }
 
-    private fun parseItem(item: Element, podcastId: String): Episode? {
-        val title = item.firstChildTextOrNull("title")?.trim().orEmpty()
-        val audioUrl = item.enclosureUrl() ?: return null
-        val guid = item.firstChildTextOrNull("guid")?.trim()
-        val id = guid?.takeIf { it.isNotBlank() } ?: audioUrl
+        override fun endElement(uri: String?, localName: String?, qName: String) {
+            if (inItem && qName == currentTag) {
+                val value = text.toString()
+                when (qName) {
+                    "title" -> if (title == null) title = value
+                    "guid" -> if (guid == null) guid = value
+                    "pubDate" -> if (pubDate == null) pubDate = value
+                    "description" -> if (description == null) description = value
+                    "itunes:duration" -> if (duration == null) duration = value
+                }
+            }
+            if (qName == "item") {
+                inItem = false
+                finishItem()
+            }
+            text.setLength(0)
+        }
 
-        if (title.isBlank() || !audioUrl.startsWith("https://")) return null
+        private fun finishItem() {
+            val finalTitle = title?.trim().orEmpty()
+            val finalAudioUrl = audioUrl
+            if (finalTitle.isBlank() || finalAudioUrl == null || !finalAudioUrl.startsWith("https://")) return
 
-        return try {
-            Episode(
-                id = id,
-                podcastId = podcastId,
-                title = title,
-                audioUrl = audioUrl,
-                publishedAtEpochMillis = item.firstChildTextOrNull("pubDate")?.let(::parsePubDate),
-                durationSeconds = item.firstChildTextOrNull("itunes:duration")?.let(::parseDurationSeconds),
-                description = item.firstChildTextOrNull("description")?.trim().orEmpty(),
-            )
-        } catch (e: IllegalArgumentException) {
-            null
+            val id = guid?.trim()?.takeIf { it.isNotBlank() } ?: finalAudioUrl
+            val episode = try {
+                Episode(
+                    id = id,
+                    podcastId = podcastId,
+                    title = finalTitle,
+                    audioUrl = finalAudioUrl,
+                    publishedAtEpochMillis = pubDate?.let(::parsePubDate),
+                    durationSeconds = duration?.let(::parseDurationSeconds),
+                    description = description?.let(::stripHtml).orEmpty(),
+                )
+            } catch (e: IllegalArgumentException) {
+                null
+            }
+            episode?.let { episodes.add(it) }
         }
     }
+}
 
-    private fun Element.firstChildTextOrNull(tagName: String): String? {
-        val nodes = getElementsByTagName(tagName)
-        if (nodes.length == 0) return null
-        return nodes.item(0).textContent
-    }
+/**
+ * Some feeds put raw HTML in `<description>` (show notes with links, line breaks, etc.) --
+ * strip tags so the plain-text UI doesn't render them literally.
+ */
+private fun stripHtml(raw: String): String =
+    raw.replace(Regex("<[^>]*>"), " ").replace(Regex("\\s+"), " ").trim()
 
-    private fun Element.enclosureUrl(): String? {
-        val enclosures = getElementsByTagName("enclosure")
-        if (enclosures.length == 0) return null
-        val enclosure = enclosures.item(0) as? Element ?: return null
-        return enclosure.getAttribute("url").takeIf { it.isNotBlank() }
-    }
+private fun parsePubDate(raw: String): Long? = try {
+    java.time.ZonedDateTime.parse(raw.trim(), DateTimeFormatter.RFC_1123_DATE_TIME)
+        .toInstant()
+        .toEpochMilli()
+} catch (e: Exception) {
+    null
+}
 
-    private fun parsePubDate(raw: String): Long? = try {
-        java.time.ZonedDateTime.parse(raw.trim(), DateTimeFormatter.RFC_1123_DATE_TIME)
-            .toInstant()
-            .toEpochMilli()
-    } catch (e: Exception) {
-        null
-    }
+private fun parseDurationSeconds(raw: String): Int? {
+    val trimmed = raw.trim()
+    if (trimmed.isEmpty()) return null
 
-    private fun parseDurationSeconds(raw: String): Int? {
-        val trimmed = raw.trim()
-        if (trimmed.isEmpty()) return null
+    if (!trimmed.contains(":")) return trimmed.toIntOrNull()
 
-        if (!trimmed.contains(":")) return trimmed.toIntOrNull()
+    val parts = trimmed.split(":").map { it.toIntOrNull() }
+    if (parts.any { it == null }) return null
 
-        val parts = trimmed.split(":").map { it.toIntOrNull() }
-        if (parts.any { it == null }) return null
-
-        return when (parts.size) {
-            3 -> parts[0]!! * 3600 + parts[1]!! * 60 + parts[2]!!
-            2 -> parts[0]!! * 60 + parts[1]!!
-            else -> null
-        }
+    return when (parts.size) {
+        3 -> parts[0]!! * 3600 + parts[1]!! * 60 + parts[2]!!
+        2 -> parts[0]!! * 60 + parts[1]!!
+        else -> null
     }
 }

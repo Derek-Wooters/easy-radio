@@ -307,6 +307,37 @@ class PodcastRepositoryTest {
     }
 
     @Test
+    fun `ensureEpisodesLoaded fetches episodes for a podcast that hasn't been subscribed`() = runTest {
+        val episodeDao = FakeEpisodeDao()
+        val podcastDao = FakePodcastDao()
+        val repository = PodcastRepository(FakeItunesSearchApi(), { feedXml }, podcastDao, episodeDao)
+
+        repository.ensureEpisodesLoaded(testPodcast)
+
+        assertThat(podcastDao.state.value).isEmpty()
+        assertThat(episodeDao.state.value).hasSize(1)
+        assertThat(episodeDao.state.value.first().title).isEqualTo("Episode One")
+    }
+
+    @Test
+    fun `ensureEpisodesLoaded does not re-fetch when episodes are already stored`() = runTest {
+        val episodeDao = FakeEpisodeDao()
+        var fetchCount = 0
+        val repository = PodcastRepository(
+            FakeItunesSearchApi(),
+            { fetchCount++; feedXml },
+            FakePodcastDao(),
+            episodeDao,
+        )
+        repository.refreshEpisodes(testPodcast)
+        assertThat(fetchCount).isEqualTo(1)
+
+        repository.ensureEpisodesLoaded(testPodcast)
+
+        assertThat(fetchCount).isEqualTo(1)
+    }
+
+    @Test
     fun `markPlayed sets lastPlayedAtEpochMillis on the subscribed podcast`() = runTest {
         val podcastDao = FakePodcastDao()
         val repository = PodcastRepository(FakeItunesSearchApi(), { feedXml }, podcastDao, FakeEpisodeDao())
