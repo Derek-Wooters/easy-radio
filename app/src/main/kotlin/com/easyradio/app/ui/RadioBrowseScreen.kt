@@ -2,6 +2,8 @@ package com.easyradio.app.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,6 +45,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.easyradio.core.database.FavoriteStationRepository
 import com.easyradio.core.model.RadioStation
@@ -68,6 +72,7 @@ fun RadioBrowseScreen(
     var city by remember { mutableStateOf(ALL_CITIES) }
     var genre by remember { mutableStateOf(ALL_GENRES) }
     var searchResults by remember { mutableStateOf<List<RadioStation>>(emptyList()) }
+    val keyboardController = LocalSoftwareKeyboardController.current
     val favoriteIds by remember(favoriteStationRepository) { favoriteStationRepository.favoriteIds() }
         .collectAsState(initial = emptySet())
     val scope = rememberCoroutineScope()
@@ -111,6 +116,8 @@ fun RadioBrowseScreen(
             placeholder = { Text("Search stations") },
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
             singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
             shape = RoundedCornerShape(28.dp),
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
         )
