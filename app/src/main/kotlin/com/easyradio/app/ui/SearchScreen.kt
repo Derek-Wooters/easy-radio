@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayCircleOutline
 import androidx.compose.material3.Icon
@@ -26,6 +28,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.easyradio.app.ui.theme.LocalEasyRadioColors
 import com.easyradio.core.database.PodcastRepository
@@ -73,6 +77,7 @@ fun SearchScreen(
     var stationResults by remember { mutableStateOf<List<RadioStation>>(emptyList()) }
     var podcastResults by remember { mutableStateOf<List<Podcast>>(emptyList()) }
     var filter by remember { mutableStateOf(SearchFilter.ALL) }
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     LaunchedEffect(query) {
         if (query.isBlank()) {
@@ -102,6 +107,8 @@ fun SearchScreen(
             onValueChange = { query = it },
             placeholder = { Text("Search stations and podcasts") },
             singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
             shape = RoundedCornerShape(28.dp),
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
         )
