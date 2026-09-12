@@ -17,18 +17,28 @@ import com.easyradio.core.database.RecentlyPlayedEntity
 import com.easyradio.core.database.RecentlyPlayedRepository
 import com.easyradio.core.model.Podcast
 import com.easyradio.core.model.RadioStation
+import com.easyradio.core.network.podcast.ItunesPodcastDto
 import com.easyradio.core.network.podcast.ItunesSearchApi
 import com.easyradio.core.network.podcast.ItunesSearchResponseDto
+import com.easyradio.core.network.radiobrowser.RadioBrowserApi
+import com.easyradio.core.network.radiobrowser.RadioBrowserStationDto
+import com.easyradio.core.network.radiobrowser.RadioStationRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
-private class UnusedItunesSearchApi : ItunesSearchApi {
-    override suspend fun searchPodcasts(term: String, media: String, limit: Int): ItunesSearchResponseDto {
-        throw NotImplementedError("HomeScreen never searches podcasts")
-    }
+private class FakeItunesSearchApi(private val results: Map<String, List<ItunesPodcastDto>> = emptyMap()) :
+    ItunesSearchApi {
+    override suspend fun searchPodcasts(term: String, media: String, limit: Int): ItunesSearchResponseDto =
+        ItunesSearchResponseDto(results = results[term] ?: emptyList())
+}
+
+private class FakeRadioBrowserApi(private val results: Map<String, List<RadioBrowserStationDto>> = emptyMap()) :
+    RadioBrowserApi {
+    override suspend fun searchStations(name: String, limit: Int, hideBroken: Boolean): List<RadioBrowserStationDto> =
+        results[name] ?: emptyList()
 }
 
 private class NoOpEpisodeDao : EpisodeDao {
@@ -95,6 +105,9 @@ class HomeScreenTest {
     private fun setHomeScreen(
         podcastDao: HomeFakePodcastDao = HomeFakePodcastDao(),
         favoriteStationDao: HomeFakeFavoriteStationDao = HomeFakeFavoriteStationDao(),
+        itunesResults: Map<String, List<ItunesPodcastDto>> = emptyMap(),
+        radioResults: Map<String, List<RadioBrowserStationDto>> = emptyMap(),
+        favoriteGenres: Set<String> = emptySet(),
         onStationSelected: (RadioStation) -> Unit = {},
         onPodcastSelected: (Podcast) -> Unit = {},
         onSettingsClick: () -> Unit = {},
@@ -102,13 +115,18 @@ class HomeScreenTest {
         composeTestRule.setContent {
             HomeScreen(
                 podcastRepository = PodcastRepository(
-                    itunesApi = UnusedItunesSearchApi(),
+                    itunesApi = FakeItunesSearchApi(itunesResults),
                     fetchFeed = { throw NotImplementedError("HomeScreen never fetches feeds") },
                     podcastDao = podcastDao,
                     episodeDao = NoOpEpisodeDao(),
                 ),
                 favoriteStationRepository = FavoriteStationRepository(favoriteStationDao),
                 recentlyPlayedRepository = RecentlyPlayedRepository(NoOpRecentlyPlayedDao()),
+                radioRepository = RadioStationRepository(
+                    api = FakeRadioBrowserApi(radioResults),
+                    curatedStations = emptyList(),
+                ),
+                favoriteGenres = favoriteGenres,
                 onStationSelected = onStationSelected,
                 onPodcastSelected = onPodcastSelected,
                 onRecentlyPlayedSelected = {},
@@ -129,13 +147,15 @@ class HomeScreenTest {
     }
 
     @Test
-    fun `subscribed channels section is hidden when nothing has been played yet`() {
+    fun `subscribed channels shows an empty-state prompt when nothing has been played yet`() {
         val podcastDao = HomeFakePodcastDao()
         podcastDao.state.value = listOf(podcastEntity("p1", "Never Played Show", lastPlayed = null))
 
         setHomeScreen(podcastDao = podcastDao)
 
-        composeTestRule.onNodeWithText("Subscribed Channels").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Subscribed Channels").assertExists()
+        composeTestRule.onNodeWithText("Go add a radio station or podcast").assertExists()
+        composeTestRule.onNodeWithText("Never Played Show").assertDoesNotExist()
     }
 
     @Test
@@ -188,5 +208,45 @@ class HomeScreenTest {
         composeTestRule.onNodeWithText("Middle Station A").assertExists()
         composeTestRule.onNodeWithText("Fourth Station").assertExists()
         composeTestRule.onNodeWithText("Dropped Podcast").assertDoesNotExist()
+    }
+
+    @Test
+    fun `favorite genre gets a header and search results from both podcasts and stations`() {
+        val podcastDto = ItunesPodcastDto(collectionName = "Sports Daily", feedUrl = "https://example.com/sports.xml")
+        val stationDto = RadioBrowserStationDto(
+            stationUuid = "sports-fm",
+            name = "Sports FM",
+            urlResolved = "https://example.com/sports.mp3",
+            favicon = "",
+            lastCheckOk = 1,
+        )
+        var selectedPodcast: Podcast? = null
+
+        setHomeScreen(
+            itunesResults = mapOf("Sports" to listOf(podcastDto)),
+            radioResults = mapOf("Sports" to listOf(stationDto)),
+            favoriteGenres = setOf("Sports"),
+            onPodcastSelected = { selectedPodcast = it },
+        )
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Sports").assertExists()
+        composeTestRule.onNodeWithText("Sports Daily").assertExists()
+        composeTestRule.onNodeWithText("Sports FM").assertExists()
+
+        composeTestRule.onNodeWithText("Sports Daily").performClick()
+        composeTestRule.waitForIdle()
+
+        assert(selectedPodcast?.title == "Sports Daily") {
+            "Expected onPodcastSelected to fire with the discovered podcast"
+        }
+    }
+
+    @Test
+    fun `favorite genre with no search results shows no section`() {
+        setHomeScreen(favoriteGenres = setOf("Obscure Topic"))
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Obscure Topic").assertDoesNotExist()
     }
 }

@@ -383,6 +383,8 @@ class MainActivity : ComponentActivity() {
                                 podcastRepository = podcastRepository,
                                 favoriteStationRepository = favoriteStationRepository,
                                 recentlyPlayedRepository = recentlyPlayedRepository,
+                                radioRepository = radioRepository,
+                                favoriteGenres = settings.favoriteGenres,
                                 onStationSelected = ::playStation,
                                 onPodcastSelected = { podcast ->
                                     searchSelectedPodcast = podcast
