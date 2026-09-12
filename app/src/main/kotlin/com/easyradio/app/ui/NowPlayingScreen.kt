@@ -30,15 +30,21 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.easyradio.app.formatDuration
 import com.easyradio.app.ui.theme.LocalEasyRadioColors
 
 /**
@@ -62,6 +68,8 @@ fun NowPlayingScreen(
     progress: Float?,
     positionLabel: String?,
     durationLabel: String?,
+    durationMs: Long = 0L,
+    onSeek: ((Float) -> Unit)? = null,
     speedLabel: String?,
     onCollapse: () -> Unit,
     onPlayPause: () -> Unit,
@@ -138,13 +146,28 @@ fun NowPlayingScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             if (progress != null) {
-                LinearProgressIndicator(
-                    progress = { progress.coerceIn(0f, 1f) },
-                    modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
-                )
+                var dragProgress by remember { mutableStateOf<Float?>(null) }
+                val displayProgress = dragProgress ?: progress.coerceIn(0f, 1f)
+
+                if (onSeek != null) {
+                    Slider(
+                        value = displayProgress,
+                        onValueChange = { dragProgress = it },
+                        onValueChangeFinished = {
+                            dragProgress?.let(onSeek)
+                            dragProgress = null
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                } else {
+                    LinearProgressIndicator(
+                        progress = { displayProgress },
+                        modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
+                    )
+                }
                 Row(modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
                     Text(
-                        text = positionLabel.orEmpty(),
+                        text = dragProgress?.let { formatDuration((it * durationMs).toLong()) } ?: positionLabel.orEmpty(),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f),

@@ -89,7 +89,7 @@ private const val SKIP_BACK_MS = 15_000L
 private const val SKIP_FORWARD_MS = 30_000L
 private val PLAYBACK_SPEEDS = listOf(1.0f, 1.25f, 1.5f, 2.0f)
 
-private fun formatDuration(ms: Long): String {
+internal fun formatDuration(ms: Long): String {
     val totalSeconds = ms / 1000
     val hours = totalSeconds / 3600
     val minutes = (totalSeconds % 3600) / 60
@@ -307,6 +307,8 @@ class MainActivity : ComponentActivity() {
                             progress = if (durationMs > 0) positionMs.toFloat() / durationMs else null,
                             positionLabel = formatDuration(positionMs),
                             durationLabel = formatDuration(durationMs),
+                            durationMs = durationMs,
+                            onSeek = ::seekToFraction,
                             speedLabel = "${PLAYBACK_SPEEDS[playbackSpeedIndex]}x",
                             onCollapse = { showNowPlaying = false },
                             onPlayPause = { if (playing) mediaController?.pause() else mediaController?.play() },
@@ -535,6 +537,13 @@ class MainActivity : ComponentActivity() {
             durationMs = controller.duration.coerceAtLeast(0),
         )
         controller.seekTo(target)
+    }
+
+    private fun seekToFraction(fraction: Float) {
+        val controller = mediaController ?: return
+        val duration = controller.duration.coerceAtLeast(0)
+        if (duration <= 0) return
+        controller.seekTo((fraction.coerceIn(0f, 1f) * duration).toLong())
     }
 
     private fun cyclePlaybackSpeed() {
