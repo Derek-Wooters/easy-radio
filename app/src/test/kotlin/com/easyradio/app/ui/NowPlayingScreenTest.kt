@@ -1,8 +1,11 @@
 package com.easyradio.app.ui
 
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -161,5 +164,36 @@ class NowPlayingScreenTest {
         composeTestRule.waitForIdle()
 
         assert(collapsed) { "Expected the collapse chevron click to fire onCollapse" }
+    }
+
+    @Test
+    fun `dragging the podcast progress slider fires onSeek with the released fraction`() {
+        var seekedTo: Float? = null
+
+        composeTestRule.setContent {
+            NowPlayingScreen(
+                topLabel = "Planet Money",
+                title = "Episode One",
+                subtitle = "Planet Money",
+                imageUrl = null,
+                tintSeed = "p1",
+                isLive = false,
+                isPlaying = true,
+                progress = 0.5f,
+                positionLabel = "10:00",
+                durationLabel = "20:00",
+                durationMs = 1_200_000L,
+                onSeek = { seekedTo = it },
+                speedLabel = "1.0x",
+                onCollapse = {},
+                onPlayPause = {},
+            )
+        }
+
+        composeTestRule.onNode(SemanticsMatcher.keyIsDefined(androidx.compose.ui.semantics.SemanticsProperties.ProgressBarRangeInfo))
+            .performSemanticsAction(SemanticsActions.SetProgress) { it(0.75f) }
+        composeTestRule.waitForIdle()
+
+        assert(seekedTo == 0.75f) { "Expected onSeek to fire with the released slider fraction, was $seekedTo" }
     }
 }
