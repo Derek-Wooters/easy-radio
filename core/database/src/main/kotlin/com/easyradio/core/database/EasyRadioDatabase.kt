@@ -10,8 +10,9 @@ import androidx.room.RoomDatabase
         QueueItemEntity::class,
         FavoriteStationEntity::class,
         RecentlyPlayedEntity::class,
+        ListeningStatsEntity::class,
     ],
-    version = 5,
+    version = 8,
     exportSchema = false,
 )
 abstract class EasyRadioDatabase : RoomDatabase() {
@@ -20,4 +21,5 @@ abstract class EasyRadioDatabase : RoomDatabase() {
     abstract fun queueDao(): QueueDao
     abstract fun favoriteStationDao(): FavoriteStationDao
     abstract fun recentlyPlayedDao(): RecentlyPlayedDao
+    abstract fun listeningStatsDao(): ListeningStatsDao
 }

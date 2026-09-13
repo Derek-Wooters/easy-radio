@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.easyradio.core.database.EasyRadioDatabase
 import com.easyradio.core.database.FavoriteStationRepository
+import com.easyradio.core.database.ListeningStatsRepository
 import com.easyradio.core.database.PodcastRepository
 import com.easyradio.core.database.RecentlyPlayedRepository
 import com.easyradio.core.network.podcast.EpisodeDownloader
@@ -35,6 +36,9 @@ object EasyRadioGraph {
     @Volatile
     private var recentlyPlayedRepository: RecentlyPlayedRepository? = null
 
+    @Volatile
+    private var listeningStatsRepository: ListeningStatsRepository? = null
+
     fun repository(context: Context): PodcastRepository =
         repository ?: synchronized(this) {
             repository ?: buildPodcastRepository(context.applicationContext, database(context)).also {
@@ -60,6 +64,14 @@ object EasyRadioGraph {
             recentlyPlayedRepository
                 ?: RecentlyPlayedRepository(database(context).recentlyPlayedDao()).also {
                     recentlyPlayedRepository = it
+                }
+        }
+
+    fun listeningStats(context: Context): ListeningStatsRepository =
+        listeningStatsRepository ?: synchronized(this) {
+            listeningStatsRepository
+                ?: ListeningStatsRepository(database(context).listeningStatsDao()).also {
+                    listeningStatsRepository = it
                 }
         }
 

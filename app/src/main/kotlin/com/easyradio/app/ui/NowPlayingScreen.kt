@@ -1,6 +1,8 @@
 package com.easyradio.app.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,10 +11,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
@@ -26,6 +31,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarOutline
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -46,6 +52,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.easyradio.app.formatDuration
 import com.easyradio.app.ui.theme.LocalEasyRadioColors
+import com.easyradio.core.model.Chapter
 
 /**
  * Full-screen "now playing" surface reached by tapping the mini-player. Radio
@@ -75,15 +82,44 @@ fun NowPlayingScreen(
     onPlayPause: () -> Unit,
     onSkipBack: (() -> Unit)? = null,
     onSkipForward: (() -> Unit)? = null,
+    skipBackSeconds: Int = 15,
+    skipForwardSeconds: Int = 30,
     onSpeedClick: (() -> Unit)? = null,
     onSleepTimerClick: (() -> Unit)? = null,
     onQueueClick: (() -> Unit)? = null,
     isFavorite: Boolean = false,
     onFavoriteClick: (() -> Unit)? = null,
+    chapters: List<Chapter> = emptyList(),
+    onChapterClick: ((Chapter) -> Unit)? = null,
+    transcript: String? = null,
 ) {
     val extraColors = LocalEasyRadioColors.current
     val tints = extraColors.avatarTints
     val tint = tints[tintSeed.hashCode().mod(tints.size)]
+    var showTranscript by remember(transcript) { mutableStateOf(false) }
+
+    if (showTranscript && transcript != null) {
+        Surface(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Transcript",
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(onClick = { showTranscript = false }) {
+                        Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Close transcript")
+                    }
+                }
+                Text(
+                    text = transcript,
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 12.dp),
+                )
+            }
+        }
+        return
+    }
 
     Surface(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -178,6 +214,24 @@ fun NowPlayingScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                if (chapters.isNotEmpty()) {
+                    val positionMs = (displayProgress * durationMs).toLong()
+                    val currentChapter = chapters.lastOrNull { it.startTimeMs <= positionMs }
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(vertical = 8.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        items(chapters) { chapter ->
+                            val isCurrent = chapter == currentChapter
+                            FilterChip(
+                                selected = isCurrent,
+                                onClick = { onChapterClick?.invoke(chapter) },
+                                label = { Text(chapter.title, maxLines = 1) },
+                            )
+                        }
+                    }
+                }
             } else if (isLive) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
@@ -217,7 +271,7 @@ fun NowPlayingScreen(
                 }
                 if (onSkipBack != null) {
                     IconButton(onClick = onSkipBack) {
-                        Icon(Icons.Filled.Replay, contentDescription = "Skip back 15 seconds")
+                        Icon(Icons.Filled.Replay, contentDescription = "Skip back $skipBackSeconds seconds")
                     }
                 }
                 FilledIconButton(
@@ -236,13 +290,16 @@ fun NowPlayingScreen(
                 }
                 if (onSkipForward != null) {
                     IconButton(onClick = onSkipForward) {
-                        Icon(Icons.Filled.Forward30, contentDescription = "Skip forward 30 seconds")
+                        Icon(Icons.Filled.Forward30, contentDescription = "Skip forward $skipForwardSeconds seconds")
                     }
                 }
                 if (onSleepTimerClick != null && onQueueClick != null) {
                     IconButton(onClick = onQueueClick) {
                         Icon(Icons.AutoMirrored.Filled.PlaylistPlay, contentDescription = "Up Next")
                     }
+                }
+                if (transcript != null) {
+                    TextButton(onClick = { showTranscript = true }) { Text("Transcript") }
                 }
             }
         }

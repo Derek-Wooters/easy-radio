@@ -2,8 +2,12 @@ package com.easyradio.core.database
 
 import com.easyradio.core.model.Episode
 import com.easyradio.core.model.Podcast
+import com.easyradio.core.model.Chapter
+import com.easyradio.core.network.podcast.ChaptersParser
 import com.easyradio.core.network.podcast.ItunesSearchApi
+import com.easyradio.core.network.podcast.OpmlSupport
 import com.easyradio.core.network.podcast.PodcastFeedParser
+import com.easyradio.core.network.podcast.TranscriptParser
 import com.easyradio.core.network.podcast.toPodcastOrNull
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -129,6 +133,72 @@ class PodcastRepository(
             episodeDao.upsertAll(page.map { it.toEntity() })
         }
         return allEpisodes.size
+    }
+
+    /**
+     * Fetches a podcast's feed fresh (bypassing the parse cache, since a background
+     * refresh needs to see episodes published since the last check) and returns just
+     * the episodes that weren't already stored -- empty if the fetch fails or nothing
+     * is new. Used by the background new-episode check for notifications/auto-download.
+     */
+    suspend fun checkForNewEpisodes(podcast: Podcast): List<Episode> {
+        val before = episodeDao.observeByPodcast(podcast.id).first().map { it.id }.toSet()
+        feedCache.remove(podcast.id)
+        loadEpisodePage(podcast, upToCount = EPISODE_PAGE_SIZE) ?: return emptyList()
+        return episodeDao.observeByPodcast(podcast.id).first()
+            .filter { it.id !in before }
+            .map { it.toEpisode() }
+    }
+
+    /** Serializes current subscriptions to OPML, the standard podcast-app migration format. */
+    suspend fun exportOpml(): String = OpmlSupport.write(subscribedPodcasts().first())
+
+    /**
+     * Subscribes to every feed in [xml] not already followed, using the OPML entry's
+     * title directly (no iTunes lookup) since the feed URL is already known. Returns
+     * how many new subscriptions were added.
+     */
+    suspend fun importOpml(xml: String): Int {
+        val existingFeedUrls = subscribedPodcasts().first().map { it.feedUrl }.toSet()
+        var imported = 0
+        for (entry in OpmlSupport.parse(xml)) {
+            if (entry.feedUrl in existingFeedUrls) continue
+            subscribe(Podcast(id = entry.feedUrl, title = entry.title, author = "", artworkUrl = null, feedUrl = entry.feedUrl))
+            imported++
+        }
+        return imported
+    }
+
+    /**
+     * Fetches and parses an episode's Podcasting 2.0 chapters, if it published a
+     * `<podcast:chapters>` tag -- empty if it didn't, or if the fetch/parse fails.
+     */
+    suspend fun loadChapters(episode: Episode): List<Chapter> {
+        val url = episode.chaptersUrl ?: return emptyList()
+        val json = try {
+            fetchFeed(url)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        } ?: return emptyList()
+        return ChaptersParser.parse(json)
+    }
+
+    /**
+     * Fetches and converts an episode's `<podcast:transcript>` document to plain reading text,
+     * or null if it didn't publish one, the fetch failed, or the result was blank.
+     */
+    suspend fun loadTranscript(episode: Episode): String? {
+        val url = episode.transcriptUrl ?: return null
+        val raw = try {
+            fetchFeed(url)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        } ?: return null
+        return TranscriptParser.parse(raw, episode.transcriptType).takeIf { it.isNotBlank() }
     }
 
     fun episodesFor(podcastId: String): Flow<List<Episode>> =

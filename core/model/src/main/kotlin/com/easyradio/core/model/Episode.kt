@@ -9,6 +9,9 @@ data class Episode(
     val durationSeconds: Int?,
     val description: String = "",
     val localFilePath: String? = null,
+    val chaptersUrl: String? = null,
+    val transcriptUrl: String? = null,
+    val transcriptType: String? = null,
 ) {
     init {
         require(id.isNotBlank()) { "Episode.id must not be blank" }

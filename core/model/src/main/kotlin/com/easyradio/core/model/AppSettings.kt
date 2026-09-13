@@ -29,4 +29,8 @@ data class AppSettings(
     val autoDownloadNewEpisodes: Boolean = false,
     val hasCompletedOnboarding: Boolean = false,
     val favoriteGenres: Set<String> = emptySet(),
+    val skipBackSeconds: Int = 15,
+    val skipForwardSeconds: Int = 30,
+    val skipSilenceEnabled: Boolean = false,
+    val voiceBoostEnabled: Boolean = false,
 )

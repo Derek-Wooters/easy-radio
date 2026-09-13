@@ -85,8 +85,6 @@ private enum class AppTab(val label: String, val icon: ImageVector) {
 }
 
 private const val PODCAST_POSITION_SAVE_INTERVAL_MS = 5_000L
-private const val SKIP_BACK_MS = 15_000L
-private const val SKIP_FORWARD_MS = 30_000L
 private val PLAYBACK_SPEEDS = listOf(1.0f, 1.25f, 1.5f, 2.0f)
 
 internal fun formatDuration(ms: Long): String {
@@ -99,18 +97,60 @@ internal fun formatDuration(ms: Long): String {
 
 class MainActivity : ComponentActivity() {
 
+    private val notificationPermissionLauncher =
+        registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) {}
+
+    private var opmlMessage by mutableStateOf<String?>(null)
+
+    private val exportOpmlLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.CreateDocument("text/xml"),
+    ) { uri ->
+        if (uri == null) return@registerForActivityResult
+        lifecycleScope.launch {
+            val opml = podcastRepository.exportOpml()
+            opmlMessage = try {
+                contentResolver.openOutputStream(uri)?.use { it.write(opml.toByteArray()) }
+                "Subscriptions exported"
+            } catch (e: Exception) {
+                "Export failed"
+            }
+        }
+    }
+
+    private val importOpmlLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri == null) return@registerForActivityResult
+        lifecycleScope.launch {
+            opmlMessage = try {
+                val xml = contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                if (xml == null) {
+                    "Couldn't read file"
+                } else {
+                    val count = podcastRepository.importOpml(xml)
+                    if (count == 0) "No new subscriptions found" else "Imported $count subscription${if (count == 1) "" else "s"}"
+                }
+            } catch (e: Exception) {
+                "Import failed"
+            }
+        }
+    }
+
     private val radioRepository = RadioStationRepository(api = RadioBrowserApiFactory.create())
 
     private val podcastRepository by lazy { EasyRadioGraph.repository(applicationContext) }
     private val settingsRepository by lazy { EasyRadioGraph.settings(applicationContext) }
     private val favoriteStationRepository by lazy { EasyRadioGraph.favoriteStations(applicationContext) }
     private val recentlyPlayedRepository by lazy { EasyRadioGraph.recentlyPlayed(applicationContext) }
+    private val listeningStatsRepository by lazy { EasyRadioGraph.listeningStats(applicationContext) }
 
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private var mediaController by mutableStateOf<MediaController?>(null)
     private var uiState by mutableStateOf(PlaybackUiState.IDLE)
     private var currentStation by mutableStateOf<RadioStation?>(null)
     private var currentEpisode by mutableStateOf<Episode?>(null)
+    private var currentChapters by mutableStateOf<List<com.easyradio.core.model.Chapter>>(emptyList())
+    private var currentTranscript by mutableStateOf<String?>(null)
     private var currentPodcast by mutableStateOf<Podcast?>(null)
 
     private var positionSaveJob: Job? = null
@@ -129,14 +169,35 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        requestNotificationPermissionIfNeeded()
+        scheduleNewEpisodeCheck()
         setContent {
             val settings by settingsRepository.settings.collectAsState(initial = AppSettings())
+            val listenedTodaySeconds by listeningStatsRepository.totalSecondsForLast(1).collectAsState(initial = 0L)
+            val listenedThisWeekSeconds by listeningStatsRepository.totalSecondsForLast(7).collectAsState(initial = 0L)
 
             LaunchedEffect(Unit) {
                 // Wait for the first real DataStore emission rather than the collectAsState
                 // default above, so a returning user never sees a flash of onboarding while
                 // the real "already completed" value is still loading.
                 showOnboarding = !settingsRepository.settings.first().hasCompletedOnboarding
+            }
+
+            LaunchedEffect(Unit) {
+                while (true) {
+                    delay(PODCAST_POSITION_SAVE_INTERVAL_MS)
+                    if (uiState == PlaybackUiState.PLAYING) {
+                        listeningStatsRepository.addListenedSeconds(PODCAST_POSITION_SAVE_INTERVAL_MS / 1_000)
+                    }
+                }
+            }
+
+            LaunchedEffect(currentEpisode?.id) {
+                currentChapters = currentEpisode?.let { podcastRepository.loadChapters(it) }.orEmpty()
+            }
+
+            LaunchedEffect(currentEpisode?.id) {
+                currentTranscript = currentEpisode?.let { podcastRepository.loadTranscript(it) }
             }
 
             LaunchedEffect(currentEpisode?.id, mediaController) {
@@ -169,6 +230,12 @@ class MainActivity : ComponentActivity() {
                     .collectAsState(initial = emptySet())
                 val snackbarHostState = remember { SnackbarHostState() }
 
+                LaunchedEffect(currentStation?.id, currentEpisode?.id, playing) {
+                    val title = currentStation?.name ?: currentEpisode?.title ?: "Easy Radio"
+                    val subtitle = currentStation?.tagline ?: currentPodcast?.title ?: "Nothing playing"
+                    com.easyradio.app.widget.EasyRadioWidget.updateState(applicationContext, title, subtitle, playing)
+                }
+
                 LaunchedEffect(uiState) {
                     if (uiState == PlaybackUiState.ERROR) {
                         val name = currentStation?.name ?: currentEpisode?.title
@@ -178,6 +245,13 @@ class MainActivity : ComponentActivity() {
                             "Playback failed. Check your connection and try again."
                         }
                         snackbarHostState.showSnackbar(message)
+                    }
+                }
+
+                LaunchedEffect(opmlMessage) {
+                    opmlMessage?.let {
+                        snackbarHostState.showSnackbar(it)
+                        opmlMessage = null
                     }
                 }
 
@@ -240,6 +314,20 @@ class MainActivity : ComponentActivity() {
                         onSleepTimerMinutesChange = {
                             lifecycleScope.launch { settingsRepository.setSleepTimerMinutes(it) }
                         },
+                        onSkipBackSecondsChange = {
+                            lifecycleScope.launch { settingsRepository.setSkipBackSeconds(it) }
+                        },
+                        onSkipForwardSecondsChange = {
+                            lifecycleScope.launch { settingsRepository.setSkipForwardSeconds(it) }
+                        },
+                        onSkipSilenceEnabledChange = {
+                            lifecycleScope.launch { settingsRepository.setSkipSilenceEnabled(it) }
+                        },
+                        onVoiceBoostEnabledChange = {
+                            lifecycleScope.launch { settingsRepository.setVoiceBoostEnabled(it) }
+                        },
+                        listenedTodaySeconds = listenedTodaySeconds,
+                        listenedThisWeekSeconds = listenedThisWeekSeconds,
                         onBack = { showSettings = false },
                     )
                 } else if (showQueue) {
@@ -312,11 +400,18 @@ class MainActivity : ComponentActivity() {
                             speedLabel = "${PLAYBACK_SPEEDS[playbackSpeedIndex]}x",
                             onCollapse = { showNowPlaying = false },
                             onPlayPause = { if (playing) mediaController?.pause() else mediaController?.play() },
-                            onSkipBack = { skip(-SKIP_BACK_MS) },
-                            onSkipForward = { skip(SKIP_FORWARD_MS) },
+                            onSkipBack = { skip(-settings.skipBackSeconds * 1_000L) },
+                            onSkipForward = { skip(settings.skipForwardSeconds * 1_000L) },
+                            skipBackSeconds = settings.skipBackSeconds,
+                            skipForwardSeconds = settings.skipForwardSeconds,
                             onSpeedClick = ::cyclePlaybackSpeed,
                             onSleepTimerClick = { showSleepTimerPicker = true },
                             onQueueClick = { showQueue = true },
+                            chapters = currentChapters,
+                            onChapterClick = { chapter ->
+                                if (durationMs > 0) seekToFraction(chapter.startTimeMs.toFloat() / durationMs)
+                            },
+                            transcript = currentTranscript,
                         )
                     }
                 } else {
@@ -357,8 +452,10 @@ class MainActivity : ComponentActivity() {
                                         playbackState = uiState,
                                         onPlayClick = { mediaController?.play() },
                                         onPauseClick = { mediaController?.pause() },
-                                        onSkipBackClick = { skip(-SKIP_BACK_MS) },
-                                        onSkipForwardClick = { skip(SKIP_FORWARD_MS) },
+                                        onSkipBackClick = { skip(-settings.skipBackSeconds * 1_000L) },
+                                        onSkipForwardClick = { skip(settings.skipForwardSeconds * 1_000L) },
+                                        skipBackSeconds = settings.skipBackSeconds,
+                                        skipForwardSeconds = settings.skipForwardSeconds,
                                         onSpeedClick = ::cyclePlaybackSpeed,
                                         speedLabel = "${PLAYBACK_SPEEDS[playbackSpeedIndex]}x",
                                         progress = fraction,
@@ -416,6 +513,8 @@ class MainActivity : ComponentActivity() {
                                 nowPlayingEpisode = currentEpisode,
                                 initialPodcast = searchSelectedPodcast,
                                 onInitialPodcastConsumed = { searchSelectedPodcast = null },
+                                onExportOpml = { exportOpmlLauncher.launch("easy-radio-subscriptions.opml") },
+                                onImportOpml = { importOpmlLauncher.launch(arrayOf("*/*")) },
                             )
                             AppTab.PLAYLISTS -> PlaylistsScreen(
                                 repository = favoriteStationRepository,
@@ -528,6 +627,32 @@ class MainActivity : ComponentActivity() {
             // No-op if this podcast isn't subscribed -- there's no row to update.
             podcastRepository.markPlayed(podcast.id)
         }
+    }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) return
+        val granted = androidx.core.content.ContextCompat.checkSelfPermission(
+            this,
+            android.Manifest.permission.POST_NOTIFICATIONS,
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (!granted) {
+            notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    private fun scheduleNewEpisodeCheck() {
+        val request = androidx.work.PeriodicWorkRequestBuilder<com.easyradio.app.notifications.NewEpisodeCheckWorker>(
+            2, java.util.concurrent.TimeUnit.HOURS,
+        ).setConstraints(
+            androidx.work.Constraints.Builder()
+                .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                .build(),
+        ).build()
+        androidx.work.WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
+            "new_episode_check",
+            androidx.work.ExistingPeriodicWorkPolicy.KEEP,
+            request,
+        )
     }
 
     private fun skip(deltaMs: Long) {

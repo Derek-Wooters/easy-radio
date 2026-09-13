@@ -28,5 +28,9 @@ class AppSettingsTest {
         assertThat(settings.autoDownloadNewEpisodes).isFalse()
         assertThat(settings.hasCompletedOnboarding).isFalse()
         assertThat(settings.favoriteGenres).isEmpty()
+        assertThat(settings.skipBackSeconds).isEqualTo(15)
+        assertThat(settings.skipForwardSeconds).isEqualTo(30)
+        assertThat(settings.skipSilenceEnabled).isFalse()
+        assertThat(settings.voiceBoostEnabled).isFalse()
     }
 }
