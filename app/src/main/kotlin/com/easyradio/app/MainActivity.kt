@@ -230,6 +230,12 @@ class MainActivity : ComponentActivity() {
                     .collectAsState(initial = emptySet())
                 val snackbarHostState = remember { SnackbarHostState() }
 
+                LaunchedEffect(currentStation?.id, currentEpisode?.id, playing) {
+                    val title = currentStation?.name ?: currentEpisode?.title ?: "Easy Radio"
+                    val subtitle = currentStation?.tagline ?: currentPodcast?.title ?: "Nothing playing"
+                    com.easyradio.app.widget.EasyRadioWidget.updateState(applicationContext, title, subtitle, playing)
+                }
+
                 LaunchedEffect(uiState) {
                     if (uiState == PlaybackUiState.ERROR) {
                         val name = currentStation?.name ?: currentEpisode?.title
