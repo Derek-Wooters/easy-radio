@@ -320,6 +320,12 @@ class MainActivity : ComponentActivity() {
                         onSkipForwardSecondsChange = {
                             lifecycleScope.launch { settingsRepository.setSkipForwardSeconds(it) }
                         },
+                        onSkipSilenceEnabledChange = {
+                            lifecycleScope.launch { settingsRepository.setSkipSilenceEnabled(it) }
+                        },
+                        onVoiceBoostEnabledChange = {
+                            lifecycleScope.launch { settingsRepository.setVoiceBoostEnabled(it) }
+                        },
                         listenedTodaySeconds = listenedTodaySeconds,
                         listenedThisWeekSeconds = listenedThisWeekSeconds,
                         onBack = { showSettings = false },

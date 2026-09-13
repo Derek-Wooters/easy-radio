@@ -47,6 +47,8 @@ fun SettingsScreen(
     onSleepTimerMinutesChange: (Int) -> Unit,
     onSkipBackSecondsChange: (Int) -> Unit,
     onSkipForwardSecondsChange: (Int) -> Unit,
+    onSkipSilenceEnabledChange: (Boolean) -> Unit = {},
+    onVoiceBoostEnabledChange: (Boolean) -> Unit = {},
     listenedTodaySeconds: Long = 0L,
     listenedThisWeekSeconds: Long = 0L,
     onBack: (() -> Unit)? = null,
@@ -145,6 +147,16 @@ fun SettingsScreen(
             options = SKIP_SECONDS_OPTIONS,
             display = { "$it sec" },
             onSelect = onSkipForwardSecondsChange,
+        )
+        SwitchRow(
+            label = "Trim silence",
+            checked = settings.skipSilenceEnabled,
+            onCheckedChange = onSkipSilenceEnabledChange,
+        )
+        SwitchRow(
+            label = "Voice boost",
+            checked = settings.voiceBoostEnabled,
+            onCheckedChange = onVoiceBoostEnabledChange,
         )
     }
 }

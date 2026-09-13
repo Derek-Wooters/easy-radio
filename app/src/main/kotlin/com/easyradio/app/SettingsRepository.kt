@@ -37,6 +37,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val favoriteGenres = stringSetPreferencesKey("favorite_genres")
         val skipBackSeconds = intPreferencesKey("skip_back_seconds")
         val skipForwardSeconds = intPreferencesKey("skip_forward_seconds")
+        val skipSilenceEnabled = booleanPreferencesKey("skip_silence_enabled")
+        val voiceBoostEnabled = booleanPreferencesKey("voice_boost_enabled")
     }
 
     val settings: Flow<AppSettings> = dataStore.data.map { prefs ->
@@ -55,6 +57,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             favoriteGenres = prefs[Keys.favoriteGenres] ?: defaults.favoriteGenres,
             skipBackSeconds = prefs[Keys.skipBackSeconds] ?: defaults.skipBackSeconds,
             skipForwardSeconds = prefs[Keys.skipForwardSeconds] ?: defaults.skipForwardSeconds,
+            skipSilenceEnabled = prefs[Keys.skipSilenceEnabled] ?: defaults.skipSilenceEnabled,
+            voiceBoostEnabled = prefs[Keys.voiceBoostEnabled] ?: defaults.voiceBoostEnabled,
         )
     }
 
@@ -84,6 +88,14 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setSkipForwardSeconds(seconds: Int) {
         dataStore.edit { it[Keys.skipForwardSeconds] = seconds }
+    }
+
+    suspend fun setSkipSilenceEnabled(value: Boolean) {
+        dataStore.edit { it[Keys.skipSilenceEnabled] = value }
+    }
+
+    suspend fun setVoiceBoostEnabled(value: Boolean) {
+        dataStore.edit { it[Keys.voiceBoostEnabled] = value }
     }
 
     suspend fun completeOnboarding(favoriteGenres: Set<String>) {

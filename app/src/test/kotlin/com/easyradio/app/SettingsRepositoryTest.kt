@@ -87,6 +87,18 @@ class SettingsRepositoryTest {
     }
 
     @Test
+    fun `setSkipSilenceEnabled and setVoiceBoostEnabled persist independently`() = runTest {
+        val repository = repository()
+
+        repository.setSkipSilenceEnabled(true)
+        repository.setVoiceBoostEnabled(true)
+
+        val settings = repository.settings.first()
+        assertThat(settings.skipSilenceEnabled).isTrue()
+        assertThat(settings.voiceBoostEnabled).isTrue()
+    }
+
+    @Test
     fun `completeOnboarding persists the completed flag and the chosen genres`() = runTest {
         val repository = repository()
 

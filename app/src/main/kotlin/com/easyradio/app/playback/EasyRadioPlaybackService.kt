@@ -1,11 +1,13 @@
 package com.easyradio.app.playback
 
+import android.media.audiofx.LoudnessEnhancer
 import android.net.Uri
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
@@ -24,6 +26,10 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.guava.future
+import kotlinx.coroutines.launch
+
+/** LoudnessEnhancer gain, in millibels (100 mB = 1 dB), applied when "voice boost" is on. */
+private const val VOICE_BOOST_GAIN_MILLIBELS = 1000
 
 /**
  * Media3 [MediaLibraryService] backing all playback surfaces. Beyond serving the
@@ -40,6 +46,9 @@ class EasyRadioPlaybackService : MediaLibraryService() {
     private lateinit var repository: PodcastRepository
     private lateinit var wearStatePublisher: WearStatePublisher
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private var loudnessEnhancer: LoudnessEnhancer? = null
+    private var audioSessionId: Int = C.AUDIO_SESSION_ID_UNSET
+    private var voiceBoostEnabled: Boolean = false
 
     override fun onCreate() {
         super.onCreate()
@@ -62,14 +71,49 @@ class EasyRadioPlaybackService : MediaLibraryService() {
                 setWakeMode(C.WAKE_MODE_NETWORK)
             }
 
+        player.addAnalyticsListener(object : AnalyticsListener {
+            override fun onAudioSessionIdChanged(eventTime: AnalyticsListener.EventTime, newAudioSessionId: Int) {
+                audioSessionId = newAudioSessionId
+                refreshLoudnessEnhancer()
+            }
+        })
+
         mediaSession = MediaLibrarySession.Builder(this, player, LibraryCallback()).build()
 
         wearStatePublisher = WearStatePublisher(this, player).also { it.attach() }
+
+        serviceScope.launch {
+            EasyRadioGraph.settings(applicationContext).settings.collect { settings ->
+                player.setSkipSilenceEnabled(settings.skipSilenceEnabled)
+                voiceBoostEnabled = settings.voiceBoostEnabled
+                refreshLoudnessEnhancer()
+            }
+        }
+    }
+
+    /**
+     * LoudnessEnhancer must be (re)created whenever the audio session id changes (a new
+     * track can get a new session) or the "voice boost" setting changes. Recreating rather
+     * than reusing avoids holding a stale effect bound to a session id ExoPlayer has moved on
+     * from.
+     */
+    private fun refreshLoudnessEnhancer() {
+        if (audioSessionId == C.AUDIO_SESSION_ID_UNSET) return
+        loudnessEnhancer?.release()
+        loudnessEnhancer = try {
+            LoudnessEnhancer(audioSessionId).apply {
+                setTargetGain(VOICE_BOOST_GAIN_MILLIBELS)
+                enabled = voiceBoostEnabled
+            }
+        } catch (e: Exception) {
+            null
+        }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession = mediaSession
 
     override fun onDestroy() {
+        loudnessEnhancer?.release()
         wearStatePublisher.detach()
         mediaSession.run {
             player.release()
