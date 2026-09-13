@@ -142,6 +142,7 @@ class MainActivity : ComponentActivity() {
     private val settingsRepository by lazy { EasyRadioGraph.settings(applicationContext) }
     private val favoriteStationRepository by lazy { EasyRadioGraph.favoriteStations(applicationContext) }
     private val recentlyPlayedRepository by lazy { EasyRadioGraph.recentlyPlayed(applicationContext) }
+    private val listeningStatsRepository by lazy { EasyRadioGraph.listeningStats(applicationContext) }
 
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private var mediaController by mutableStateOf<MediaController?>(null)
@@ -172,12 +173,23 @@ class MainActivity : ComponentActivity() {
         scheduleNewEpisodeCheck()
         setContent {
             val settings by settingsRepository.settings.collectAsState(initial = AppSettings())
+            val listenedTodaySeconds by listeningStatsRepository.totalSecondsForLast(1).collectAsState(initial = 0L)
+            val listenedThisWeekSeconds by listeningStatsRepository.totalSecondsForLast(7).collectAsState(initial = 0L)
 
             LaunchedEffect(Unit) {
                 // Wait for the first real DataStore emission rather than the collectAsState
                 // default above, so a returning user never sees a flash of onboarding while
                 // the real "already completed" value is still loading.
                 showOnboarding = !settingsRepository.settings.first().hasCompletedOnboarding
+            }
+
+            LaunchedEffect(Unit) {
+                while (true) {
+                    delay(PODCAST_POSITION_SAVE_INTERVAL_MS)
+                    if (uiState == PlaybackUiState.PLAYING) {
+                        listeningStatsRepository.addListenedSeconds(PODCAST_POSITION_SAVE_INTERVAL_MS / 1_000)
+                    }
+                }
             }
 
             LaunchedEffect(currentEpisode?.id) {
@@ -302,6 +314,8 @@ class MainActivity : ComponentActivity() {
                         onSkipForwardSecondsChange = {
                             lifecycleScope.launch { settingsRepository.setSkipForwardSeconds(it) }
                         },
+                        listenedTodaySeconds = listenedTodaySeconds,
+                        listenedThisWeekSeconds = listenedThisWeekSeconds,
                         onBack = { showSettings = false },
                     )
                 } else if (showQueue) {

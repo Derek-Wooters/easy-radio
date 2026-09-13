@@ -47,6 +47,8 @@ fun SettingsScreen(
     onSleepTimerMinutesChange: (Int) -> Unit,
     onSkipBackSecondsChange: (Int) -> Unit,
     onSkipForwardSecondsChange: (Int) -> Unit,
+    listenedTodaySeconds: Long = 0L,
+    listenedThisWeekSeconds: Long = 0L,
     onBack: (() -> Unit)? = null,
 ) {
     Column(
@@ -62,6 +64,32 @@ fun SettingsScreen(
                 }
             }
             Text("Settings", style = MaterialTheme.typography.headlineMedium)
+        }
+
+        SectionTitle("Listening stats")
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = formatListeningDuration(listenedTodaySeconds),
+                    style = MaterialTheme.typography.headlineSmall,
+                )
+                Text(
+                    text = "Today",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = formatListeningDuration(listenedThisWeekSeconds),
+                    style = MaterialTheme.typography.headlineSmall,
+                )
+                Text(
+                    text = "This week",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
 
         SectionTitle("Appearance")
@@ -191,3 +219,13 @@ private fun DownloadQuality.displayName(): String = when (this) {
 }
 
 private fun sleepTimerLabel(minutes: Int): String = if (minutes == 0) "Off" else "$minutes min"
+
+private fun formatListeningDuration(seconds: Long): String {
+    val hours = seconds / 3600
+    val minutes = (seconds % 3600) / 60
+    return when {
+        hours > 0 -> "${hours}h ${minutes}m"
+        minutes > 0 -> "${minutes}m"
+        else -> "0m"
+    }
+}
