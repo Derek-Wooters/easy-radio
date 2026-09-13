@@ -11,7 +11,7 @@ import androidx.room.RoomDatabase
         FavoriteStationEntity::class,
         RecentlyPlayedEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = false,
 )
 abstract class EasyRadioDatabase : RoomDatabase() {

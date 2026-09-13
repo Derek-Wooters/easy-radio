@@ -156,6 +156,49 @@ class PodcastFeedParserTest {
     }
 
     @Test
+    fun `captures a single podcast-transcript tag`() {
+        val xml = """
+            <rss xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:podcast="https://podcastindex.org/namespace/1.0" version="2.0">
+              <channel>
+                <item>
+                  <title>Transcribed Episode</title>
+                  <guid>guid-transcript</guid>
+                  <enclosure url="https://example.com/ep.mp3"/>
+                  <podcast:transcript url="https://example.com/transcript.txt" type="text/plain"/>
+                </item>
+              </channel>
+            </rss>
+        """.trimIndent()
+
+        val episode = PodcastFeedParser.parse(xml, podcastId = "podcast-1").first()
+
+        assertThat(episode.transcriptUrl).isEqualTo("https://example.com/transcript.txt")
+        assertThat(episode.transcriptType).isEqualTo("text/plain")
+    }
+
+    @Test
+    fun `prefers plain text transcript over vtt when a feed publishes both`() {
+        val xml = """
+            <rss xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:podcast="https://podcastindex.org/namespace/1.0" version="2.0">
+              <channel>
+                <item>
+                  <title>Multi-format Episode</title>
+                  <guid>guid-multi</guid>
+                  <enclosure url="https://example.com/ep.mp3"/>
+                  <podcast:transcript url="https://example.com/transcript.vtt" type="text/vtt"/>
+                  <podcast:transcript url="https://example.com/transcript.txt" type="text/plain"/>
+                </item>
+              </channel>
+            </rss>
+        """.trimIndent()
+
+        val episode = PodcastFeedParser.parse(xml, podcastId = "podcast-1").first()
+
+        assertThat(episode.transcriptUrl).isEqualTo("https://example.com/transcript.txt")
+        assertThat(episode.transcriptType).isEqualTo("text/plain")
+    }
+
+    @Test
     fun `chaptersUrl is null when no podcast-chapters tag is present`() {
         val xml = """
             <rss xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0">

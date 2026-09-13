@@ -149,6 +149,7 @@ class MainActivity : ComponentActivity() {
     private var currentStation by mutableStateOf<RadioStation?>(null)
     private var currentEpisode by mutableStateOf<Episode?>(null)
     private var currentChapters by mutableStateOf<List<com.easyradio.core.model.Chapter>>(emptyList())
+    private var currentTranscript by mutableStateOf<String?>(null)
     private var currentPodcast by mutableStateOf<Podcast?>(null)
 
     private var positionSaveJob: Job? = null
@@ -181,6 +182,10 @@ class MainActivity : ComponentActivity() {
 
             LaunchedEffect(currentEpisode?.id) {
                 currentChapters = currentEpisode?.let { podcastRepository.loadChapters(it) }.orEmpty()
+            }
+
+            LaunchedEffect(currentEpisode?.id) {
+                currentTranscript = currentEpisode?.let { podcastRepository.loadTranscript(it) }
             }
 
             LaunchedEffect(currentEpisode?.id, mediaController) {
@@ -380,6 +385,7 @@ class MainActivity : ComponentActivity() {
                             onChapterClick = { chapter ->
                                 if (durationMs > 0) seekToFraction(chapter.startTimeMs.toFloat() / durationMs)
                             },
+                            transcript = currentTranscript,
                         )
                     }
                 } else {

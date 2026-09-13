@@ -7,6 +7,7 @@ import com.easyradio.core.network.podcast.ChaptersParser
 import com.easyradio.core.network.podcast.ItunesSearchApi
 import com.easyradio.core.network.podcast.OpmlSupport
 import com.easyradio.core.network.podcast.PodcastFeedParser
+import com.easyradio.core.network.podcast.TranscriptParser
 import com.easyradio.core.network.podcast.toPodcastOrNull
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -182,6 +183,22 @@ class PodcastRepository(
             null
         } ?: return emptyList()
         return ChaptersParser.parse(json)
+    }
+
+    /**
+     * Fetches and converts an episode's `<podcast:transcript>` document to plain reading text,
+     * or null if it didn't publish one, the fetch failed, or the result was blank.
+     */
+    suspend fun loadTranscript(episode: Episode): String? {
+        val url = episode.transcriptUrl ?: return null
+        val raw = try {
+            fetchFeed(url)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        } ?: return null
+        return TranscriptParser.parse(raw, episode.transcriptType).takeIf { it.isNotBlank() }
     }
 
     fun episodesFor(podcastId: String): Flow<List<Episode>> =

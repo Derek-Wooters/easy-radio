@@ -491,6 +491,51 @@ class PodcastRepositoryTest {
     }
 
     @Test
+    fun `loadTranscript fetches and converts the episode's transcript document`() = runTest {
+        val episode = com.easyradio.core.model.Episode(
+            id = "ep-1", podcastId = "podcast-1", title = "Episode", audioUrl = "https://example.com/ep.mp3",
+            publishedAtEpochMillis = null, durationSeconds = null,
+            transcriptUrl = "https://example.com/transcript.txt", transcriptType = "text/plain",
+        )
+        val repository = PodcastRepository(
+            FakeItunesSearchApi(),
+            { url -> if (url == episode.transcriptUrl) "Hello and welcome." else feedXml },
+            FakePodcastDao(),
+            FakeEpisodeDao(),
+        )
+
+        assertThat(repository.loadTranscript(episode)).isEqualTo("Hello and welcome.")
+    }
+
+    @Test
+    fun `loadTranscript returns null when the episode has no transcript url`() = runTest {
+        val episode = com.easyradio.core.model.Episode(
+            id = "ep-1", podcastId = "podcast-1", title = "Episode", audioUrl = "https://example.com/ep.mp3",
+            publishedAtEpochMillis = null, durationSeconds = null,
+        )
+        val repository = PodcastRepository(FakeItunesSearchApi(), { feedXml }, FakePodcastDao(), FakeEpisodeDao())
+
+        assertThat(repository.loadTranscript(episode)).isNull()
+    }
+
+    @Test
+    fun `loadTranscript returns null when the fetch fails`() = runTest {
+        val episode = com.easyradio.core.model.Episode(
+            id = "ep-1", podcastId = "podcast-1", title = "Episode", audioUrl = "https://example.com/ep.mp3",
+            publishedAtEpochMillis = null, durationSeconds = null,
+            transcriptUrl = "https://example.com/transcript.txt", transcriptType = "text/plain",
+        )
+        val repository = PodcastRepository(
+            FakeItunesSearchApi(),
+            { throw java.io.IOException("network down") },
+            FakePodcastDao(),
+            FakeEpisodeDao(),
+        )
+
+        assertThat(repository.loadTranscript(episode)).isNull()
+    }
+
+    @Test
     fun `markPlayed sets lastPlayedAtEpochMillis on the subscribed podcast`() = runTest {
         val podcastDao = FakePodcastDao()
         val repository = PodcastRepository(FakeItunesSearchApi(), { feedXml }, podcastDao, FakeEpisodeDao())

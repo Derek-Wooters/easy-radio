@@ -34,6 +34,8 @@ fun Episode.toEntity(): EpisodeEntity = EpisodeEntity(
     description = description,
     localFilePath = localFilePath,
     chaptersUrl = chaptersUrl,
+    transcriptUrl = transcriptUrl,
+    transcriptType = transcriptType,
 )
 
 fun EpisodeEntity.toEpisode(): Episode = Episode(
@@ -46,4 +48,6 @@ fun EpisodeEntity.toEpisode(): Episode = Episode(
     description = description,
     localFilePath = localFilePath,
     chaptersUrl = chaptersUrl,
+    transcriptUrl = transcriptUrl,
+    transcriptType = transcriptType,
 )

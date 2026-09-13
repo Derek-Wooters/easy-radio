@@ -1,6 +1,8 @@
 package com.easyradio.app.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -89,10 +91,35 @@ fun NowPlayingScreen(
     onFavoriteClick: (() -> Unit)? = null,
     chapters: List<Chapter> = emptyList(),
     onChapterClick: ((Chapter) -> Unit)? = null,
+    transcript: String? = null,
 ) {
     val extraColors = LocalEasyRadioColors.current
     val tints = extraColors.avatarTints
     val tint = tints[tintSeed.hashCode().mod(tints.size)]
+    var showTranscript by remember(transcript) { mutableStateOf(false) }
+
+    if (showTranscript && transcript != null) {
+        Surface(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Transcript",
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(onClick = { showTranscript = false }) {
+                        Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Close transcript")
+                    }
+                }
+                Text(
+                    text = transcript,
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 12.dp),
+                )
+            }
+        }
+        return
+    }
 
     Surface(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -270,6 +297,9 @@ fun NowPlayingScreen(
                     IconButton(onClick = onQueueClick) {
                         Icon(Icons.AutoMirrored.Filled.PlaylistPlay, contentDescription = "Up Next")
                     }
+                }
+                if (transcript != null) {
+                    TextButton(onClick = { showTranscript = true }) { Text("Transcript") }
                 }
             }
         }

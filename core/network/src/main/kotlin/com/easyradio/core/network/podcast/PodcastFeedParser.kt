@@ -40,6 +40,8 @@ object PodcastFeedParser {
         private var description: String? = null
         private var audioUrl: String? = null
         private var chaptersUrl: String? = null
+        private var transcriptUrl: String? = null
+        private var transcriptType: String? = null
 
         override fun startElement(uri: String?, localName: String?, qName: String, attributes: Attributes) {
             if (qName == "item") {
@@ -51,10 +53,19 @@ object PodcastFeedParser {
                 description = null
                 audioUrl = null
                 chaptersUrl = null
+                transcriptUrl = null
+                transcriptType = null
             } else if (inItem && qName == "enclosure" && audioUrl == null) {
                 audioUrl = attributes.getValue("url")
             } else if (inItem && qName == "podcast:chapters" && chaptersUrl == null) {
                 chaptersUrl = attributes.getValue("href")
+            } else if (inItem && qName == "podcast:transcript") {
+                val url = attributes.getValue("url")
+                val type = attributes.getValue("type").orEmpty()
+                if (url != null && transcriptTypeRank(type) < transcriptTypeRank(transcriptType.orEmpty())) {
+                    transcriptUrl = url
+                    transcriptType = type
+                }
             }
             currentTag = qName
             text.setLength(0)
@@ -98,6 +109,8 @@ object PodcastFeedParser {
                     durationSeconds = duration?.let(::parseDurationSeconds),
                     description = description?.let(::stripHtml).orEmpty(),
                     chaptersUrl = chaptersUrl?.trim()?.takeIf { it.startsWith("https://") },
+                    transcriptUrl = transcriptUrl?.trim()?.takeIf { it.startsWith("https://") },
+                    transcriptType = transcriptType,
                 )
             } catch (e: IllegalArgumentException) {
                 null
@@ -113,6 +126,20 @@ object PodcastFeedParser {
  */
 private fun stripHtml(raw: String): String =
     raw.replace(Regex("<[^>]*>"), " ").replace(Regex("\\s+"), " ").trim()
+
+/**
+ * A feed can publish the same transcript in multiple formats via repeated
+ * `<podcast:transcript>` tags -- prefer plain-text/HTML (trivial to display) over caption
+ * formats (SRT/VTT, which need cue-timestamp stripping) over JSON (schema varies by provider).
+ */
+private fun transcriptTypeRank(type: String): Int = when (type.lowercase()) {
+    "text/plain" -> 0
+    "text/html" -> 1
+    "application/srt", "application/x-subrip" -> 2
+    "text/vtt" -> 3
+    "application/json" -> 4
+    else -> Int.MAX_VALUE
+}
 
 private fun parsePubDate(raw: String): Long? = try {
     java.time.ZonedDateTime.parse(raw.trim(), DateTimeFormatter.RFC_1123_DATE_TIME)
