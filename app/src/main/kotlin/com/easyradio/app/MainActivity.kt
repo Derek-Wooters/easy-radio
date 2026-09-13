@@ -85,8 +85,6 @@ private enum class AppTab(val label: String, val icon: ImageVector) {
 }
 
 private const val PODCAST_POSITION_SAVE_INTERVAL_MS = 5_000L
-private const val SKIP_BACK_MS = 15_000L
-private const val SKIP_FORWARD_MS = 30_000L
 private val PLAYBACK_SPEEDS = listOf(1.0f, 1.25f, 1.5f, 2.0f)
 
 internal fun formatDuration(ms: Long): String {
@@ -98,6 +96,9 @@ internal fun formatDuration(ms: Long): String {
 }
 
 class MainActivity : ComponentActivity() {
+
+    private val notificationPermissionLauncher =
+        registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) {}
 
     private val radioRepository = RadioStationRepository(api = RadioBrowserApiFactory.create())
 
@@ -129,6 +130,8 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        requestNotificationPermissionIfNeeded()
+        scheduleNewEpisodeCheck()
         setContent {
             val settings by settingsRepository.settings.collectAsState(initial = AppSettings())
 
@@ -240,6 +243,12 @@ class MainActivity : ComponentActivity() {
                         onSleepTimerMinutesChange = {
                             lifecycleScope.launch { settingsRepository.setSleepTimerMinutes(it) }
                         },
+                        onSkipBackSecondsChange = {
+                            lifecycleScope.launch { settingsRepository.setSkipBackSeconds(it) }
+                        },
+                        onSkipForwardSecondsChange = {
+                            lifecycleScope.launch { settingsRepository.setSkipForwardSeconds(it) }
+                        },
                         onBack = { showSettings = false },
                     )
                 } else if (showQueue) {
@@ -312,8 +321,10 @@ class MainActivity : ComponentActivity() {
                             speedLabel = "${PLAYBACK_SPEEDS[playbackSpeedIndex]}x",
                             onCollapse = { showNowPlaying = false },
                             onPlayPause = { if (playing) mediaController?.pause() else mediaController?.play() },
-                            onSkipBack = { skip(-SKIP_BACK_MS) },
-                            onSkipForward = { skip(SKIP_FORWARD_MS) },
+                            onSkipBack = { skip(-settings.skipBackSeconds * 1_000L) },
+                            onSkipForward = { skip(settings.skipForwardSeconds * 1_000L) },
+                            skipBackSeconds = settings.skipBackSeconds,
+                            skipForwardSeconds = settings.skipForwardSeconds,
                             onSpeedClick = ::cyclePlaybackSpeed,
                             onSleepTimerClick = { showSleepTimerPicker = true },
                             onQueueClick = { showQueue = true },
@@ -357,8 +368,10 @@ class MainActivity : ComponentActivity() {
                                         playbackState = uiState,
                                         onPlayClick = { mediaController?.play() },
                                         onPauseClick = { mediaController?.pause() },
-                                        onSkipBackClick = { skip(-SKIP_BACK_MS) },
-                                        onSkipForwardClick = { skip(SKIP_FORWARD_MS) },
+                                        onSkipBackClick = { skip(-settings.skipBackSeconds * 1_000L) },
+                                        onSkipForwardClick = { skip(settings.skipForwardSeconds * 1_000L) },
+                                        skipBackSeconds = settings.skipBackSeconds,
+                                        skipForwardSeconds = settings.skipForwardSeconds,
                                         onSpeedClick = ::cyclePlaybackSpeed,
                                         speedLabel = "${PLAYBACK_SPEEDS[playbackSpeedIndex]}x",
                                         progress = fraction,
@@ -528,6 +541,32 @@ class MainActivity : ComponentActivity() {
             // No-op if this podcast isn't subscribed -- there's no row to update.
             podcastRepository.markPlayed(podcast.id)
         }
+    }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) return
+        val granted = androidx.core.content.ContextCompat.checkSelfPermission(
+            this,
+            android.Manifest.permission.POST_NOTIFICATIONS,
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (!granted) {
+            notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    private fun scheduleNewEpisodeCheck() {
+        val request = androidx.work.PeriodicWorkRequestBuilder<com.easyradio.app.notifications.NewEpisodeCheckWorker>(
+            2, java.util.concurrent.TimeUnit.HOURS,
+        ).setConstraints(
+            androidx.work.Constraints.Builder()
+                .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                .build(),
+        ).build()
+        androidx.work.WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
+            "new_episode_check",
+            androidx.work.ExistingPeriodicWorkPolicy.KEEP,
+            request,
+        )
     }
 
     private fun skip(deltaMs: Long) {

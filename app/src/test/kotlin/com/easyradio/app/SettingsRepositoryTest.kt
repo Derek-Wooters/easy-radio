@@ -75,6 +75,18 @@ class SettingsRepositoryTest {
     }
 
     @Test
+    fun `setSkipBackSeconds and setSkipForwardSeconds persist independently`() = runTest {
+        val repository = repository()
+
+        repository.setSkipBackSeconds(10)
+        repository.setSkipForwardSeconds(45)
+
+        val settings = repository.settings.first()
+        assertThat(settings.skipBackSeconds).isEqualTo(10)
+        assertThat(settings.skipForwardSeconds).isEqualTo(45)
+    }
+
+    @Test
     fun `completeOnboarding persists the completed flag and the chosen genres`() = runTest {
         val repository = repository()
 

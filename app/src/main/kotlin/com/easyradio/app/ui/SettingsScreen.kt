@@ -35,6 +35,7 @@ import com.easyradio.core.model.ThemeMode
 // Design order (7e): Light, Dark, System.
 private val THEME_ORDER = listOf(ThemeMode.LIGHT, ThemeMode.DARK, ThemeMode.SYSTEM)
 private val SLEEP_TIMER_OPTIONS = listOf(0, 15, 30, 45, 60)
+private val SKIP_SECONDS_OPTIONS = listOf(5, 10, 15, 30, 45, 60)
 
 @Composable
 fun SettingsScreen(
@@ -44,6 +45,8 @@ fun SettingsScreen(
     onDownloadOverWifiOnlyChange: (Boolean) -> Unit,
     onAutoDownloadNewEpisodesChange: (Boolean) -> Unit,
     onSleepTimerMinutesChange: (Int) -> Unit,
+    onSkipBackSecondsChange: (Int) -> Unit,
+    onSkipForwardSecondsChange: (Int) -> Unit,
     onBack: (() -> Unit)? = null,
 ) {
     Column(
@@ -100,6 +103,20 @@ fun SettingsScreen(
             options = SLEEP_TIMER_OPTIONS,
             display = ::sleepTimerLabel,
             onSelect = onSleepTimerMinutesChange,
+        )
+        ValueRow(
+            label = "Skip back",
+            value = settings.skipBackSeconds,
+            options = SKIP_SECONDS_OPTIONS,
+            display = { "$it sec" },
+            onSelect = onSkipBackSecondsChange,
+        )
+        ValueRow(
+            label = "Skip forward",
+            value = settings.skipForwardSeconds,
+            options = SKIP_SECONDS_OPTIONS,
+            display = { "$it sec" },
+            onSelect = onSkipForwardSecondsChange,
         )
     }
 }
