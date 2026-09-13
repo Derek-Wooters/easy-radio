@@ -131,6 +131,21 @@ class PodcastRepository(
         return allEpisodes.size
     }
 
+    /**
+     * Fetches a podcast's feed fresh (bypassing the parse cache, since a background
+     * refresh needs to see episodes published since the last check) and returns just
+     * the episodes that weren't already stored -- empty if the fetch fails or nothing
+     * is new. Used by the background new-episode check for notifications/auto-download.
+     */
+    suspend fun checkForNewEpisodes(podcast: Podcast): List<Episode> {
+        val before = episodeDao.observeByPodcast(podcast.id).first().map { it.id }.toSet()
+        feedCache.remove(podcast.id)
+        loadEpisodePage(podcast, upToCount = EPISODE_PAGE_SIZE) ?: return emptyList()
+        return episodeDao.observeByPodcast(podcast.id).first()
+            .filter { it.id !in before }
+            .map { it.toEpisode() }
+    }
+
     fun episodesFor(podcastId: String): Flow<List<Episode>> =
         episodeDao.observeByPodcast(podcastId).map { list -> list.map { it.toEpisode() } }
 

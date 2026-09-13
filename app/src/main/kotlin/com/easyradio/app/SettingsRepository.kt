@@ -35,6 +35,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val autoDownloadNewEpisodes = booleanPreferencesKey("auto_download_new_episodes")
         val hasCompletedOnboarding = booleanPreferencesKey("has_completed_onboarding")
         val favoriteGenres = stringSetPreferencesKey("favorite_genres")
+        val skipBackSeconds = intPreferencesKey("skip_back_seconds")
+        val skipForwardSeconds = intPreferencesKey("skip_forward_seconds")
     }
 
     val settings: Flow<AppSettings> = dataStore.data.map { prefs ->
@@ -51,6 +53,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             autoDownloadNewEpisodes = prefs[Keys.autoDownloadNewEpisodes] ?: defaults.autoDownloadNewEpisodes,
             hasCompletedOnboarding = prefs[Keys.hasCompletedOnboarding] ?: defaults.hasCompletedOnboarding,
             favoriteGenres = prefs[Keys.favoriteGenres] ?: defaults.favoriteGenres,
+            skipBackSeconds = prefs[Keys.skipBackSeconds] ?: defaults.skipBackSeconds,
+            skipForwardSeconds = prefs[Keys.skipForwardSeconds] ?: defaults.skipForwardSeconds,
         )
     }
 
@@ -72,6 +76,14 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setAutoDownloadNewEpisodes(value: Boolean) {
         dataStore.edit { it[Keys.autoDownloadNewEpisodes] = value }
+    }
+
+    suspend fun setSkipBackSeconds(seconds: Int) {
+        dataStore.edit { it[Keys.skipBackSeconds] = seconds }
+    }
+
+    suspend fun setSkipForwardSeconds(seconds: Int) {
+        dataStore.edit { it[Keys.skipForwardSeconds] = seconds }
     }
 
     suspend fun completeOnboarding(favoriteGenres: Set<String>) {

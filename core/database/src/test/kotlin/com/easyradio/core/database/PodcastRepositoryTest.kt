@@ -338,6 +338,64 @@ class PodcastRepositoryTest {
     }
 
     @Test
+    fun `checkForNewEpisodes returns only episodes published since the last check`() = runTest {
+        val episodeDao = FakeEpisodeDao()
+        var feed = feedXml
+        val repository = PodcastRepository(FakeItunesSearchApi(), { feed }, FakePodcastDao(), episodeDao)
+        repository.refreshEpisodes(testPodcast)
+
+        // Same guid-1 episode as feedXml, plus a genuinely new guid-2 episode.
+        feed = """
+            <rss xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0">
+              <channel>
+                <item>
+                  <title>Episode One</title>
+                  <guid>guid-1</guid>
+                  <enclosure url="https://example.com/ep1.mp3"/>
+                </item>
+                <item>
+                  <title>Episode Two</title>
+                  <guid>guid-2</guid>
+                  <enclosure url="https://example.com/ep2.mp3"/>
+                </item>
+              </channel>
+            </rss>
+        """.trimIndent()
+        val newEpisodes = repository.checkForNewEpisodes(testPodcast)
+
+        assertThat(newEpisodes.map { it.title }).containsExactly("Episode Two")
+    }
+
+    @Test
+    fun `checkForNewEpisodes returns an empty list when nothing new was published`() = runTest {
+        val episodeDao = FakeEpisodeDao()
+        val repository = PodcastRepository(FakeItunesSearchApi(), { feedXml }, FakePodcastDao(), episodeDao)
+        repository.refreshEpisodes(testPodcast)
+
+        val newEpisodes = repository.checkForNewEpisodes(testPodcast)
+
+        assertThat(newEpisodes).isEmpty()
+    }
+
+    @Test
+    fun `checkForNewEpisodes returns an empty list when the fetch fails`() = runTest {
+        val episodeDao = FakeEpisodeDao()
+        var shouldFail = false
+        val repository = PodcastRepository(
+            FakeItunesSearchApi(),
+            { if (shouldFail) throw java.io.IOException("network down") else feedXml },
+            FakePodcastDao(),
+            episodeDao,
+        )
+        repository.refreshEpisodes(testPodcast)
+        shouldFail = true
+
+        val newEpisodes = repository.checkForNewEpisodes(testPodcast)
+
+        assertThat(newEpisodes).isEmpty()
+    }
+
+    @Test
     fun `markPlayed sets lastPlayedAtEpochMillis on the subscribed podcast`() = runTest {
         val podcastDao = FakePodcastDao()
         val repository = PodcastRepository(FakeItunesSearchApi(), { feedXml }, podcastDao, FakeEpisodeDao())

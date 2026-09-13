@@ -75,6 +75,8 @@ fun NowPlayingScreen(
     onPlayPause: () -> Unit,
     onSkipBack: (() -> Unit)? = null,
     onSkipForward: (() -> Unit)? = null,
+    skipBackSeconds: Int = 15,
+    skipForwardSeconds: Int = 30,
     onSpeedClick: (() -> Unit)? = null,
     onSleepTimerClick: (() -> Unit)? = null,
     onQueueClick: (() -> Unit)? = null,
@@ -217,7 +219,7 @@ fun NowPlayingScreen(
                 }
                 if (onSkipBack != null) {
                     IconButton(onClick = onSkipBack) {
-                        Icon(Icons.Filled.Replay, contentDescription = "Skip back 15 seconds")
+                        Icon(Icons.Filled.Replay, contentDescription = "Skip back $skipBackSeconds seconds")
                     }
                 }
                 FilledIconButton(
@@ -236,7 +238,7 @@ fun NowPlayingScreen(
                 }
                 if (onSkipForward != null) {
                     IconButton(onClick = onSkipForward) {
-                        Icon(Icons.Filled.Forward30, contentDescription = "Skip forward 30 seconds")
+                        Icon(Icons.Filled.Forward30, contentDescription = "Skip forward $skipForwardSeconds seconds")
                     }
                 }
                 if (onSleepTimerClick != null && onQueueClick != null) {

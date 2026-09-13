@@ -49,6 +49,8 @@ fun NowPlayingBar(
     onPauseClick: () -> Unit,
     onSkipBackClick: (() -> Unit)? = null,
     onSkipForwardClick: (() -> Unit)? = null,
+    skipBackSeconds: Int = 15,
+    skipForwardSeconds: Int = 30,
     onSpeedClick: (() -> Unit)? = null,
     speedLabel: String? = null,
     progress: Float? = null,
@@ -118,7 +120,7 @@ fun NowPlayingBar(
                 }
                 if (onSkipBackClick != null) {
                     IconButton(onClick = onSkipBackClick) {
-                        Icon(Icons.Filled.Replay, contentDescription = "Skip back 15 seconds")
+                        Icon(Icons.Filled.Replay, contentDescription = "Skip back $skipBackSeconds seconds")
                     }
                 }
                 IconButton(onClick = if (isPlaying) onPauseClick else onPlayClick) {
@@ -133,7 +135,7 @@ fun NowPlayingBar(
                 }
                 if (onSkipForwardClick != null) {
                     IconButton(onClick = onSkipForwardClick) {
-                        Icon(Icons.Filled.Forward30, contentDescription = "Skip forward 30 seconds")
+                        Icon(Icons.Filled.Forward30, contentDescription = "Skip forward $skipForwardSeconds seconds")
                     }
                 }
             }
