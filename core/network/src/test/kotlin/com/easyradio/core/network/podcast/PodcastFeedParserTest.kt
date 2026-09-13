@@ -136,6 +136,45 @@ class PodcastFeedParserTest {
     }
 
     @Test
+    fun `captures the podcast-chapters href when present`() {
+        val xml = """
+            <rss xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:podcast="https://podcastindex.org/namespace/1.0" version="2.0">
+              <channel>
+                <item>
+                  <title>Chaptered Episode</title>
+                  <guid>guid-chapters</guid>
+                  <enclosure url="https://example.com/ep.mp3"/>
+                  <podcast:chapters url="ignored" href="https://example.com/ep-chapters.json" type="application/json+chapters"/>
+                </item>
+              </channel>
+            </rss>
+        """.trimIndent()
+
+        val episode = PodcastFeedParser.parse(xml, podcastId = "podcast-1").first()
+
+        assertThat(episode.chaptersUrl).isEqualTo("https://example.com/ep-chapters.json")
+    }
+
+    @Test
+    fun `chaptersUrl is null when no podcast-chapters tag is present`() {
+        val xml = """
+            <rss xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0">
+              <channel>
+                <item>
+                  <title>Plain Episode</title>
+                  <guid>guid-plain</guid>
+                  <enclosure url="https://example.com/ep.mp3"/>
+                </item>
+              </channel>
+            </rss>
+        """.trimIndent()
+
+        val episode = PodcastFeedParser.parse(xml, podcastId = "podcast-1").first()
+
+        assertThat(episode.chaptersUrl).isNull()
+    }
+
+    @Test
     fun `malformed xml returns an empty list instead of throwing`() {
         val episodes = PodcastFeedParser.parse("not valid xml <<<", podcastId = "podcast-1")
 

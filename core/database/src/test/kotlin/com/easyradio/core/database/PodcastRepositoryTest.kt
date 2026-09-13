@@ -444,6 +444,53 @@ class PodcastRepositoryTest {
     }
 
     @Test
+    fun `loadChapters fetches and parses the episode's chapters json`() = runTest {
+        val chaptersJson = """{"chapters":[{"startTime":0,"title":"Intro"}]}"""
+        val episode = com.easyradio.core.model.Episode(
+            id = "ep-1", podcastId = "podcast-1", title = "Episode", audioUrl = "https://example.com/ep.mp3",
+            publishedAtEpochMillis = null, durationSeconds = null, chaptersUrl = "https://example.com/chapters.json",
+        )
+        val repository = PodcastRepository(
+            FakeItunesSearchApi(),
+            { url -> if (url == episode.chaptersUrl) chaptersJson else feedXml },
+            FakePodcastDao(),
+            FakeEpisodeDao(),
+        )
+
+        val chapters = repository.loadChapters(episode)
+
+        assertThat(chapters).hasSize(1)
+        assertThat(chapters.first().title).isEqualTo("Intro")
+    }
+
+    @Test
+    fun `loadChapters returns an empty list when the episode has no chapters url`() = runTest {
+        val episode = com.easyradio.core.model.Episode(
+            id = "ep-1", podcastId = "podcast-1", title = "Episode", audioUrl = "https://example.com/ep.mp3",
+            publishedAtEpochMillis = null, durationSeconds = null,
+        )
+        val repository = PodcastRepository(FakeItunesSearchApi(), { feedXml }, FakePodcastDao(), FakeEpisodeDao())
+
+        assertThat(repository.loadChapters(episode)).isEmpty()
+    }
+
+    @Test
+    fun `loadChapters returns an empty list when the fetch fails`() = runTest {
+        val episode = com.easyradio.core.model.Episode(
+            id = "ep-1", podcastId = "podcast-1", title = "Episode", audioUrl = "https://example.com/ep.mp3",
+            publishedAtEpochMillis = null, durationSeconds = null, chaptersUrl = "https://example.com/chapters.json",
+        )
+        val repository = PodcastRepository(
+            FakeItunesSearchApi(),
+            { throw java.io.IOException("network down") },
+            FakePodcastDao(),
+            FakeEpisodeDao(),
+        )
+
+        assertThat(repository.loadChapters(episode)).isEmpty()
+    }
+
+    @Test
     fun `markPlayed sets lastPlayedAtEpochMillis on the subscribed podcast`() = runTest {
         val podcastDao = FakePodcastDao()
         val repository = PodcastRepository(FakeItunesSearchApi(), { feedXml }, podcastDao, FakeEpisodeDao())

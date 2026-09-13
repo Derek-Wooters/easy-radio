@@ -9,10 +9,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
@@ -26,6 +29,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarOutline
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -46,6 +50,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.easyradio.app.formatDuration
 import com.easyradio.app.ui.theme.LocalEasyRadioColors
+import com.easyradio.core.model.Chapter
 
 /**
  * Full-screen "now playing" surface reached by tapping the mini-player. Radio
@@ -82,6 +87,8 @@ fun NowPlayingScreen(
     onQueueClick: (() -> Unit)? = null,
     isFavorite: Boolean = false,
     onFavoriteClick: (() -> Unit)? = null,
+    chapters: List<Chapter> = emptyList(),
+    onChapterClick: ((Chapter) -> Unit)? = null,
 ) {
     val extraColors = LocalEasyRadioColors.current
     val tints = extraColors.avatarTints
@@ -179,6 +186,24 @@ fun NowPlayingScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                }
+                if (chapters.isNotEmpty()) {
+                    val positionMs = (displayProgress * durationMs).toLong()
+                    val currentChapter = chapters.lastOrNull { it.startTimeMs <= positionMs }
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(vertical = 8.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        items(chapters) { chapter ->
+                            val isCurrent = chapter == currentChapter
+                            FilterChip(
+                                selected = isCurrent,
+                                onClick = { onChapterClick?.invoke(chapter) },
+                                label = { Text(chapter.title, maxLines = 1) },
+                            )
+                        }
+                    }
                 }
             } else if (isLive) {
                 Row(verticalAlignment = Alignment.CenterVertically) {

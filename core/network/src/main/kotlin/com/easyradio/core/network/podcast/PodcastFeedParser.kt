@@ -39,6 +39,7 @@ object PodcastFeedParser {
         private var duration: String? = null
         private var description: String? = null
         private var audioUrl: String? = null
+        private var chaptersUrl: String? = null
 
         override fun startElement(uri: String?, localName: String?, qName: String, attributes: Attributes) {
             if (qName == "item") {
@@ -49,8 +50,11 @@ object PodcastFeedParser {
                 duration = null
                 description = null
                 audioUrl = null
+                chaptersUrl = null
             } else if (inItem && qName == "enclosure" && audioUrl == null) {
                 audioUrl = attributes.getValue("url")
+            } else if (inItem && qName == "podcast:chapters" && chaptersUrl == null) {
+                chaptersUrl = attributes.getValue("href")
             }
             currentTag = qName
             text.setLength(0)
@@ -93,6 +97,7 @@ object PodcastFeedParser {
                     publishedAtEpochMillis = pubDate?.let(::parsePubDate),
                     durationSeconds = duration?.let(::parseDurationSeconds),
                     description = description?.let(::stripHtml).orEmpty(),
+                    chaptersUrl = chaptersUrl?.trim()?.takeIf { it.startsWith("https://") },
                 )
             } catch (e: IllegalArgumentException) {
                 null

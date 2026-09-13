@@ -148,6 +148,7 @@ class MainActivity : ComponentActivity() {
     private var uiState by mutableStateOf(PlaybackUiState.IDLE)
     private var currentStation by mutableStateOf<RadioStation?>(null)
     private var currentEpisode by mutableStateOf<Episode?>(null)
+    private var currentChapters by mutableStateOf<List<com.easyradio.core.model.Chapter>>(emptyList())
     private var currentPodcast by mutableStateOf<Podcast?>(null)
 
     private var positionSaveJob: Job? = null
@@ -176,6 +177,10 @@ class MainActivity : ComponentActivity() {
                 // default above, so a returning user never sees a flash of onboarding while
                 // the real "already completed" value is still loading.
                 showOnboarding = !settingsRepository.settings.first().hasCompletedOnboarding
+            }
+
+            LaunchedEffect(currentEpisode?.id) {
+                currentChapters = currentEpisode?.let { podcastRepository.loadChapters(it) }.orEmpty()
             }
 
             LaunchedEffect(currentEpisode?.id, mediaController) {
@@ -371,6 +376,10 @@ class MainActivity : ComponentActivity() {
                             onSpeedClick = ::cyclePlaybackSpeed,
                             onSleepTimerClick = { showSleepTimerPicker = true },
                             onQueueClick = { showQueue = true },
+                            chapters = currentChapters,
+                            onChapterClick = { chapter ->
+                                if (durationMs > 0) seekToFraction(chapter.startTimeMs.toFloat() / durationMs)
+                            },
                         )
                     }
                 } else {

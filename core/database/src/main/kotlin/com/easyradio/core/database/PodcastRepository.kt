@@ -2,6 +2,8 @@ package com.easyradio.core.database
 
 import com.easyradio.core.model.Episode
 import com.easyradio.core.model.Podcast
+import com.easyradio.core.model.Chapter
+import com.easyradio.core.network.podcast.ChaptersParser
 import com.easyradio.core.network.podcast.ItunesSearchApi
 import com.easyradio.core.network.podcast.OpmlSupport
 import com.easyradio.core.network.podcast.PodcastFeedParser
@@ -164,6 +166,22 @@ class PodcastRepository(
             imported++
         }
         return imported
+    }
+
+    /**
+     * Fetches and parses an episode's Podcasting 2.0 chapters, if it published a
+     * `<podcast:chapters>` tag -- empty if it didn't, or if the fetch/parse fails.
+     */
+    suspend fun loadChapters(episode: Episode): List<Chapter> {
+        val url = episode.chaptersUrl ?: return emptyList()
+        val json = try {
+            fetchFeed(url)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        } ?: return emptyList()
+        return ChaptersParser.parse(json)
     }
 
     fun episodesFor(podcastId: String): Flow<List<Episode>> =

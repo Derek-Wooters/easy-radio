@@ -14,4 +14,5 @@ data class EpisodeEntity(
     val description: String,
     val positionMs: Long = 0,
     val localFilePath: String? = null,
+    val chaptersUrl: String? = null,
 )
