@@ -100,6 +100,42 @@ class MainActivity : ComponentActivity() {
     private val notificationPermissionLauncher =
         registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) {}
 
+    private var opmlMessage by mutableStateOf<String?>(null)
+
+    private val exportOpmlLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.CreateDocument("text/xml"),
+    ) { uri ->
+        if (uri == null) return@registerForActivityResult
+        lifecycleScope.launch {
+            val opml = podcastRepository.exportOpml()
+            opmlMessage = try {
+                contentResolver.openOutputStream(uri)?.use { it.write(opml.toByteArray()) }
+                "Subscriptions exported"
+            } catch (e: Exception) {
+                "Export failed"
+            }
+        }
+    }
+
+    private val importOpmlLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri == null) return@registerForActivityResult
+        lifecycleScope.launch {
+            opmlMessage = try {
+                val xml = contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                if (xml == null) {
+                    "Couldn't read file"
+                } else {
+                    val count = podcastRepository.importOpml(xml)
+                    if (count == 0) "No new subscriptions found" else "Imported $count subscription${if (count == 1) "" else "s"}"
+                }
+            } catch (e: Exception) {
+                "Import failed"
+            }
+        }
+    }
+
     private val radioRepository = RadioStationRepository(api = RadioBrowserApiFactory.create())
 
     private val podcastRepository by lazy { EasyRadioGraph.repository(applicationContext) }
@@ -181,6 +217,13 @@ class MainActivity : ComponentActivity() {
                             "Playback failed. Check your connection and try again."
                         }
                         snackbarHostState.showSnackbar(message)
+                    }
+                }
+
+                LaunchedEffect(opmlMessage) {
+                    opmlMessage?.let {
+                        snackbarHostState.showSnackbar(it)
+                        opmlMessage = null
                     }
                 }
 
@@ -429,6 +472,8 @@ class MainActivity : ComponentActivity() {
                                 nowPlayingEpisode = currentEpisode,
                                 initialPodcast = searchSelectedPodcast,
                                 onInitialPodcastConsumed = { searchSelectedPodcast = null },
+                                onExportOpml = { exportOpmlLauncher.launch("easy-radio-subscriptions.opml") },
+                                onImportOpml = { importOpmlLauncher.launch(arrayOf("*/*")) },
                             )
                             AppTab.PLAYLISTS -> PlaylistsScreen(
                                 repository = favoriteStationRepository,

@@ -93,6 +93,8 @@ fun PodcastsScreen(
     nowPlayingEpisode: Episode? = null,
     initialPodcast: Podcast? = null,
     onInitialPodcastConsumed: () -> Unit = {},
+    onExportOpml: () -> Unit = {},
+    onImportOpml: () -> Unit = {},
 ) {
     var screenState by remember { mutableStateOf(PodcastScreenState.LIBRARY) }
     var selectedPodcast by remember { mutableStateOf<Podcast?>(null) }
@@ -111,6 +113,8 @@ fun PodcastsScreen(
             onPodcastSelected = { selectedPodcast = it; screenState = PodcastScreenState.EPISODES },
             onQueueClick = { screenState = PodcastScreenState.QUEUE },
             onDownloadsClick = { screenState = PodcastScreenState.DOWNLOADS },
+            onExportOpml = onExportOpml,
+            onImportOpml = onImportOpml,
         )
         PodcastScreenState.EPISODES -> selectedPodcast?.let { podcast ->
             EpisodeListScreen(
@@ -147,6 +151,8 @@ private fun PodcastLibraryScreen(
     onPodcastSelected: (Podcast) -> Unit,
     onQueueClick: () -> Unit,
     onDownloadsClick: () -> Unit,
+    onExportOpml: () -> Unit,
+    onImportOpml: () -> Unit,
 ) {
     var query by remember { mutableStateOf("") }
     var searchResults by remember { mutableStateOf<List<Podcast>>(emptyList()) }
@@ -193,6 +199,20 @@ private fun PodcastLibraryScreen(
                         onClick = {
                             menuExpanded = false
                             onDownloadsClick()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Export subscriptions") },
+                        onClick = {
+                            menuExpanded = false
+                            onExportOpml()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Import subscriptions") },
+                        onClick = {
+                            menuExpanded = false
+                            onImportOpml()
                         },
                     )
                 }

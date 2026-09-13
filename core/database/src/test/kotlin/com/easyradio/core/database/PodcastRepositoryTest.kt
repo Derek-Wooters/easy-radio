@@ -396,6 +396,54 @@ class PodcastRepositoryTest {
     }
 
     @Test
+    fun `exportOpml serializes every subscribed podcast`() = runTest {
+        val podcastDao = FakePodcastDao()
+        val repository = PodcastRepository(FakeItunesSearchApi(), { feedXml }, podcastDao, FakeEpisodeDao())
+        repository.subscribe(testPodcast)
+
+        val opml = repository.exportOpml()
+
+        assertThat(opml).contains(testPodcast.feedUrl)
+        assertThat(opml).contains(testPodcast.title)
+    }
+
+    @Test
+    fun `importOpml subscribes to every new feed and skips already-subscribed ones`() = runTest {
+        val podcastDao = FakePodcastDao()
+        val repository = PodcastRepository(FakeItunesSearchApi(), { feedXml }, podcastDao, FakeEpisodeDao())
+        repository.subscribe(testPodcast)
+        val opml = """
+            <opml version="1.0">
+              <body>
+                <outline text="${testPodcast.title}" xmlUrl="${testPodcast.feedUrl}"/>
+                <outline text="New Show" xmlUrl="https://example.com/new-feed.xml"/>
+              </body>
+            </opml>
+        """.trimIndent()
+
+        val imported = repository.importOpml(opml)
+
+        assertThat(imported).isEqualTo(1)
+        val subscribed = repository.subscribedPodcasts().first()
+        assertThat(subscribed.map { it.feedUrl }).containsExactly(testPodcast.feedUrl, "https://example.com/new-feed.xml")
+    }
+
+    @Test
+    fun `re-importing a previously exported OPML after unsubscribing re-adds that podcast`() = runTest {
+        val podcastDao = FakePodcastDao()
+        val repository = PodcastRepository(FakeItunesSearchApi(), { feedXml }, podcastDao, FakeEpisodeDao())
+        repository.subscribe(testPodcast)
+        val exported = repository.exportOpml()
+        repository.unsubscribe(testPodcast.id)
+        assertThat(repository.subscribedPodcasts().first()).isEmpty()
+
+        val imported = repository.importOpml(exported)
+
+        assertThat(imported).isEqualTo(1)
+        assertThat(repository.subscribedPodcasts().first().map { it.feedUrl }).containsExactly(testPodcast.feedUrl)
+    }
+
+    @Test
     fun `markPlayed sets lastPlayedAtEpochMillis on the subscribed podcast`() = runTest {
         val podcastDao = FakePodcastDao()
         val repository = PodcastRepository(FakeItunesSearchApi(), { feedXml }, podcastDao, FakeEpisodeDao())

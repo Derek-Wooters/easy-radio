@@ -3,6 +3,7 @@ package com.easyradio.core.database
 import com.easyradio.core.model.Episode
 import com.easyradio.core.model.Podcast
 import com.easyradio.core.network.podcast.ItunesSearchApi
+import com.easyradio.core.network.podcast.OpmlSupport
 import com.easyradio.core.network.podcast.PodcastFeedParser
 import com.easyradio.core.network.podcast.toPodcastOrNull
 import kotlinx.coroutines.CancellationException
@@ -144,6 +145,25 @@ class PodcastRepository(
         return episodeDao.observeByPodcast(podcast.id).first()
             .filter { it.id !in before }
             .map { it.toEpisode() }
+    }
+
+    /** Serializes current subscriptions to OPML, the standard podcast-app migration format. */
+    suspend fun exportOpml(): String = OpmlSupport.write(subscribedPodcasts().first())
+
+    /**
+     * Subscribes to every feed in [xml] not already followed, using the OPML entry's
+     * title directly (no iTunes lookup) since the feed URL is already known. Returns
+     * how many new subscriptions were added.
+     */
+    suspend fun importOpml(xml: String): Int {
+        val existingFeedUrls = subscribedPodcasts().first().map { it.feedUrl }.toSet()
+        var imported = 0
+        for (entry in OpmlSupport.parse(xml)) {
+            if (entry.feedUrl in existingFeedUrls) continue
+            subscribe(Podcast(id = entry.feedUrl, title = entry.title, author = "", artworkUrl = null, feedUrl = entry.feedUrl))
+            imported++
+        }
+        return imported
     }
 
     fun episodesFor(podcastId: String): Flow<List<Episode>> =
