@@ -398,6 +398,7 @@ class MainActivity : ComponentActivity() {
                             AppTab.SEARCH -> SearchScreen(
                                 radioRepository = radioRepository,
                                 podcastRepository = podcastRepository,
+                                favoriteStationRepository = favoriteStationRepository,
                                 onStationSelected = ::playStation,
                                 onPodcastSelected = { podcast ->
                                     searchSelectedPodcast = podcast
