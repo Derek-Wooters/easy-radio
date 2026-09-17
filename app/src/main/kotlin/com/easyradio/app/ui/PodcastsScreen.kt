@@ -90,6 +90,7 @@ private enum class PodcastDetailTab(val label: String) {
 fun PodcastsScreen(
     repository: PodcastRepository,
     onEpisodeSelected: (Podcast, Episode) -> Unit,
+    onEpisodeSelectedFromList: (Podcast, Episode) -> Unit = onEpisodeSelected,
     nowPlayingEpisode: Episode? = null,
     initialPodcast: Podcast? = null,
     onInitialPodcastConsumed: () -> Unit = {},
@@ -121,7 +122,7 @@ fun PodcastsScreen(
                 repository = repository,
                 podcast = podcast,
                 onBack = { screenState = PodcastScreenState.LIBRARY },
-                onEpisodeSelected = { episode -> onEpisodeSelected(podcast, episode) },
+                onEpisodeSelected = { episode -> onEpisodeSelectedFromList(podcast, episode) },
                 nowPlayingEpisode = nowPlayingEpisode,
             )
         }

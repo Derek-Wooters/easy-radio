@@ -161,7 +161,12 @@ class MainActivity : ComponentActivity() {
     private var showQueue by mutableStateOf(false)
     private var showSettings by mutableStateOf(false)
     private var showSleepTimerPicker by mutableStateOf(false)
-    private var searchSelectedPodcast by mutableStateOf<Podcast?>(null)
+    // Podcast whose episode list should be (re)opened the next time PodcastsScreen mounts --
+    // set when navigating there from search/home, or when playing an episode from the episode
+    // list, so collapsing the full-screen player back out lands on that episode list again
+    // instead of resetting to the podcast library (PodcastsScreen's own screenState/
+    // selectedPodcast is `remember`ed, so it's lost whenever it's disposed by showNowPlaying).
+    private var podcastToOpen by mutableStateOf<Podcast?>(null)
     private var showOnboarding by mutableStateOf(false)
     private var onboardingGenres by mutableStateOf<Set<String>>(emptySet())
 
@@ -486,7 +491,7 @@ class MainActivity : ComponentActivity() {
                                 favoriteGenres = settings.favoriteGenres,
                                 onStationSelected = ::playStation,
                                 onPodcastSelected = { podcast ->
-                                    searchSelectedPodcast = podcast
+                                    podcastToOpen = podcast
                                     selectedTab = AppTab.PODCASTS
                                 },
                                 onRecentlyPlayedSelected = ::playRecentlyPlayed,
@@ -498,7 +503,7 @@ class MainActivity : ComponentActivity() {
                                 favoriteStationRepository = favoriteStationRepository,
                                 onStationSelected = ::playStation,
                                 onPodcastSelected = { podcast ->
-                                    searchSelectedPodcast = podcast
+                                    podcastToOpen = podcast
                                     selectedTab = AppTab.PODCASTS
                                 },
                             )
@@ -510,9 +515,14 @@ class MainActivity : ComponentActivity() {
                             AppTab.PODCASTS -> PodcastsScreen(
                                 repository = podcastRepository,
                                 onEpisodeSelected = { podcast, episode -> playEpisode(podcast, episode) },
+                                onEpisodeSelectedFromList = { podcast, episode ->
+                                    podcastToOpen = podcast
+                                    playEpisode(podcast, episode)
+                                    showNowPlaying = true
+                                },
                                 nowPlayingEpisode = currentEpisode,
-                                initialPodcast = searchSelectedPodcast,
-                                onInitialPodcastConsumed = { searchSelectedPodcast = null },
+                                initialPodcast = podcastToOpen,
+                                onInitialPodcastConsumed = { podcastToOpen = null },
                                 onExportOpml = { exportOpmlLauncher.launch("easy-radio-subscriptions.opml") },
                                 onImportOpml = { importOpmlLauncher.launch(arrayOf("*/*")) },
                             )
