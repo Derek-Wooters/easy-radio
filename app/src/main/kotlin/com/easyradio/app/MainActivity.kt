@@ -18,21 +18,17 @@ import androidx.compose.material.icons.filled.Podcasts
 import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberBottomSheetScaffoldState
-import androidx.compose.material3.rememberStandardBottomSheetState
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.unit.dp
+import com.easyradio.app.ui.ExpandableSheetScaffold
 import com.easyradio.app.ui.HomeScreen
 import com.easyradio.app.ui.NowPlayingBar
 import com.easyradio.app.ui.NowPlayingScreen
@@ -180,7 +176,6 @@ class MainActivity : ComponentActivity() {
     private var showOnboarding by mutableStateOf(false)
     private var onboardingGenres by mutableStateOf<Set<String>>(emptySet())
 
-    @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
@@ -245,21 +240,6 @@ class MainActivity : ComponentActivity() {
                 val favoriteStationIds by favoriteStationRepository.favoriteIds()
                     .collectAsState(initial = emptySet())
                 val snackbarHostState = remember { SnackbarHostState() }
-                // Starts Hidden (nothing has played yet this session) rather than
-                // PartiallyExpanded so sheetPeekHeight can stay constant -- toggling it
-                // between 0.dp and MINI_PLAYER_HEIGHT left the PartiallyExpanded anchor
-                // stale at its old (zero) offset after the first play, overlapping the nav
-                // bar instead of sitting above it.
-                val sheetState = rememberStandardBottomSheetState(
-                    initialValue = SheetValue.Hidden,
-                    skipHiddenState = false,
-                )
-                val sheetScaffoldState = rememberBottomSheetScaffoldState(bottomSheetState = sheetState)
-                val sheetScope = rememberCoroutineScope()
-
-                LaunchedEffect(expandRequestId) {
-                    if (expandRequestId > 0) sheetState.expand()
-                }
 
                 LaunchedEffect(currentStation?.id, currentEpisode?.id, playing) {
                     val title = currentStation?.name ?: currentEpisode?.title ?: "Easy Radio"
@@ -286,9 +266,6 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                BackHandler(enabled = sheetState.currentValue == SheetValue.Expanded) {
-                    sheetScope.launch { sheetState.partialExpand() }
-                }
                 BackHandler(enabled = showQueue) { showQueue = false }
                 BackHandler(enabled = showSettings) { showSettings = false }
 
@@ -381,127 +358,123 @@ class MainActivity : ComponentActivity() {
                     )
                 } else {
                 val nothingPlaying = currentStation == null && currentEpisode == null
-                BottomSheetScaffold(
-                    scaffoldState = sheetScaffoldState,
-                    sheetPeekHeight = MINI_PLAYER_HEIGHT,
-                    sheetSwipeEnabled = !nothingPlaying,
-                    // The mini-player is fully tappable to expand (see NowPlayingBar), so the
-                    // default drag handle -- which visually implies dragging is required -- is
-                    // removed. Dragging the sheet still works without it.
-                    sheetDragHandle = null,
-                    sheetContent = {
-                        if (!nothingPlaying) {
-                            val station = currentStation
-                            val episode = currentEpisode
-                            val podcast = currentPodcast
-                            if (sheetState.targetValue == SheetValue.Expanded) {
-                                when {
-                                    station != null -> NowPlayingScreen(
-                                        topLabel = "Live Radio",
-                                        title = station.name,
-                                        subtitle = station.tagline,
-                                        imageUrl = station.imageUrl,
-                                        tintSeed = station.id,
-                                        isLive = true,
-                                        isPlaying = playing,
-                                        isBuffering = uiState == PlaybackUiState.BUFFERING,
-                                        progress = null,
-                                        positionLabel = null,
-                                        durationLabel = null,
-                                        speedLabel = null,
-                                        onCollapse = { sheetScope.launch { sheetState.partialExpand() } },
-                                        onPlayPause = { if (playing) mediaController?.pause() else playStation(station) },
-                                        onQueueClick = { showQueue = true },
-                                        isFavorite = station.id in favoriteStationIds,
-                                        onFavoriteClick = {
-                                            lifecycleScope.launch {
-                                                if (station.id in favoriteStationIds) {
-                                                    favoriteStationRepository.unfavorite(station.id)
-                                                } else {
-                                                    favoriteStationRepository.favorite(station)
-                                                    // This toggle only ever applies to the currently-playing
-                                                    // station, so favoriting it now means it's playing now too --
-                                                    // markPlayed() at playback-start time already no-op'd since
-                                                    // there was no favorited row yet to update.
-                                                    favoriteStationRepository.markPlayed(station.id)
-                                                }
-                                            }
-                                        },
-                                    )
-                                    episode != null -> NowPlayingScreen(
-                                        topLabel = podcast?.title.orEmpty(),
-                                        title = episode.title,
-                                        subtitle = podcast?.title.orEmpty(),
-                                        imageUrl = podcast?.artworkUrl,
-                                        tintSeed = episode.podcastId,
-                                        isLive = false,
-                                        isPlaying = playing,
-                                        isBuffering = uiState == PlaybackUiState.BUFFERING,
-                                        progress = if (durationMs > 0) positionMs.toFloat() / durationMs else null,
-                                        positionLabel = formatDuration(positionMs),
-                                        durationLabel = formatDuration(durationMs),
-                                        durationMs = durationMs,
-                                        onSeek = ::seekToFraction,
-                                        speedLabel = "${PLAYBACK_SPEEDS[playbackSpeedIndex]}x",
-                                        onCollapse = { sheetScope.launch { sheetState.partialExpand() } },
-                                        onPlayPause = { if (playing) mediaController?.pause() else mediaController?.play() },
-                                        onSkipBack = { skip(-settings.skipBackSeconds * 1_000L) },
-                                        onSkipForward = { skip(settings.skipForwardSeconds * 1_000L) },
-                                        skipBackSeconds = settings.skipBackSeconds,
-                                        skipForwardSeconds = settings.skipForwardSeconds,
-                                        onSpeedClick = ::cyclePlaybackSpeed,
-                                        onSleepTimerClick = { showSleepTimerPicker = true },
-                                        onQueueClick = { showQueue = true },
-                                        chapters = currentChapters,
-                                        onChapterClick = { chapter ->
-                                            if (durationMs > 0) seekToFraction(chapter.startTimeMs.toFloat() / durationMs)
-                                        },
-                                        transcript = currentTranscript,
-                                    )
+                ExpandableSheetScaffold(
+                    hasContent = !nothingPlaying,
+                    expandRequestId = expandRequestId,
+                    peekHeight = MINI_PLAYER_HEIGHT,
+                    collapsedContent = { onExpand ->
+                        val station = currentStation
+                        val episode = currentEpisode
+                        val podcast = currentPodcast
+                        when {
+                            station != null -> NowPlayingBar(
+                                title = station.name,
+                                tagline = station.tagline,
+                                tintSeed = station.id,
+                                imageUrl = station.imageUrl,
+                                badgeText = "LIVE",
+                                playbackState = uiState,
+                                onPlayClick = { playStation(station) },
+                                onPauseClick = { mediaController?.pause() },
+                                onExpand = onExpand,
+                            )
+                            episode != null -> {
+                                val podcastTitle = podcast?.title.orEmpty()
+                                val fraction = if (durationMs > 0) positionMs.toFloat() / durationMs else null
+                                val tagline = if (durationMs > 0) {
+                                    val left = formatDuration((durationMs - positionMs).coerceAtLeast(0))
+                                    if (podcastTitle.isNotEmpty()) "$podcastTitle · $left left" else "$left left"
+                                } else {
+                                    podcastTitle
                                 }
-                            } else {
-                                when {
-                                    station != null -> NowPlayingBar(
-                                        title = station.name,
-                                        tagline = station.tagline,
-                                        tintSeed = station.id,
-                                        imageUrl = station.imageUrl,
-                                        badgeText = "LIVE",
-                                        playbackState = uiState,
-                                        onPlayClick = { playStation(station) },
-                                        onPauseClick = { mediaController?.pause() },
-                                        onExpand = { sheetScope.launch { sheetState.expand() } },
-                                    )
-                                    episode != null -> {
-                                        val podcastTitle = podcast?.title.orEmpty()
-                                        val fraction = if (durationMs > 0) positionMs.toFloat() / durationMs else null
-                                        val tagline = if (durationMs > 0) {
-                                            val left = formatDuration((durationMs - positionMs).coerceAtLeast(0))
-                                            if (podcastTitle.isNotEmpty()) "$podcastTitle · $left left" else "$left left"
-                                        } else {
-                                            podcastTitle
-                                        }
-                                        NowPlayingBar(
-                                            title = episode.title,
-                                            tagline = tagline,
-                                            tintSeed = episode.podcastId,
-                                            imageUrl = podcast?.artworkUrl,
-                                            badgeText = null,
-                                            playbackState = uiState,
-                                            onPlayClick = { mediaController?.play() },
-                                            onPauseClick = { mediaController?.pause() },
-                                            onSkipBackClick = { skip(-settings.skipBackSeconds * 1_000L) },
-                                            onSkipForwardClick = { skip(settings.skipForwardSeconds * 1_000L) },
-                                            skipBackSeconds = settings.skipBackSeconds,
-                                            skipForwardSeconds = settings.skipForwardSeconds,
-                                            onSpeedClick = ::cyclePlaybackSpeed,
-                                            speedLabel = "${PLAYBACK_SPEEDS[playbackSpeedIndex]}x",
-                                            progress = fraction,
-                                            onExpand = { sheetScope.launch { sheetState.expand() } },
-                                        )
-                                    }
-                                }
+                                NowPlayingBar(
+                                    title = episode.title,
+                                    tagline = tagline,
+                                    tintSeed = episode.podcastId,
+                                    imageUrl = podcast?.artworkUrl,
+                                    badgeText = null,
+                                    playbackState = uiState,
+                                    onPlayClick = { mediaController?.play() },
+                                    onPauseClick = { mediaController?.pause() },
+                                    onSkipBackClick = { skip(-settings.skipBackSeconds * 1_000L) },
+                                    onSkipForwardClick = { skip(settings.skipForwardSeconds * 1_000L) },
+                                    skipBackSeconds = settings.skipBackSeconds,
+                                    skipForwardSeconds = settings.skipForwardSeconds,
+                                    onSpeedClick = ::cyclePlaybackSpeed,
+                                    speedLabel = "${PLAYBACK_SPEEDS[playbackSpeedIndex]}x",
+                                    progress = fraction,
+                                    onExpand = onExpand,
+                                )
                             }
+                        }
+                    },
+                    expandedContent = { onCollapse ->
+                        val station = currentStation
+                        val episode = currentEpisode
+                        val podcast = currentPodcast
+                        when {
+                            station != null -> NowPlayingScreen(
+                                topLabel = "Live Radio",
+                                title = station.name,
+                                subtitle = station.tagline,
+                                imageUrl = station.imageUrl,
+                                tintSeed = station.id,
+                                isLive = true,
+                                isPlaying = playing,
+                                isBuffering = uiState == PlaybackUiState.BUFFERING,
+                                progress = null,
+                                positionLabel = null,
+                                durationLabel = null,
+                                speedLabel = null,
+                                onCollapse = onCollapse,
+                                onPlayPause = { if (playing) mediaController?.pause() else playStation(station) },
+                                onQueueClick = { showQueue = true },
+                                isFavorite = station.id in favoriteStationIds,
+                                onFavoriteClick = {
+                                    lifecycleScope.launch {
+                                        if (station.id in favoriteStationIds) {
+                                            favoriteStationRepository.unfavorite(station.id)
+                                        } else {
+                                            favoriteStationRepository.favorite(station)
+                                            // This toggle only ever applies to the currently-playing
+                                            // station, so favoriting it now means it's playing now too --
+                                            // markPlayed() at playback-start time already no-op'd since
+                                            // there was no favorited row yet to update.
+                                            favoriteStationRepository.markPlayed(station.id)
+                                        }
+                                    }
+                                },
+                            )
+                            episode != null -> NowPlayingScreen(
+                                topLabel = podcast?.title.orEmpty(),
+                                title = episode.title,
+                                subtitle = podcast?.title.orEmpty(),
+                                imageUrl = podcast?.artworkUrl,
+                                tintSeed = episode.podcastId,
+                                isLive = false,
+                                isPlaying = playing,
+                                isBuffering = uiState == PlaybackUiState.BUFFERING,
+                                progress = if (durationMs > 0) positionMs.toFloat() / durationMs else null,
+                                positionLabel = formatDuration(positionMs),
+                                durationLabel = formatDuration(durationMs),
+                                durationMs = durationMs,
+                                onSeek = ::seekToFraction,
+                                speedLabel = "${PLAYBACK_SPEEDS[playbackSpeedIndex]}x",
+                                onCollapse = onCollapse,
+                                onPlayPause = { if (playing) mediaController?.pause() else mediaController?.play() },
+                                onSkipBack = { skip(-settings.skipBackSeconds * 1_000L) },
+                                onSkipForward = { skip(settings.skipForwardSeconds * 1_000L) },
+                                skipBackSeconds = settings.skipBackSeconds,
+                                skipForwardSeconds = settings.skipForwardSeconds,
+                                onSpeedClick = ::cyclePlaybackSpeed,
+                                onSleepTimerClick = { showSleepTimerPicker = true },
+                                onQueueClick = { showQueue = true },
+                                chapters = currentChapters,
+                                onChapterClick = { chapter ->
+                                    if (durationMs > 0) seekToFraction(chapter.startTimeMs.toFloat() / durationMs)
+                                },
+                                transcript = currentTranscript,
+                            )
                         }
                     },
                 ) {
