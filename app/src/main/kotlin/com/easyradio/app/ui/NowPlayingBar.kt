@@ -63,6 +63,7 @@ fun NowPlayingBar(
     val isBuffering = playbackState == PlaybackUiState.BUFFERING
 
     Surface(
+        modifier = if (onExpand != null) Modifier.clickable(onClick = onExpand) else Modifier,
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 3.dp,
     ) {
@@ -87,7 +88,6 @@ fun NowPlayingBar(
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        .then(if (onExpand != null) Modifier.clickable(onClick = onExpand) else Modifier)
                         .padding(horizontal = 12.dp),
                 ) {
                     Text(text = title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
