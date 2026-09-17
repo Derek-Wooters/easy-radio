@@ -23,7 +23,9 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
@@ -69,6 +71,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.easyradio.app.ui.theme.LocalEasyRadioColors
 import com.easyradio.core.database.PodcastRepository
@@ -79,7 +82,7 @@ import kotlinx.coroutines.launch
 
 private const val PODCAST_SEARCH_DEBOUNCE_MS = 400L
 
-private enum class PodcastScreenState { LIBRARY, EPISODES, QUEUE, DOWNLOADS }
+private enum class PodcastScreenState { LIBRARY, EPISODES, EPISODE_DETAIL, QUEUE, DOWNLOADS }
 private enum class PodcastDetailTab(val label: String) {
     NOW_PLAYING("Now Playing"),
     EPISODES("Episodes"),
@@ -98,6 +101,7 @@ fun PodcastsScreen(
 ) {
     var screenState by remember { mutableStateOf(PodcastScreenState.LIBRARY) }
     var selectedPodcast by remember { mutableStateOf<Podcast?>(null) }
+    var selectedEpisode by remember { mutableStateOf<Episode?>(null) }
 
     LaunchedEffect(initialPodcast) {
         initialPodcast?.let {
@@ -122,8 +126,25 @@ fun PodcastsScreen(
                 podcast = podcast,
                 onBack = { screenState = PodcastScreenState.LIBRARY },
                 onEpisodeSelected = { episode -> onEpisodeSelected(podcast, episode) },
+                onEpisodeClick = { episode ->
+                    selectedEpisode = episode
+                    screenState = PodcastScreenState.EPISODE_DETAIL
+                },
                 nowPlayingEpisode = nowPlayingEpisode,
             )
+        }
+        PodcastScreenState.EPISODE_DETAIL -> {
+            val podcast = selectedPodcast
+            val episode = selectedEpisode
+            if (podcast != null && episode != null) {
+                EpisodeDetailScreen(
+                    repository = repository,
+                    podcast = podcast,
+                    episode = episode,
+                    onBack = { screenState = PodcastScreenState.EPISODES },
+                    onListen = { onEpisodeSelected(podcast, episode) },
+                )
+            }
         }
         PodcastScreenState.QUEUE -> QueueScreen(
             repository = repository,
@@ -343,6 +364,7 @@ private fun EpisodeListScreen(
     podcast: Podcast,
     onBack: () -> Unit,
     onEpisodeSelected: (Episode) -> Unit,
+    onEpisodeClick: (Episode) -> Unit,
     nowPlayingEpisode: Episode? = null,
 ) {
     val episodesRaw by remember(podcast.id) { repository.episodesFor(podcast.id) }
@@ -490,6 +512,7 @@ private fun EpisodeListScreen(
                         EpisodeRow(
                             episode = episode,
                             podcast = podcast,
+                            onRowClick = { onEpisodeClick(episode) },
                             onListen = { onEpisodeSelected(episode) },
                             onQueue = { scope.launch { repository.enqueue(episode) } },
                             onDownload = {
@@ -524,6 +547,7 @@ private fun EpisodeListScreen(
                     EpisodeRow(
                         episode = playingEpisode,
                         podcast = podcast,
+                        onRowClick = { onEpisodeClick(playingEpisode) },
                         onListen = { onEpisodeSelected(playingEpisode) },
                         onQueue = { scope.launch { repository.enqueue(playingEpisode) } },
                         onDownload = {},
@@ -562,6 +586,7 @@ private fun EpisodeListScreen(
 private fun EpisodeRow(
     episode: Episode,
     podcast: Podcast,
+    onRowClick: () -> Unit,
     onListen: () -> Unit,
     onQueue: () -> Unit,
     onDownload: () -> Unit,
@@ -569,7 +594,7 @@ private fun EpisodeRow(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onListen)
+            .clickable(onClick = onRowClick)
             .padding(horizontal = 20.dp, vertical = 12.dp),
     ) {
         Row(verticalAlignment = Alignment.Top) {
@@ -623,6 +648,117 @@ private fun EpisodeRow(
                 Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = "Add to queue")
             }
             IconButton(onClick = onDownload) {
+                Icon(
+                    if (episode.localFilePath != null) Icons.Filled.DownloadDone else Icons.Filled.Download,
+                    contentDescription = if (episode.localFilePath != null) "Downloaded" else "Download",
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Reached by tapping an episode row (not its Listen button) -- shows the episode's full
+ * description rather than jumping into the Now Playing sheet, with the same
+ * listen/queue/download controls as the row it was opened from.
+ */
+@Composable
+private fun EpisodeDetailScreen(
+    repository: PodcastRepository,
+    podcast: Podcast,
+    episode: Episode,
+    onBack: () -> Unit,
+    onListen: () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    var isDownloading by remember(episode.id) { mutableStateOf(false) }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 20.dp, top = 12.dp, bottom = 4.dp),
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            }
+            Text(
+                text = podcast.title,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                modifier = Modifier.weight(1f),
+            )
+        }
+
+        Avatar(
+            imageUrl = podcast.artworkUrl,
+            letter = podcast.title.firstOrNull()?.uppercase() ?: "?",
+            tint = podcastTint(podcast.id),
+            cornerRadius = 16.dp,
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .padding(top = 8.dp)
+                .fillMaxWidth(0.6f)
+                .aspectRatio(1f),
+        )
+
+        Text(
+            text = episode.title,
+            style = MaterialTheme.typography.titleLarge,
+            textAlign = TextAlign.Center,
+            maxLines = 3,
+            modifier = Modifier.fillMaxWidth().padding(top = 16.dp, start = 20.dp, end = 20.dp),
+        )
+
+        episodeMeta(episode)?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp, start = 20.dp, end = 20.dp),
+            )
+        }
+
+        Box(modifier = Modifier.weight(1f).padding(top = 16.dp)) {
+            Text(
+                text = episode.description.ifBlank { "No description available." },
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp),
+            )
+        }
+
+        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+        ) {
+            FilledTonalButton(onClick = onListen) {
+                Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Listen")
+            }
+            Spacer(modifier = Modifier.width(4.dp))
+            IconButton(onClick = { scope.launch { repository.enqueue(episode) } }) {
+                Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = "Add to queue")
+            }
+            IconButton(
+                onClick = {
+                    if (episode.localFilePath != null) {
+                        scope.launch { repository.deleteDownload(episode) }
+                    } else if (!isDownloading) {
+                        isDownloading = true
+                        scope.launch {
+                            repository.downloadEpisode(episode)
+                            isDownloading = false
+                        }
+                    }
+                },
+            ) {
                 Icon(
                     if (episode.localFilePath != null) Icons.Filled.DownloadDone else Icons.Filled.Download,
                     contentDescription = if (episode.localFilePath != null) "Downloaded" else "Download",
