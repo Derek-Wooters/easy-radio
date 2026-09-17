@@ -169,6 +169,7 @@ class MainActivity : ComponentActivity() {
     // SheetState.expand() directly, so they bump this counter instead; a LaunchedEffect
     // inside the composable (which does have access to the sheet state) reacts to it.
     private var expandRequestId by mutableStateOf(0)
+    private var selectedTab by mutableStateOf(AppTab.HOME)
     private var showQueue by mutableStateOf(false)
     private var showSettings by mutableStateOf(false)
     private var showSleepTimerPicker by mutableStateOf(false)
@@ -235,7 +236,6 @@ class MainActivity : ComponentActivity() {
             }
 
             EasyRadioTheme(darkTheme = settings.themeMode.resolveDarkTheme(isSystemInDarkTheme())) {
-                var selectedTab by remember { mutableStateOf(AppTab.HOME) }
                 val playing = uiState == PlaybackUiState.PLAYING || uiState == PlaybackUiState.BUFFERING
                 val favoriteStationIds by favoriteStationRepository.favoriteIds()
                     .collectAsState(initial = emptySet())
@@ -590,19 +590,21 @@ class MainActivity : ComponentActivity() {
                 )
             }
             RecentlyPlayedType.EPISODE -> {
+                // Recently-played podcasts link to the show's main page, not straight into
+                // whichever episode was last played -- unlike radio, there's no single
+                // "resume this channel" action that makes sense for a podcast.
                 val podcastId = item.podcastId ?: return
                 lifecycleScope.launch {
-                    val episode = podcastRepository.episodesFor(podcastId).first().find { it.id == item.contentId }
-                        ?: return@launch
                     val podcast = podcastRepository.subscribedPodcasts().first().find { it.id == podcastId }
                         ?: Podcast(
                             id = podcastId,
-                            title = item.subtitle,
-                            author = "",
+                            title = item.title,
+                            author = item.subtitle,
                             artworkUrl = item.imageUrl,
                             feedUrl = "https://placeholder.invalid/",
                         )
-                    playEpisode(podcast, episode)
+                    searchSelectedPodcast = podcast
+                    selectedTab = AppTab.PODCASTS
                 }
             }
         }
@@ -636,10 +638,14 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             recentlyPlayedRepository.record(
                 RecentlyPlayedItem(
-                    contentId = episode.id,
+                    // Keyed by podcast, not episode -- Recently Played shows the show itself
+                    // (like a radio station), not whichever episode happened to play last, so
+                    // replaying any episode of the same podcast updates one row instead of
+                    // piling up a separate entry per episode.
+                    contentId = podcast.id,
                     type = RecentlyPlayedType.EPISODE,
-                    title = episode.title,
-                    subtitle = podcast.title,
+                    title = podcast.title,
+                    subtitle = podcast.author,
                     imageUrl = podcast.artworkUrl,
                     playedAtEpochMillis = System.currentTimeMillis(),
                     podcastId = podcast.id,
