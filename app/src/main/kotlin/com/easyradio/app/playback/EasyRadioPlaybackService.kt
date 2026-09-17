@@ -6,6 +6,7 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.session.LibraryResult
@@ -63,6 +64,8 @@ class EasyRadioPlaybackService : MediaLibraryService() {
                 /* handleAudioFocus= */ true,
             )
             .setHandleAudioBecomingNoisy(true)
+            .setSeekBackIncrementMs(15_000)
+            .setSeekForwardIncrementMs(30_000)
             .build()
             .apply {
                 // Holds a CPU + WiFi wake lock while playing/buffering so a network
@@ -87,6 +90,10 @@ class EasyRadioPlaybackService : MediaLibraryService() {
                 player.setSkipSilenceEnabled(settings.skipSilenceEnabled)
                 voiceBoostEnabled = settings.voiceBoostEnabled
                 refreshLoudnessEnhancer()
+                // Keep the lock-screen/notification rewind and fast-forward buttons (see
+                // LibraryCallback.onConnect) in sync with the app's configurable skip amounts.
+                player.setSeekBackIncrementMs(settings.skipBackSeconds * 1_000L)
+                player.setSeekForwardIncrementMs(settings.skipForwardSeconds * 1_000L)
             }
         }
     }
@@ -124,6 +131,30 @@ class EasyRadioPlaybackService : MediaLibraryService() {
     }
 
     private inner class LibraryCallback : MediaLibrarySession.Callback {
+
+        // A radio stream or podcast episode is played one at a time -- there's no real
+        // "previous/next item" to seek between, so the default seek-to-previous command
+        // just restarts the current item from 0, rendering as a "restart" button on the
+        // lock screen and in the notification. Remove it (and seek-to-next, equally
+        // meaningless here) so the system falls back to rendering seek-back/seek-forward
+        // instead, using the increments configured on the player above.
+        override fun onConnect(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+        ): MediaSession.ConnectionResult {
+            val playerCommands = MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS.buildUpon()
+                .remove(Player.COMMAND_SEEK_TO_PREVIOUS)
+                .remove(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
+                .remove(Player.COMMAND_SEEK_TO_NEXT)
+                .remove(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
+                .add(Player.COMMAND_SEEK_BACK)
+                .add(Player.COMMAND_SEEK_FORWARD)
+                .build()
+            return MediaSession.ConnectionResult.accept(
+                MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS,
+                playerCommands,
+            )
+        }
 
         override fun onGetLibraryRoot(
             session: MediaLibrarySession,
