@@ -93,11 +93,11 @@ private enum class AppTab(val label: String, val icon: ImageVector) {
 private const val PODCAST_POSITION_SAVE_INTERVAL_MS = 5_000L
 private val PLAYBACK_SPEEDS = listOf(1.0f, 1.25f, 1.5f, 2.0f)
 
-// Must cover BottomSheetScaffold's default drag handle *plus* NowPlayingBar's own
-// content, both drawn within this single sheetPeekHeight allocation -- 120dp verified
-// on-device (via uiautomator bounds) to fully reveal the mini-player row without
-// clipping it against the screen edge, with only a small margin to spare.
-private val MINI_PLAYER_HEIGHT = 120.dp
+// Must cover NowPlayingBar's own rendered content within this single sheetPeekHeight
+// allocation (no drag handle to budget for anymore -- see sheetDragHandle = null below).
+// 80dp verified on-device (via uiautomator bounds) to fully reveal the mini-player row
+// without clipping it against the screen edge, with only a small margin to spare.
+private val MINI_PLAYER_HEIGHT = 80.dp
 
 internal fun formatDuration(ms: Long): String {
     val totalSeconds = ms / 1000
@@ -385,6 +385,10 @@ class MainActivity : ComponentActivity() {
                     scaffoldState = sheetScaffoldState,
                     sheetPeekHeight = MINI_PLAYER_HEIGHT,
                     sheetSwipeEnabled = !nothingPlaying,
+                    // The mini-player is fully tappable to expand (see NowPlayingBar), so the
+                    // default drag handle -- which visually implies dragging is required -- is
+                    // removed. Dragging the sheet still works without it.
+                    sheetDragHandle = null,
                     sheetContent = {
                         if (!nothingPlaying) {
                             val station = currentStation
