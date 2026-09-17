@@ -4,11 +4,13 @@ import android.media.audiofx.LoudnessEnhancer
 import android.net.Uri
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
+import androidx.media3.session.CommandButton
 import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
@@ -16,6 +18,7 @@ import com.easyradio.app.EasyRadioGraph
 import com.easyradio.core.database.PodcastRepository
 import com.easyradio.core.media.BrowseNode
 import com.easyradio.core.media.MediaBrowseTree
+import com.easyradio.core.model.AppSettings
 import com.easyradio.core.model.CuratedRadioStations
 import com.easyradio.core.model.Episode
 import com.google.common.collect.ImmutableList
@@ -81,7 +84,9 @@ class EasyRadioPlaybackService : MediaLibraryService() {
             }
         })
 
-        mediaSession = MediaLibrarySession.Builder(this, player, LibraryCallback()).build()
+        mediaSession = MediaLibrarySession.Builder(this, SeekButtonPlayer(player), LibraryCallback())
+            .setMediaButtonPreferences(seekMediaButtons(AppSettings().skipBackSeconds, AppSettings().skipForwardSeconds))
+            .build()
 
         wearStatePublisher = WearStatePublisher(this, player).also { it.attach() }
 
@@ -90,12 +95,53 @@ class EasyRadioPlaybackService : MediaLibraryService() {
                 player.setSkipSilenceEnabled(settings.skipSilenceEnabled)
                 voiceBoostEnabled = settings.voiceBoostEnabled
                 refreshLoudnessEnhancer()
-                // Keep the lock-screen/notification rewind and fast-forward buttons (see
-                // LibraryCallback.onConnect) in sync with the app's configurable skip amounts.
+                // Keep the lock-screen/notification rewind and fast-forward buttons in sync
+                // with the app's configurable skip amounts.
                 player.setSeekBackIncrementMs(settings.skipBackSeconds * 1_000L)
                 player.setSeekForwardIncrementMs(settings.skipForwardSeconds * 1_000L)
+                mediaSession.setMediaButtonPreferences(
+                    seekMediaButtons(settings.skipBackSeconds, settings.skipForwardSeconds),
+                )
             }
         }
+    }
+
+    /**
+     * The media notification and lock screen place their rewind/fast-forward icons from
+     * [MediaSession.setMediaButtonPreferences], not from the player's raw available commands
+     * -- without this, hiding COMMAND_SEEK_TO_PREVIOUS/NEXT (see [SeekButtonPlayer]) leaves no
+     * button in their place at all. [Player.COMMAND_SEEK_BACK]/[Player.COMMAND_SEEK_FORWARD]
+     * ties each button to the player's native seekBack()/seekForward(), so no custom command
+     * handling is needed; the system automatically disables/hides a button when the command
+     * isn't currently available (e.g. seeking on a non-seekable live radio stream).
+     */
+    private fun seekMediaButtons(skipBackSeconds: Int, skipForwardSeconds: Int): List<CommandButton> = listOf(
+        CommandButton.Builder(seekBackIcon(skipBackSeconds))
+            .setPlayerCommand(Player.COMMAND_SEEK_BACK)
+            .setDisplayName("Rewind $skipBackSeconds seconds")
+            .setSlots(CommandButton.SLOT_BACK)
+            .build(),
+        CommandButton.Builder(seekForwardIcon(skipForwardSeconds))
+            .setPlayerCommand(Player.COMMAND_SEEK_FORWARD)
+            .setDisplayName("Fast forward $skipForwardSeconds seconds")
+            .setSlots(CommandButton.SLOT_FORWARD)
+            .build(),
+    )
+
+    private fun seekBackIcon(seconds: Int): Int = when (seconds) {
+        5 -> CommandButton.ICON_SKIP_BACK_5
+        10 -> CommandButton.ICON_SKIP_BACK_10
+        15 -> CommandButton.ICON_SKIP_BACK_15
+        30 -> CommandButton.ICON_SKIP_BACK_30
+        else -> CommandButton.ICON_SKIP_BACK
+    }
+
+    private fun seekForwardIcon(seconds: Int): Int = when (seconds) {
+        5 -> CommandButton.ICON_SKIP_FORWARD_5
+        10 -> CommandButton.ICON_SKIP_FORWARD_10
+        15 -> CommandButton.ICON_SKIP_FORWARD_15
+        30 -> CommandButton.ICON_SKIP_FORWARD_30
+        else -> CommandButton.ICON_SKIP_FORWARD
     }
 
     /**
@@ -130,31 +176,27 @@ class EasyRadioPlaybackService : MediaLibraryService() {
         super.onDestroy()
     }
 
-    private inner class LibraryCallback : MediaLibrarySession.Callback {
-
-        // A radio stream or podcast episode is played one at a time -- there's no real
-        // "previous/next item" to seek between, so the default seek-to-previous command
-        // just restarts the current item from 0, rendering as a "restart" button on the
-        // lock screen and in the notification. Remove it (and seek-to-next, equally
-        // meaningless here) so the system falls back to rendering seek-back/seek-forward
-        // instead, using the increments configured on the player above.
-        override fun onConnect(
-            session: MediaSession,
-            controller: MediaSession.ControllerInfo,
-        ): MediaSession.ConnectionResult {
-            val playerCommands = MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS.buildUpon()
+    // The media notification / lock screen build their buttons from the session's player's
+    // own Player.getAvailableCommands() -- NOT from MediaSession.Callback.onConnect's granted
+    // commands, which only gate what a given remote controller (Auto, Bluetooth, etc.) is
+    // permitted to invoke. A radio stream or podcast episode is played one at a time, so
+    // there's no real "previous/next item" to seek between, but ExoPlayer reports
+    // COMMAND_SEEK_TO_PREVIOUS as available anyway (it just restarts the current item),
+    // which is what renders as a "restart" button. Wrapping the player to hide that command
+    // (and the equally meaningless seek-to-next) lets the system fall back to rendering
+    // seek-back/seek-forward instead, which stay available since the player still reports
+    // them for seekable content.
+    private class SeekButtonPlayer(player: ExoPlayer) : ForwardingPlayer(player) {
+        override fun getAvailableCommands(): Player.Commands =
+            super.getAvailableCommands().buildUpon()
                 .remove(Player.COMMAND_SEEK_TO_PREVIOUS)
                 .remove(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
                 .remove(Player.COMMAND_SEEK_TO_NEXT)
                 .remove(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
-                .add(Player.COMMAND_SEEK_BACK)
-                .add(Player.COMMAND_SEEK_FORWARD)
                 .build()
-            return MediaSession.ConnectionResult.accept(
-                MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS,
-                playerCommands,
-            )
-        }
+    }
+
+    private inner class LibraryCallback : MediaLibrarySession.Callback {
 
         override fun onGetLibraryRoot(
             session: MediaLibrarySession,
