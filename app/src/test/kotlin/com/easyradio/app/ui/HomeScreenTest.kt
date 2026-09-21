@@ -6,6 +6,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.easyradio.core.database.EpisodeDao
 import com.easyradio.core.database.EpisodeEntity
+import com.easyradio.core.database.EpisodeMetadata
 import com.easyradio.core.database.FavoriteStationDao
 import com.easyradio.core.database.FavoriteStationEntity
 import com.easyradio.core.database.FavoriteStationRepository
@@ -43,7 +44,8 @@ private class FakeRadioBrowserApi(private val results: Map<String, List<RadioBro
 
 private class NoOpEpisodeDao : EpisodeDao {
     override fun observeByPodcast(podcastId: String) = MutableStateFlow<List<EpisodeEntity>>(emptyList())
-    override suspend fun upsertAll(episodes: List<EpisodeEntity>) {}
+    override suspend fun insertIgnore(episodes: List<EpisodeEntity>) {}
+    override suspend fun updateMetadata(updates: List<EpisodeMetadata>) {}
     override suspend fun updatePosition(episodeId: String, positionMs: Long) {}
     override suspend fun getPosition(episodeId: String): Long? = null
     override suspend fun updateLocalFilePath(episodeId: String, localFilePath: String?) {}

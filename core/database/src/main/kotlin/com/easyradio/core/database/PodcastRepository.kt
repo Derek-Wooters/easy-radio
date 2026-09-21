@@ -130,7 +130,14 @@ class PodcastRepository(
 
         val page = allEpisodes.take(upToCount)
         if (page.isNotEmpty()) {
-            episodeDao.upsertAll(page.map { it.toEntity() })
+            // insertIgnore adds genuinely new episodes only, leaving any already-stored row (and
+            // its locally-tracked positionMs/localFilePath) completely alone; updateMetadata then
+            // refreshes feed-sourced fields for the whole page -- new and already-stored alike --
+            // without touching those two columns. A single blanket upsert here would otherwise
+            // silently reset every already-in-progress episode's saved position back to 0 on
+            // every re-sync (e.g. whenever the user scrolls to load more episodes).
+            episodeDao.insertIgnore(page.map { it.toEntity() })
+            episodeDao.updateMetadata(page.map { it.toMetadata() })
         }
         return allEpisodes.size
     }

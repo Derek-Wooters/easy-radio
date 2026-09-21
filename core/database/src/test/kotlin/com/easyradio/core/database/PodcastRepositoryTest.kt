@@ -48,21 +48,46 @@ private class FakePodcastDao : PodcastDao {
 }
 
 private class FakeEpisodeDao : EpisodeDao {
+    // positionMs/localFilePath deliberately live IN the same entity as everything else here
+    // (matching a real Room row) rather than in a separate shadow map -- a separate map is what
+    // let a real bug (a blanket upsertAll REPLACE silently wiping positionMs on every feed
+    // re-sync) pass every existing test undetected, since the map was never touched by upserts.
     val state = MutableStateFlow<List<EpisodeEntity>>(emptyList())
-    private val positions = mutableMapOf<String, Long>()
 
     override fun observeByPodcast(podcastId: String) = state.map { list -> list.filter { it.podcastId == podcastId } }
 
-    override suspend fun upsertAll(episodes: List<EpisodeEntity>) {
-        val ids = episodes.map { it.id }.toSet()
-        state.update { list -> list.filterNot { it.id in ids } + episodes }
+    override suspend fun insertIgnore(episodes: List<EpisodeEntity>) {
+        state.update { list ->
+            val existingIds = list.map { it.id }.toSet()
+            list + episodes.filterNot { it.id in existingIds }
+        }
+    }
+
+    override suspend fun updateMetadata(updates: List<EpisodeMetadata>) {
+        val byId = updates.associateBy { it.id }
+        state.update { list ->
+            list.map { entity ->
+                val update = byId[entity.id] ?: return@map entity
+                entity.copy(
+                    podcastId = update.podcastId,
+                    title = update.title,
+                    audioUrl = update.audioUrl,
+                    publishedAtEpochMillis = update.publishedAtEpochMillis,
+                    durationSeconds = update.durationSeconds,
+                    description = update.description,
+                    chaptersUrl = update.chaptersUrl,
+                    transcriptUrl = update.transcriptUrl,
+                    transcriptType = update.transcriptType,
+                )
+            }
+        }
     }
 
     override suspend fun updatePosition(episodeId: String, positionMs: Long) {
-        positions[episodeId] = positionMs
+        state.update { list -> list.map { if (it.id == episodeId) it.copy(positionMs = positionMs) else it } }
     }
 
-    override suspend fun getPosition(episodeId: String): Long? = positions[episodeId]
+    override suspend fun getPosition(episodeId: String): Long? = state.value.find { it.id == episodeId }?.positionMs
 
     override suspend fun updateLocalFilePath(episodeId: String, localFilePath: String?) {
         state.update { list -> list.map { if (it.id == episodeId) it.copy(localFilePath = localFilePath) else it } }
@@ -271,6 +296,23 @@ class PodcastRepositoryTest {
 
         assertThat(fetchCount).isEqualTo(1)
         assertThat(episodeDao.state.value).hasSize(2 * PodcastRepository.EPISODE_PAGE_SIZE)
+    }
+
+    @Test
+    fun `loadMoreEpisodes preserves an already-saved position for an episode re-synced from the feed`() = runTest {
+        // Regression test: re-syncing an already-stored episode (e.g. via pagination) must
+        // refresh its feed-sourced fields without resetting positionMs/localFilePath back to
+        // their feed-parsed defaults -- a full-row REPLACE upsert here previously wiped every
+        // in-progress episode's saved position back to 0 on every re-sync.
+        val episodeDao = FakeEpisodeDao()
+        val repository = PodcastRepository(FakeItunesSearchApi(), { feedXmlWithEpisodes(120) }, FakePodcastDao(), episodeDao)
+        repository.refreshEpisodes(testPodcast)
+        val inProgressEpisodeId = episodeDao.state.value.first().id
+        repository.savePosition(inProgressEpisodeId, 45_000L)
+
+        repository.loadMoreEpisodes(testPodcast)
+
+        assertThat(repository.lastPosition(inProgressEpisodeId)).isEqualTo(45_000L)
     }
 
     @Test
@@ -549,7 +591,18 @@ class PodcastRepositoryTest {
 
     @Test
     fun `savePosition then lastPosition returns the saved value`() = runTest {
-        val repository = PodcastRepository(FakeItunesSearchApi(), { "" }, FakePodcastDao(), FakeEpisodeDao())
+        // savePosition is only ever called for an episode that's already stored (you can only be
+        // playing something already in the episode list), matching a real UPDATE ... WHERE id
+        // being a no-op against a nonexistent row -- seed one here rather than calling
+        // savePosition against an id with no backing row.
+        val episodeDao = FakeEpisodeDao()
+        episodeDao.state.value = listOf(
+            EpisodeEntity(
+                id = "ep-1", podcastId = "p1", title = "Ep 1", audioUrl = "https://example.com/ep1.mp3",
+                publishedAtEpochMillis = null, durationSeconds = null, description = "",
+            ),
+        )
+        val repository = PodcastRepository(FakeItunesSearchApi(), { "" }, FakePodcastDao(), episodeDao)
 
         repository.savePosition("ep-1", 45_000L)
 
