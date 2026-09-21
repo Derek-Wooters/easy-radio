@@ -624,12 +624,18 @@ class MainActivity : ComponentActivity() {
         } else {
             MediaItem.fromUri(episode.audioUrl)
         }
-        controller.setMediaItem(mediaItem)
-        controller.prepare()
 
+        // The resume position must be baked into the initial setMediaItem call, not applied via
+        // a later seekTo(): if playWhenReady was already true from a previous item (e.g. the user
+        // was already playing something else), prepare() alone would start this item playing from
+        // 0 immediately, and the resume seek would only land after the fact as a jarring jump --
+        // or never, if this coroutine lost the race with something else changing the media item
+        // first. Looking the position up before touching the controller at all removes that
+        // window entirely.
         lifecycleScope.launch {
             val resumeMs = podcastRepository.lastPosition(episode.id)
-            if (resumeMs > 0) controller.seekTo(resumeMs)
+            controller.setMediaItem(mediaItem, resumeMs)
+            controller.prepare()
             controller.play()
         }
 
