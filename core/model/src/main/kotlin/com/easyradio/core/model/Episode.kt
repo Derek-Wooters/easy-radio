@@ -8,6 +8,7 @@ data class Episode(
     val publishedAtEpochMillis: Long?,
     val durationSeconds: Int?,
     val description: String = "",
+    val positionMs: Long = 0,
     val localFilePath: String? = null,
     val chaptersUrl: String? = null,
     val transcriptUrl: String? = null,

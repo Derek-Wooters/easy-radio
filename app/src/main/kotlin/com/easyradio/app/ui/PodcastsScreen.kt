@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -638,10 +639,21 @@ private fun EpisodeRow(
         }
 
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
+            val listenState = episodeListenState(episode)
             FilledTonalButton(onClick = onListen) {
-                Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(
+                    if (listenState == EpisodeListenState.REPLAY) Icons.Filled.Replay else Icons.Filled.PlayArrow,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
                 Spacer(modifier = Modifier.width(6.dp))
-                Text("Listen")
+                Text(
+                    when (listenState) {
+                        EpisodeListenState.LISTEN -> "Listen"
+                        EpisodeListenState.RESUME -> "Resume"
+                        EpisodeListenState.REPLAY -> "Replay"
+                    },
+                )
             }
             Spacer(modifier = Modifier.width(4.dp))
             IconButton(onClick = onQueue) {
@@ -651,6 +663,14 @@ private fun EpisodeRow(
                 Icon(
                     if (episode.localFilePath != null) Icons.Filled.DownloadDone else Icons.Filled.Download,
                     contentDescription = if (episode.localFilePath != null) "Downloaded" else "Download",
+                )
+            }
+            episodeProgressLabel(episode)?.let {
+                Spacer(modifier = Modifier.weight(1f))
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
@@ -737,10 +757,21 @@ private fun EpisodeDetailScreen(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
         ) {
+            val listenState = episodeListenState(episode)
             FilledTonalButton(onClick = onListen) {
-                Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(
+                    if (listenState == EpisodeListenState.REPLAY) Icons.Filled.Replay else Icons.Filled.PlayArrow,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
                 Spacer(modifier = Modifier.width(6.dp))
-                Text("Listen")
+                Text(
+                    when (listenState) {
+                        EpisodeListenState.LISTEN -> "Listen"
+                        EpisodeListenState.RESUME -> "Resume"
+                        EpisodeListenState.REPLAY -> "Replay"
+                    },
+                )
             }
             Spacer(modifier = Modifier.width(4.dp))
             IconButton(onClick = { scope.launch { repository.enqueue(episode) } }) {
@@ -776,21 +807,48 @@ private fun episodeMeta(episode: Episode): String? {
     val date = episode.publishedAtEpochMillis?.let {
         DateUtils.getRelativeTimeSpanString(it, System.currentTimeMillis(), DateUtils.DAY_IN_MILLIS).toString()
     }
-    val duration = episode.durationSeconds?.takeIf { it > 0 }?.let { seconds ->
-        val hours = seconds / 3600
-        val minutes = (seconds % 3600) / 60
-        when {
-            hours > 0 && minutes > 0 -> "$hours hr $minutes min"
-            hours > 0 -> "$hours hr"
-            else -> "$minutes min"
-        }
-    }
+    val duration = episode.durationSeconds?.takeIf { it > 0 }?.let { formatEpisodeDuration(it) }
     return listOfNotNull(date, duration).takeIf { it.isNotEmpty() }?.joinToString(" · ")
 }
 
 private fun isNewEpisode(episode: Episode): Boolean {
     val published = episode.publishedAtEpochMillis ?: return false
     return System.currentTimeMillis() - published < 3 * DateUtils.DAY_IN_MILLIS
+}
+
+internal fun formatEpisodeDuration(seconds: Int): String {
+    val hours = seconds / 3600
+    val minutes = (seconds % 3600) / 60
+    return when {
+        hours > 0 && minutes > 0 -> "$hours hr $minutes min"
+        hours > 0 -> "$hours hr"
+        else -> "$minutes min"
+    }
+}
+
+internal enum class EpisodeListenState { LISTEN, RESUME, REPLAY }
+
+// An episode counts as finished a little before its exact duration: players commonly report a
+// position a few seconds short of the true end at natural completion (buffering/rounding), so an
+// exact >= duration check would leave a fully-played episode stuck showing "Resume" forever.
+private const val EPISODE_FINISHED_FRACTION = 0.97f
+
+internal fun episodeListenState(episode: Episode): EpisodeListenState {
+    val durationMs = episode.durationSeconds?.takeIf { it > 0 }?.times(1000L)
+        ?: return EpisodeListenState.LISTEN
+    return when {
+        episode.positionMs <= 0L -> EpisodeListenState.LISTEN
+        episode.positionMs >= durationMs * EPISODE_FINISHED_FRACTION -> EpisodeListenState.REPLAY
+        else -> EpisodeListenState.RESUME
+    }
+}
+
+/** "12 min of 45 min", or null if there's no known duration or the episode hasn't been started. */
+internal fun episodeProgressLabel(episode: Episode): String? {
+    val durationSeconds = episode.durationSeconds?.takeIf { it > 0 } ?: return null
+    if (episode.positionMs <= 0L) return null
+    val positionSeconds = (episode.positionMs / 1000L).toInt().coerceIn(0, durationSeconds)
+    return "${formatEpisodeDuration(positionSeconds)} of ${formatEpisodeDuration(durationSeconds)}"
 }
 
 @Composable

@@ -32,6 +32,7 @@ fun Episode.toEntity(): EpisodeEntity = EpisodeEntity(
     publishedAtEpochMillis = publishedAtEpochMillis,
     durationSeconds = durationSeconds,
     description = description,
+    positionMs = positionMs,
     localFilePath = localFilePath,
     chaptersUrl = chaptersUrl,
     transcriptUrl = transcriptUrl,
@@ -46,7 +47,25 @@ fun EpisodeEntity.toEpisode(): Episode = Episode(
     publishedAtEpochMillis = publishedAtEpochMillis,
     durationSeconds = durationSeconds,
     description = description,
+    positionMs = positionMs,
     localFilePath = localFilePath,
+    chaptersUrl = chaptersUrl,
+    transcriptUrl = transcriptUrl,
+    transcriptType = transcriptType,
+)
+
+/**
+ * Feed-sourced fields only -- see [EpisodeMetadata] for why positionMs/localFilePath are
+ * deliberately excluded.
+ */
+fun Episode.toMetadata(): EpisodeMetadata = EpisodeMetadata(
+    id = id,
+    podcastId = podcastId,
+    title = title,
+    audioUrl = audioUrl,
+    publishedAtEpochMillis = publishedAtEpochMillis,
+    durationSeconds = durationSeconds,
+    description = description,
     chaptersUrl = chaptersUrl,
     transcriptUrl = transcriptUrl,
     transcriptType = transcriptType,
