@@ -44,15 +44,12 @@ class PhoneWearListenerService : WearableListenerService() {
     }
 
     private fun apply(controller: MediaController, command: WearCommand) {
-        val action = WearCommandMapper.map(
-            command = command,
-            currentPositionMs = controller.currentPosition,
-            durationMs = controller.duration.coerceAtLeast(0),
-        )
+        val action = WearCommandMapper.map(command)
         when (action) {
             WearPlayerAction.Play -> controller.play()
             WearPlayerAction.Pause -> controller.pause()
-            is WearPlayerAction.SeekTo -> controller.seekTo(action.positionMs)
+            WearPlayerAction.SeekForward -> controller.seekForward()
+            WearPlayerAction.SeekBack -> controller.seekBack()
             is WearPlayerAction.PlayStream -> {
                 controller.setMediaItem(
                     MediaItem.Builder()
