@@ -16,40 +16,41 @@ class WearCommandMapperTest {
 
     @Test
     fun `Play maps to Play`() {
-        val action = WearCommandMapper.map(WearCommand.Play, currentPositionMs = 0, durationMs = 0)
+        val action = WearCommandMapper.map(WearCommand.Play)
 
         assertThat(action).isEqualTo(WearPlayerAction.Play)
     }
 
     @Test
     fun `Pause maps to Pause`() {
-        val action = WearCommandMapper.map(WearCommand.Pause, currentPositionMs = 0, durationMs = 0)
+        val action = WearCommandMapper.map(WearCommand.Pause)
 
         assertThat(action).isEqualTo(WearPlayerAction.Pause)
     }
 
     @Test
-    fun `SkipForward seeks 30 seconds ahead clamped to duration`() {
-        val action = WearCommandMapper.map(WearCommand.SkipForward, currentPositionMs = 50_000, durationMs = 60_000)
+    fun `SkipForward maps to SeekForward`() {
+        // Deliberately NOT a client-computed absolute position: PhoneWearListenerService connects
+        // a brand-new, throwaway MediaController per command, whose currentPosition/duration can
+        // be stale/default right after connecting -- an absolute seekTo() computed from that
+        // snapshot was the original bug (skip taps did nothing, or jumped to the wrong spot).
+        // SeekForward instead maps to Player.seekForward(), which the actual player resolves
+        // against its own live position using its already-configured seek increment.
+        val action = WearCommandMapper.map(WearCommand.SkipForward)
 
-        assertThat(action).isEqualTo(WearPlayerAction.SeekTo(60_000))
+        assertThat(action).isEqualTo(WearPlayerAction.SeekForward)
     }
 
     @Test
-    fun `SkipBack seeks 15 seconds back clamped to zero`() {
-        val action = WearCommandMapper.map(WearCommand.SkipBack, currentPositionMs = 10_000, durationMs = 60_000)
+    fun `SkipBack maps to SeekBack`() {
+        val action = WearCommandMapper.map(WearCommand.SkipBack)
 
-        assertThat(action).isEqualTo(WearPlayerAction.SeekTo(0))
+        assertThat(action).isEqualTo(WearPlayerAction.SeekBack)
     }
 
     @Test
     fun `PlayStation for a known station id maps to PlayStream with its stream details`() {
-        val action = WearCommandMapper.map(
-            WearCommand.PlayStation("kfan"),
-            currentPositionMs = 0,
-            durationMs = 0,
-            stations = listOf(station),
-        )
+        val action = WearCommandMapper.map(WearCommand.PlayStation("kfan"), stations = listOf(station))
 
         assertThat(action).isEqualTo(
             WearPlayerAction.PlayStream(
@@ -62,12 +63,7 @@ class WearCommandMapperTest {
 
     @Test
     fun `PlayStation for an unknown station id maps to Ignore`() {
-        val action = WearCommandMapper.map(
-            WearCommand.PlayStation("unknown-station"),
-            currentPositionMs = 0,
-            durationMs = 0,
-            stations = listOf(station),
-        )
+        val action = WearCommandMapper.map(WearCommand.PlayStation("unknown-station"), stations = listOf(station))
 
         assertThat(action).isEqualTo(WearPlayerAction.Ignore)
     }

@@ -732,6 +732,14 @@ class MainActivity : ComponentActivity() {
                                 refreshState(controller)
                         },
                     )
+                    // A fresh controller only reports playback state via the listener above on the
+                    // NEXT change -- reconnecting here (e.g. returning from background) after the
+                    // player's real state already settled to whatever uiState was last showing
+                    // means no change ever fires, leaving a stale uiState (e.g. still "Playing"
+                    // with no audio, and the button then toggling the wrong direction) until
+                    // something else happens to nudge it. Sync immediately on connect instead of
+                    // waiting for the first subsequent event.
+                    refreshState(controller)
                 }
             },
             MoreExecutors.directExecutor(),
