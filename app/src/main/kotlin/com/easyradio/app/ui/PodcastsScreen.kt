@@ -78,6 +78,7 @@ import com.easyradio.app.ui.theme.LocalEasyRadioColors
 import com.easyradio.core.database.PodcastRepository
 import com.easyradio.core.model.Episode
 import com.easyradio.core.model.Podcast
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -514,7 +515,7 @@ private fun EpisodeListScreen(
                             episode = episode,
                             podcast = podcast,
                             onRowClick = { onEpisodeClick(episode) },
-                            onListen = { onEpisodeSelected(episode) },
+                            onListen = { replayAwareListen(scope, repository, episode) { onEpisodeSelected(episode) } },
                             onQueue = { scope.launch { repository.enqueue(episode) } },
                             onDownload = {
                                 if (episode.localFilePath != null) {
@@ -549,7 +550,9 @@ private fun EpisodeListScreen(
                         episode = playingEpisode,
                         podcast = podcast,
                         onRowClick = { onEpisodeClick(playingEpisode) },
-                        onListen = { onEpisodeSelected(playingEpisode) },
+                        onListen = {
+                            replayAwareListen(scope, repository, playingEpisode) { onEpisodeSelected(playingEpisode) }
+                        },
                         onQueue = { scope.launch { repository.enqueue(playingEpisode) } },
                         onDownload = {},
                     )
@@ -665,7 +668,7 @@ private fun EpisodeRow(
                     contentDescription = if (episode.localFilePath != null) "Downloaded" else "Download",
                 )
             }
-            episodeProgressLabel(episode)?.let {
+            episodeRemainingLabel(episode)?.let {
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
                     text = it,
@@ -758,7 +761,7 @@ private fun EpisodeDetailScreen(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
         ) {
             val listenState = episodeListenState(episode)
-            FilledTonalButton(onClick = onListen) {
+            FilledTonalButton(onClick = { replayAwareListen(scope, repository, episode, onListen) }) {
                 Icon(
                     if (listenState == EpisodeListenState.REPLAY) Icons.Filled.Replay else Icons.Filled.PlayArrow,
                     contentDescription = null,
@@ -843,12 +846,36 @@ internal fun episodeListenState(episode: Episode): EpisodeListenState {
     }
 }
 
-/** "12 min of 45 min", or null if there's no known duration or the episode hasn't been started. */
-internal fun episodeProgressLabel(episode: Episode): String? {
-    val durationSeconds = episode.durationSeconds?.takeIf { it > 0 } ?: return null
-    if (episode.positionMs <= 0L) return null
+/**
+ * The normal Listen/Resume tap just plays from the episode's existing saved position. Replay
+ * needs to actually start over: without this, tapping "Replay" on a finished episode would
+ * resume from its saved position right at the end, immediately finishing again rather than
+ * restarting -- so reset the saved position to 0 first when the episode is in the Replay state.
+ */
+internal fun replayAwareListen(scope: CoroutineScope, repository: PodcastRepository, episode: Episode, onPlay: () -> Unit) {
+    if (episodeListenState(episode) == EpisodeListenState.REPLAY) {
+        scope.launch {
+            repository.savePosition(episode.id, 0L)
+            onPlay()
+        }
+    } else {
+        onPlay()
+    }
+}
+
+/**
+ * "29 min remaining" -- shown only for an episode actually in progress (RESUME). Never shown for
+ * an unstarted episode (nothing to be "remaining" of yet) or a finished one still labeled
+ * "Replay" (remaining would read ~0, which isn't useful); replaying it for real resets its saved
+ * position back to 0 (see the Replay button wiring), which naturally returns it to RESUME -- and
+ * this label -- once it's partway through again.
+ */
+internal fun episodeRemainingLabel(episode: Episode): String? {
+    if (episodeListenState(episode) != EpisodeListenState.RESUME) return null
+    val durationSeconds = episode.durationSeconds ?: return null
     val positionSeconds = (episode.positionMs / 1000L).toInt().coerceIn(0, durationSeconds)
-    return "${formatEpisodeDuration(positionSeconds)} of ${formatEpisodeDuration(durationSeconds)}"
+    val remainingSeconds = (durationSeconds - positionSeconds).coerceAtLeast(0)
+    return "${formatEpisodeDuration(remainingSeconds)} remaining"
 }
 
 @Composable
