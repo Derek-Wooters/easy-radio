@@ -226,11 +226,18 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
 
     /**
      * Rebuilds and publishes [PlaybackStateCompat] on every relevant player event. Matches
-     * Pocket Casts' own advertised action set exactly (verified against their open-source
-     * MediaSessionManager.kt): ACTION_REWIND/ACTION_FAST_FORWARD alongside the standard
-     * ACTION_SKIP_TO_PREVIOUS/ACTION_SKIP_TO_NEXT, rather than hiding the latter pair the way
-     * the prior Media3-based session did -- that hiding is what triggered Wear OS's card to
-     * hardcode a generic previous icon into the back slot instead of respecting our button.
+     * Pocket Casts' own advertised action set bit-for-bit: ACTION_REWIND/ACTION_FAST_FORWARD
+     * alongside the standard ACTION_SKIP_TO_PREVIOUS/ACTION_SKIP_TO_NEXT.
+     *
+     * Tried removing SKIP_TO_PREVIOUS/NEXT (in case the "hardcoded generic icon" bug that
+     * originally motivated keeping them was specific to Media3's automatic legacy-session
+     * bridge, which this hand-rolled session doesn't use) hoping the system would then bind
+     * its rewind/fast-forward icons directly to ACTION_REWIND/ACTION_FAST_FORWARD. Confirmed
+     * on a real Pixel Watch 3 this made things worse, not better: the same seek-arrow icons
+     * remained (they were never actually tied to SKIP_TO_PREVIOUS/NEXT's presence) but went
+     * fully greyed out/non-functional -- on this device the flanking button slots appear
+     * hardcoded to SKIP_TO_PREVIOUS/NEXT specifically, with no fallback to REWIND/FAST_FORWARD
+     * when they're absent. Keeping both pairs is what's actually confirmed working.
      */
     private fun publishPlaybackState() {
         val state = when {
@@ -246,10 +253,10 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
             PlaybackStateCompat.ACTION_PLAY_PAUSE or
             PlaybackStateCompat.ACTION_STOP or
             PlaybackStateCompat.ACTION_SEEK_TO or
-            PlaybackStateCompat.ACTION_REWIND or
-            PlaybackStateCompat.ACTION_FAST_FORWARD or
             PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
             PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
+            PlaybackStateCompat.ACTION_REWIND or
+            PlaybackStateCompat.ACTION_FAST_FORWARD or
             PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID or
             PlaybackStateCompat.ACTION_PLAY_FROM_URI
 
