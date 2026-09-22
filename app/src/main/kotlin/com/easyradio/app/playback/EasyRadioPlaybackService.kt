@@ -75,6 +75,15 @@ class EasyRadioPlaybackService : MediaLibraryService() {
                 // handoff (wifi <-> cellular) or screen-off doesn't stall a live
                 // stream's reconnect longer than necessary.
                 setWakeMode(C.WAKE_MODE_NETWORK)
+                // Ignore in-band ICY/ID3 metadata entirely. ExoPlayer otherwise merges it into
+                // Player.getMediaMetadata(), overwriting the title we set explicitly on the
+                // MediaItem -- confirmed as the source of garbled titles on the lock screen and
+                // Wear OS's media card (some streams' ad-insertion embeds tracking urls, not a
+                // clean title, in these tags). Our own MediaItem metadata is always accurate, so
+                // there is nothing worth reading from the stream itself.
+                trackSelectionParameters = trackSelectionParameters.buildUpon()
+                    .setTrackTypeDisabled(C.TRACK_TYPE_METADATA, true)
+                    .build()
             }
 
         player.addAnalyticsListener(object : AnalyticsListener {
@@ -84,7 +93,18 @@ class EasyRadioPlaybackService : MediaLibraryService() {
             }
         })
 
+        // A session with no sessionActivity has nothing to launch when a remote surface (Auto,
+        // Bluetooth, Wear OS's system media card) taps into it -- some of these surfaces treat
+        // that as a signal the session isn't a "real", fully-interactive one and degrade its
+        // controls accordingly. Every other first-party media app sets this; we never did.
+        val sessionActivity = android.app.PendingIntent.getActivity(
+            this,
+            0,
+            android.content.Intent(this, com.easyradio.app.MainActivity::class.java),
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE,
+        )
         mediaSession = MediaLibrarySession.Builder(this, SeekButtonPlayer(player), LibraryCallback())
+            .setSessionActivity(sessionActivity)
             .setMediaButtonPreferences(seekMediaButtons(AppSettings().skipBackSeconds, AppSettings().skipForwardSeconds))
             .build()
 
@@ -186,6 +206,18 @@ class EasyRadioPlaybackService : MediaLibraryService() {
     // (and the equally meaningless seek-to-next) lets the system fall back to rendering
     // seek-back/seek-forward instead, which stay available since the player still reports
     // them for seekable content.
+    //
+    // On Wear OS's system media card specifically, this leaves the back slot showing a
+    // generic, non-functional "previous" icon instead of Rewind: that surface hardcodes the
+    // standard previous icon into the back slot whenever COMMAND_SEEK_TO_PREVIOUS is
+    // available at all, overriding an explicit SLOT_BACK button assignment rather than only
+    // falling back to it when no custom button is provided (androidx/media#2976 describes
+    // the general slot-reservation behavior, though not this exact override). Tried pinning
+    // the real previous button to SLOT_OVERFLOW to work around it -- the watch still
+    // hardcoded it into the back slot AND duplicated it into overflow, so that isn't a viable
+    // workaround from app code. Hiding the command is the only way found so far to get a
+    // working Rewind button in that slot on the phone notification/lock screen; the tradeoff
+    // is the watch's back slot stays generic/non-functional.
     private class SeekButtonPlayer(player: ExoPlayer) : ForwardingPlayer(player) {
         override fun getAvailableCommands(): Player.Commands =
             super.getAvailableCommands().buildUpon()

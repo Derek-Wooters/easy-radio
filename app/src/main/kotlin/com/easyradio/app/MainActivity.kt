@@ -48,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
@@ -554,7 +555,17 @@ class MainActivity : ComponentActivity() {
         currentStation = station
         expandRequestId++
         mediaController?.let { controller ->
-            controller.setMediaItem(MediaItem.fromUri(station.streamUrl))
+            val mediaItem = MediaItem.Builder()
+                .setUri(station.streamUrl)
+                .setMediaMetadata(
+                    MediaMetadata.Builder()
+                        .setTitle(station.name)
+                        .setArtist(station.tagline.ifBlank { null })
+                        .setArtworkUri(station.imageUrl?.let { android.net.Uri.parse(it) })
+                        .build(),
+                )
+                .build()
+            controller.setMediaItem(mediaItem)
             controller.prepare()
             controller.play()
         }
@@ -619,11 +630,21 @@ class MainActivity : ComponentActivity() {
         val controller = mediaController ?: return
 
         val localPath = episode.localFilePath
-        val mediaItem = if (localPath != null && File(localPath).exists()) {
-            MediaItem.fromUri(android.net.Uri.fromFile(File(localPath)))
+        val uri = if (localPath != null && File(localPath).exists()) {
+            android.net.Uri.fromFile(File(localPath))
         } else {
-            MediaItem.fromUri(episode.audioUrl)
+            android.net.Uri.parse(episode.audioUrl)
         }
+        val mediaItem = MediaItem.Builder()
+            .setUri(uri)
+            .setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setTitle(episode.title)
+                    .setArtist(podcast.author.ifBlank { podcast.title })
+                    .setArtworkUri(podcast.artworkUrl?.let { android.net.Uri.parse(it) })
+                    .build(),
+            )
+            .build()
 
         // The resume position must be baked into the initial setMediaItem call, not applied via
         // a later seekTo(): if playWhenReady was already true from a previous item (e.g. the user
