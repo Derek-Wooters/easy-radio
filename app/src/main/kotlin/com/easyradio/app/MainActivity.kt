@@ -47,24 +47,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
-import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
-import androidx.media3.common.Player
-import androidx.media3.session.MediaController
-import androidx.media3.session.SessionToken
+import android.support.v4.media.MediaBrowserCompat
+import android.support.v4.media.session.MediaControllerCompat
+import android.support.v4.media.session.PlaybackStateCompat
+import com.easyradio.app.playback.EXTRA_ARTIST
+import com.easyradio.app.playback.EXTRA_ARTWORK_URL
+import com.easyradio.app.playback.EXTRA_RESUME_POSITION_MS
+import com.easyradio.app.playback.EXTRA_TITLE
 import com.easyradio.app.playback.EasyRadioPlaybackService
 import com.easyradio.app.ui.PodcastsScreen
 import com.easyradio.app.ui.RadioBrowseScreen
 import com.easyradio.app.ui.theme.EasyRadioTheme
-import com.easyradio.core.media.PlaybackStateMapper
 import com.easyradio.core.media.PlaybackUiState
 import com.easyradio.core.model.Episode
 import com.easyradio.core.model.Podcast
 import com.easyradio.core.model.RadioStation
 import com.easyradio.core.network.radiobrowser.RadioBrowserApiFactory
 import com.easyradio.core.network.radiobrowser.RadioStationRepository
-import com.google.common.util.concurrent.ListenableFuture
-import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -153,8 +152,31 @@ class MainActivity : ComponentActivity() {
     private val recentlyPlayedRepository by lazy { EasyRadioGraph.recentlyPlayed(applicationContext) }
     private val listeningStatsRepository by lazy { EasyRadioGraph.listeningStats(applicationContext) }
 
-    private var controllerFuture: ListenableFuture<MediaController>? = null
-    private var mediaController by mutableStateOf<MediaController?>(null)
+    private var mediaBrowser: MediaBrowserCompat? = null
+    private var mediaController by mutableStateOf<MediaControllerCompat?>(null)
+    private val controllerCallback = object : MediaControllerCompat.Callback() {
+        override fun onPlaybackStateChanged(state: PlaybackStateCompat?) {
+            uiState = mapPlaybackState(state)
+        }
+
+        // Right after connecting, MediaControllerCompat's cached playbackState/metadata can
+        // still be stale (a real connection isn't synchronous the way Media3's MediaController
+        // is) -- onSessionReady fires once the real, current state has actually landed. Without
+        // this, returning to the app after another session became the system's active one (or
+        // any other state change happening while disconnected) could leave the UI showing
+        // whatever stale state happened to be cached at connect time.
+        override fun onSessionReady() {
+            uiState = mapPlaybackState(mediaController?.playbackState)
+        }
+
+        // The session can be destroyed out from under us (e.g. the service process was
+        // reclaimed); without handling this the controller reference goes stale and the UI
+        // never updates again. Dropping it here lets onStart's next reconnect attempt recover.
+        override fun onSessionDestroyed() {
+            mediaController = null
+            uiState = PlaybackUiState.IDLE
+        }
+    }
     private var uiState by mutableStateOf(PlaybackUiState.IDLE)
     private var currentStation by mutableStateOf<RadioStation?>(null)
     private var currentEpisode by mutableStateOf<Episode?>(null)
@@ -217,8 +239,8 @@ class MainActivity : ComponentActivity() {
                 val controller = mediaController
                 if (currentEpisode != null && controller != null) {
                     while (true) {
-                        positionMs = controller.currentPosition.coerceAtLeast(0)
-                        durationMs = controller.duration.coerceAtLeast(0)
+                        positionMs = controllerPositionMs(controller).coerceAtLeast(0)
+                        durationMs = controllerDurationMs(controller).coerceAtLeast(0)
                         delay(1_000)
                     }
                 }
@@ -232,7 +254,7 @@ class MainActivity : ComponentActivity() {
                     while (!SleepTimer.isExpired(start, durationMs, SystemClock.elapsedRealtime())) {
                         delay(1_000)
                     }
-                    mediaController?.pause()
+                    mediaController?.transportControls?.pause()
                 }
             }
 
@@ -376,7 +398,7 @@ class MainActivity : ComponentActivity() {
                                 badgeText = "LIVE",
                                 playbackState = uiState,
                                 onPlayClick = { playStation(station) },
-                                onPauseClick = { mediaController?.pause() },
+                                onPauseClick = { mediaController?.transportControls?.pause() },
                                 onExpand = onExpand,
                             )
                             episode != null -> {
@@ -395,8 +417,8 @@ class MainActivity : ComponentActivity() {
                                     imageUrl = podcast?.artworkUrl,
                                     badgeText = null,
                                     playbackState = uiState,
-                                    onPlayClick = { mediaController?.play() },
-                                    onPauseClick = { mediaController?.pause() },
+                                    onPlayClick = { mediaController?.transportControls?.play() },
+                                    onPauseClick = { mediaController?.transportControls?.pause() },
                                     onSkipBackClick = { skip(-settings.skipBackSeconds * 1_000L) },
                                     onSkipForwardClick = { skip(settings.skipForwardSeconds * 1_000L) },
                                     skipBackSeconds = settings.skipBackSeconds,
@@ -428,7 +450,7 @@ class MainActivity : ComponentActivity() {
                                 durationLabel = null,
                                 speedLabel = null,
                                 onCollapse = onCollapse,
-                                onPlayPause = { if (playing) mediaController?.pause() else playStation(station) },
+                                onPlayPause = { if (playing) mediaController?.transportControls?.pause() else playStation(station) },
                                 onQueueClick = { showQueue = true },
                                 isFavorite = station.id in favoriteStationIds,
                                 onFavoriteClick = {
@@ -462,7 +484,7 @@ class MainActivity : ComponentActivity() {
                                 onSeek = ::seekToFraction,
                                 speedLabel = "${PLAYBACK_SPEEDS[playbackSpeedIndex]}x",
                                 onCollapse = onCollapse,
-                                onPlayPause = { if (playing) mediaController?.pause() else mediaController?.play() },
+                                onPlayPause = { if (playing) mediaController?.transportControls?.pause() else mediaController?.transportControls?.play() },
                                 onSkipBack = { skip(-settings.skipBackSeconds * 1_000L) },
                                 onSkipForward = { skip(settings.skipForwardSeconds * 1_000L) },
                                 skipBackSeconds = settings.skipBackSeconds,
@@ -554,21 +576,14 @@ class MainActivity : ComponentActivity() {
         currentPodcast = null
         currentStation = station
         expandRequestId++
-        mediaController?.let { controller ->
-            val mediaItem = MediaItem.Builder()
-                .setUri(station.streamUrl)
-                .setMediaMetadata(
-                    MediaMetadata.Builder()
-                        .setTitle(station.name)
-                        .setArtist(station.tagline.ifBlank { null })
-                        .setArtworkUri(station.imageUrl?.let { android.net.Uri.parse(it) })
-                        .build(),
-                )
-                .build()
-            controller.setMediaItem(mediaItem)
-            controller.prepare()
-            controller.play()
-        }
+        mediaController?.transportControls?.playFromUri(
+            android.net.Uri.parse(station.streamUrl),
+            android.os.Bundle().apply {
+                putString(EXTRA_TITLE, station.name)
+                putString(EXTRA_ARTIST, station.tagline)
+                putString(EXTRA_ARTWORK_URL, station.imageUrl)
+            },
+        )
         lifecycleScope.launch {
             recentlyPlayedRepository.record(
                 RecentlyPlayedItem(
@@ -635,29 +650,26 @@ class MainActivity : ComponentActivity() {
         } else {
             android.net.Uri.parse(episode.audioUrl)
         }
-        val mediaItem = MediaItem.Builder()
-            .setUri(uri)
-            .setMediaMetadata(
-                MediaMetadata.Builder()
-                    .setTitle(episode.title)
-                    .setArtist(podcast.author.ifBlank { podcast.title })
-                    .setArtworkUri(podcast.artworkUrl?.let { android.net.Uri.parse(it) })
-                    .build(),
-            )
-            .build()
 
-        // The resume position must be baked into the initial setMediaItem call, not applied via
+        // The resume position must be baked into the initial playFromUri call, not applied via
         // a later seekTo(): if playWhenReady was already true from a previous item (e.g. the user
-        // was already playing something else), prepare() alone would start this item playing from
-        // 0 immediately, and the resume seek would only land after the fact as a jarring jump --
-        // or never, if this coroutine lost the race with something else changing the media item
-        // first. Looking the position up before touching the controller at all removes that
-        // window entirely.
+        // was already playing something else), starting playback alone would begin this item
+        // from 0 immediately, and the resume seek would only land after the fact as a jarring
+        // jump -- or never, if this coroutine lost the race with something else changing the
+        // media item first. Looking the position up before touching the controller at all
+        // removes that window entirely; EasyRadioPlaybackService.startPlayback() then applies it
+        // atomically via ExoPlayer's own setMediaItem(item, startPositionMs).
         lifecycleScope.launch {
             val resumeMs = podcastRepository.lastPosition(episode.id)
-            controller.setMediaItem(mediaItem, resumeMs)
-            controller.prepare()
-            controller.play()
+            controller.transportControls.playFromUri(
+                uri,
+                android.os.Bundle().apply {
+                    putString(EXTRA_TITLE, episode.title)
+                    putString(EXTRA_ARTIST, podcast.author.ifBlank { podcast.title })
+                    putString(EXTRA_ARTWORK_URL, podcast.artworkUrl)
+                    putLong(EXTRA_RESUME_POSITION_MS, resumeMs)
+                },
+            )
         }
 
         startPositionSaving(episode.id)
@@ -709,26 +721,41 @@ class MainActivity : ComponentActivity() {
         )
     }
 
+    private fun controllerPositionMs(controller: MediaControllerCompat): Long =
+        controller.playbackState?.getCurrentPosition(null) ?: 0L
+
+    private fun controllerDurationMs(controller: MediaControllerCompat): Long =
+        controller.metadata?.getLong(android.support.v4.media.MediaMetadataCompat.METADATA_KEY_DURATION) ?: 0L
+
+    private fun mapPlaybackState(state: PlaybackStateCompat?): PlaybackUiState = when (state?.state) {
+        null -> PlaybackUiState.IDLE
+        PlaybackStateCompat.STATE_ERROR -> PlaybackUiState.ERROR
+        PlaybackStateCompat.STATE_BUFFERING -> PlaybackUiState.BUFFERING
+        PlaybackStateCompat.STATE_PLAYING -> PlaybackUiState.PLAYING
+        PlaybackStateCompat.STATE_PAUSED -> PlaybackUiState.PAUSED
+        else -> PlaybackUiState.IDLE
+    }
+
     private fun skip(deltaMs: Long) {
         val controller = mediaController ?: return
         val target = com.easyradio.core.media.SeekMath.clampSeek(
-            currentMs = controller.currentPosition,
+            currentMs = controllerPositionMs(controller),
             deltaMs = deltaMs,
-            durationMs = controller.duration.coerceAtLeast(0),
+            durationMs = controllerDurationMs(controller).coerceAtLeast(0),
         )
-        controller.seekTo(target)
+        controller.transportControls.seekTo(target)
     }
 
     private fun seekToFraction(fraction: Float) {
         val controller = mediaController ?: return
-        val duration = controller.duration.coerceAtLeast(0)
+        val duration = controllerDurationMs(controller).coerceAtLeast(0)
         if (duration <= 0) return
-        controller.seekTo((fraction.coerceIn(0f, 1f) * duration).toLong())
+        controller.transportControls.seekTo((fraction.coerceIn(0f, 1f) * duration).toLong())
     }
 
     private fun cyclePlaybackSpeed() {
         playbackSpeedIndex = (playbackSpeedIndex + 1) % PLAYBACK_SPEEDS.size
-        mediaController?.setPlaybackSpeed(PLAYBACK_SPEEDS[playbackSpeedIndex])
+        mediaController?.transportControls?.setPlaybackSpeed(PLAYBACK_SPEEDS[playbackSpeedIndex])
     }
 
     private fun startPositionSaving(episodeId: String) {
@@ -737,8 +764,8 @@ class MainActivity : ComponentActivity() {
             while (isActive) {
                 delay(PODCAST_POSITION_SAVE_INTERVAL_MS)
                 val controller = mediaController ?: continue
-                if (controller.isPlaying) {
-                    podcastRepository.savePosition(episodeId, controller.currentPosition)
+                if (controller.playbackState?.state == PlaybackStateCompat.STATE_PLAYING) {
+                    podcastRepository.savePosition(episodeId, controllerPositionMs(controller))
                 }
             }
         }
@@ -746,50 +773,43 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        val sessionToken = SessionToken(this, ComponentName(this, EasyRadioPlaybackService::class.java))
-        val future = MediaController.Builder(this, sessionToken).buildAsync()
-        controllerFuture = future
-        future.addListener(
-            {
-                mediaController = future.get().also { controller ->
-                    controller.addListener(
-                        object : Player.Listener {
-                            override fun onPlaybackStateChanged(playbackState: Int) = refreshState(controller)
-                            override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) =
-                                refreshState(controller)
-                        },
-                    )
-                    // A fresh controller only reports playback state via the listener above on the
-                    // NEXT change -- reconnecting here (e.g. returning from background) after the
-                    // player's real state already settled to whatever uiState was last showing
-                    // means no change ever fires, leaving a stale uiState (e.g. still "Playing"
-                    // with no audio, and the button then toggling the wrong direction) until
-                    // something else happens to nudge it. Sync immediately on connect instead of
-                    // waiting for the first subsequent event.
-                    refreshState(controller)
+        val browser = MediaBrowserCompat(
+            this,
+            ComponentName(this, EasyRadioPlaybackService::class.java),
+            object : MediaBrowserCompat.ConnectionCallback() {
+                override fun onConnected() {
+                    val browserRef = mediaBrowser ?: return
+                    val controller = MediaControllerCompat(this@MainActivity, browserRef.sessionToken)
+                    controller.registerCallback(controllerCallback)
+                    mediaController = controller
+                    MediaControllerCompat.setMediaController(this@MainActivity, controller)
+                    // A fresh controller only reports playback state via the callback above on
+                    // the NEXT change -- reconnecting here (e.g. returning from background) after
+                    // the player's real state already settled to whatever uiState was last
+                    // showing means no change ever fires, leaving a stale uiState (e.g. still
+                    // "Playing" with no audio, and the button then toggling the wrong direction)
+                    // until something else happens to nudge it. Sync immediately on connect
+                    // instead of waiting for the first subsequent callback.
+                    uiState = mapPlaybackState(controller.playbackState)
                 }
             },
-            MoreExecutors.directExecutor(),
+            null,
         )
-    }
-
-    private fun refreshState(controller: MediaController) {
-        uiState = PlaybackStateMapper.map(
-            playbackState = controller.playbackState,
-            playWhenReady = controller.playWhenReady,
-            hasError = controller.playerError != null,
-        )
+        mediaBrowser = browser
+        browser.connect()
     }
 
     override fun onStop() {
         currentEpisode?.let { episode ->
             mediaController?.let { controller ->
-                lifecycleScope.launch { podcastRepository.savePosition(episode.id, controller.currentPosition) }
+                lifecycleScope.launch { podcastRepository.savePosition(episode.id, controllerPositionMs(controller)) }
             }
         }
         positionSaveJob?.cancel()
-        controllerFuture?.let { MediaController.releaseFuture(it) }
+        mediaController?.unregisterCallback(controllerCallback)
         mediaController = null
+        mediaBrowser?.disconnect()
+        mediaBrowser = null
         super.onStop()
     }
 }

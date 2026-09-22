@@ -50,7 +50,6 @@
             android:exported="true"
             android:foregroundServiceType="mediaPlayback">
             <intent-filter>
-                <action android:name="androidx.media3.session.MediaLibraryService" />
                 <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>
         </service>
@@ -61,7 +60,7 @@
              session (which registers one) renders enabled controls while ours renders all
              transport buttons greyed out and inert, confirmed side by side on a real device. -->
         <receiver
-            android:name="androidx.media3.session.MediaButtonReceiver"
+            android:name="androidx.media.session.MediaButtonReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
