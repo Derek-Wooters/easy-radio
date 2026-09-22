@@ -23,11 +23,11 @@ import androidx.glance.layout.padding
 import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.glance.text.Text
 import androidx.compose.ui.unit.dp
-import androidx.media3.session.MediaController
-import androidx.media3.session.SessionToken
+import android.support.v4.media.MediaBrowserCompat
+import android.support.v4.media.session.MediaControllerCompat
 import androidx.glance.action.ActionParameters
 import com.easyradio.app.playback.EasyRadioPlaybackService
-import kotlinx.coroutines.guava.await
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 private object WidgetKeys {
     val title = stringPreferencesKey("title")
@@ -88,27 +88,48 @@ class EasyRadioWidgetReceiver : GlanceAppWidgetReceiver() {
 
 class PlayPauseAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
-        withMediaController(context) { controller -> if (controller.isPlaying) controller.pause() else controller.play() }
+        withMediaController(context) { controller ->
+            val isPlaying = controller.playbackState?.state == android.support.v4.media.session.PlaybackStateCompat.STATE_PLAYING
+            if (isPlaying) controller.transportControls.pause() else controller.transportControls.play()
+        }
     }
 }
 
 class SkipForwardAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
-        withMediaController(context) { controller ->
-            val duration = controller.duration.takeIf { it > 0 } ?: Long.MAX_VALUE
-            controller.seekTo((controller.currentPosition + 30_000).coerceAtMost(duration))
-        }
+        withMediaController(context) { controller -> controller.transportControls.fastForward() }
     }
 }
 
-private suspend fun withMediaController(context: Context, block: (MediaController) -> Unit) {
-    val token = SessionToken(context, ComponentName(context, EasyRadioPlaybackService::class.java))
-    val controllerFuture = MediaController.Builder(context, token).buildAsync()
+private suspend fun connectBrowser(context: Context): MediaBrowserCompat = suspendCancellableCoroutine { continuation ->
+    lateinit var browser: MediaBrowserCompat
+    browser = MediaBrowserCompat(
+        context,
+        ComponentName(context, EasyRadioPlaybackService::class.java),
+        object : MediaBrowserCompat.ConnectionCallback() {
+            override fun onConnected() {
+                continuation.resumeWith(Result.success(browser))
+            }
+
+            override fun onConnectionFailed() {
+                continuation.resumeWith(Result.failure(IllegalStateException("Widget action: session connection failed")))
+            }
+        },
+        null,
+    )
+    browser.connect()
+    continuation.invokeOnCancellation { browser.disconnect() }
+}
+
+private suspend fun withMediaController(context: Context, block: (MediaControllerCompat) -> Unit) {
     try {
-        block(controllerFuture.await())
+        val browser = connectBrowser(context)
+        try {
+            block(MediaControllerCompat(context, browser.sessionToken))
+        } finally {
+            browser.disconnect()
+        }
     } catch (e: Exception) {
         // Best-effort -- no active session to control yet.
-    } finally {
-        MediaController.releaseFuture(controllerFuture)
     }
 }
