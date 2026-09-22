@@ -353,7 +353,22 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
 
     // -- Starting playback -----------------------------------------------------------------
 
+    /**
+     * A service bound only via MediaBrowserCompat.connect() (BIND_AUTO_CREATE, no independent
+     * startService()/startForegroundService() call) has no reason to survive once its last
+     * client unbinds -- confirmed on a real device: backgrounding the app (MainActivity.onStop()
+     * disconnecting its browser) destroyed the service and its session outright, even though the
+     * app process itself stayed alive, which is what caused the Now Playing screen to come back
+     * showing stale info with a dead controller (no progress bar, Play doing nothing). Explicitly
+     * starting the service gives it its own independent lifecycle that a client unbinding can't
+     * end; only an explicit onStop() (real ACTION_STOP, see SessionCallback) calls stopSelf().
+     */
+    private fun ensureStarted() {
+        ContextCompat.startForegroundService(this, Intent(this, EasyRadioPlaybackService::class.java))
+    }
+
     private fun startPlayback(uri: Uri, title: String?, artist: String?, artworkUrl: String?, resumePositionMs: Long) {
+        ensureStarted()
         currentTitle = title
         currentArtist = artist
         currentArtworkUrl = artworkUrl
@@ -396,6 +411,7 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
 
     private inner class SessionCallback : MediaSessionCompat.Callback() {
         override fun onPlay() {
+            ensureStarted()
             player.play()
         }
 
@@ -405,6 +421,7 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
 
         override fun onStop() {
             player.stop()
+            stopSelf()
         }
 
         override fun onSeekTo(pos: Long) {
