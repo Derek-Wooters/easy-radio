@@ -78,4 +78,4 @@ Requires a `local.properties` with your Android SDK location (standard Android S
 
 ## License
 
-Apache License 2.0 — see [`LICENSE`](LICENSE).
+Mozilla Public License 2.0 — see [`LICENSE`](LICENSE).
