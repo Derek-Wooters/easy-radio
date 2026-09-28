@@ -42,6 +42,9 @@ import kotlinx.coroutines.launch
 /** LoudnessEnhancer gain, in millibels (100 mB = 1 dB), applied when "voice boost" is on. */
 private const val VOICE_BOOST_GAIN_MILLIBELS = 1000
 private const val NOTIFICATION_ID = 1001
+
+/** Matches Color.kt's LightPrimary -- kept as a plain Int here since this file has no Compose dependency otherwise. */
+private const val NOTIFICATION_ACCENT_COLOR = 0xFF0089A8.toInt()
 private const val NOTIFICATION_CHANNEL_ID = "playback"
 
 /** Extras key [MainActivity] uses to pass pre-resolved metadata alongside `playFromUri`. */
@@ -49,6 +52,13 @@ const val EXTRA_TITLE = "com.easyradio.app.EXTRA_TITLE"
 const val EXTRA_ARTIST = "com.easyradio.app.EXTRA_ARTIST"
 const val EXTRA_ARTWORK_URL = "com.easyradio.app.EXTRA_ARTWORK_URL"
 const val EXTRA_RESUME_POSITION_MS = "com.easyradio.app.EXTRA_RESUME_POSITION_MS"
+
+/** Browse-tree media id (e.g. "station/xxx"/"episode/xxx") for [EasyRadioPlaybackService]'s
+ * own persisted "what was last playing" restore -- see [EasyRadioPlaybackService.ensureLoaded]. */
+const val EXTRA_MEDIA_ID = "com.easyradio.app.EXTRA_MEDIA_ID"
+
+private const val PLAYBACK_STATE_PREFS = "easy_radio_playback_state"
+private const val PREF_LAST_MEDIA_ID = "last_media_id"
 
 /**
  * Hand-built [MediaSessionCompat]/[PlaybackStateCompat] session backing all playback surfaces,
@@ -83,6 +93,7 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
     private var currentTitle: String? = null
     private var currentArtist: String? = null
     private var currentArtworkUrl: String? = null
+    private var currentMediaId: String? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -286,6 +297,13 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
                 .putString(MediaMetadataCompat.METADATA_KEY_TITLE, currentTitle)
                 .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, currentArtist)
                 .putString(MediaMetadataCompat.METADATA_KEY_ART_URI, currentArtworkUrl)
+                // Lets any controller -- not just the one that happened to initiate playback --
+                // discover what's currently loaded and reconstruct its own UI state from it.
+                // Without this, MainActivity's mini-player only ever reflected playback IT
+                // itself started; once the service could resume on its own (see ensureLoaded()),
+                // audio could genuinely be playing with the mini-player still hidden, because
+                // MainActivity's currentStation/currentEpisode were never told about it.
+                .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, currentMediaId)
                 .apply { durationMs?.let { putLong(MediaMetadataCompat.METADATA_KEY_DURATION, it) } }
                 .build(),
         )
@@ -334,6 +352,12 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
             .setSmallIcon(applicationInfo.icon)
             .setContentTitle(currentTitle ?: "Easy Radio")
             .setContentText(currentArtist)
+            // Untinted media notifications/sessions render with a flat default styling on
+            // remote surfaces (e.g. the button backgrounds on Wear OS's system media card);
+            // Pocket Casts' watch buttons render with a colored background because they set
+            // a notification accent color, which we never had. Reuses the app's own brand
+            // color (Color.kt's LightPrimary) rather than a separate, easily-drifting value.
+            .setColor(NOTIFICATION_ACCENT_COLOR)
             .setContentIntent(mediaSession.controller.sessionActivity)
             .setDeleteIntent(
                 MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_STOP),
@@ -374,11 +398,37 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
         ContextCompat.startForegroundService(this, Intent(this, EasyRadioPlaybackService::class.java))
     }
 
-    private fun startPlayback(uri: Uri, title: String?, artist: String?, artworkUrl: String?, resumePositionMs: Long) {
+    /**
+     * Persists which media id was last playing so a freshly recreated service instance (e.g.
+     * after a real process-level kill under memory pressure, confirmed on a real device via
+     * `dumpsys activity processes` showing mHasForegroundServices=true with the player holding
+     * no media item at all -- a stray play command reaching a brand new, empty ExoPlayer
+     * instance) can restore it instead of silently doing nothing. Plain SharedPreferences: this
+     * only needs to survive process death, not structured querying.
+     */
+    private fun persistLastMediaId(mediaId: String?) {
+        getSharedPreferences(PLAYBACK_STATE_PREFS, MODE_PRIVATE).edit()
+            .putString(PREF_LAST_MEDIA_ID, mediaId)
+            .apply()
+    }
+
+    /** Restores the last-played item if this (possibly freshly recreated) instance's player has
+     * nothing loaded at all -- see [persistLastMediaId]. Safe to call unconditionally from
+     * SessionCallback.onPlay(): a no-op whenever something is already loaded. */
+    private fun ensureLoaded() {
+        if (player.currentMediaItem != null) return
+        val mediaId = getSharedPreferences(PLAYBACK_STATE_PREFS, MODE_PRIVATE)
+            .getString(PREF_LAST_MEDIA_ID, null) ?: return
+        serviceScope.launch { startPlaybackFromMediaId(mediaId) }
+    }
+
+    private fun startPlayback(uri: Uri, title: String?, artist: String?, artworkUrl: String?, resumePositionMs: Long, mediaId: String? = null) {
         ensureStarted()
+        persistLastMediaId(mediaId)
         currentTitle = title
         currentArtist = artist
         currentArtworkUrl = artworkUrl
+        currentMediaId = mediaId
         publishMetadata()
         val mediaItem = MediaItem.Builder()
             .setUri(uri)
@@ -395,14 +445,15 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
         player.play()
     }
 
-    /** Resolves a browse-tree media id (used by Android Auto's tap-to-play) to a playable uri. */
+    /** Resolves a browse-tree media id (used by Android Auto's tap-to-play, and by [ensureLoaded]
+     * to restore after the service is recreated) to a playable uri. */
     private suspend fun startPlaybackFromMediaId(mediaId: String) {
         when {
             mediaId.startsWith(MediaBrowseTree.STATION_PREFIX) -> {
                 val station = CuratedRadioStations.ALL.firstOrNull {
                     MediaBrowseTree.STATION_PREFIX + it.id == mediaId
                 } ?: return
-                startPlayback(Uri.parse(station.streamUrl), station.name, station.tagline, station.imageUrl, 0L)
+                startPlayback(Uri.parse(station.streamUrl), station.name, station.tagline, station.imageUrl, 0L, mediaId)
             }
             mediaId.startsWith(MediaBrowseTree.EPISODE_PREFIX) -> {
                 val episode = allSubscribedEpisodes().firstOrNull {
@@ -411,7 +462,7 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
                 val podcast = repository.subscribedPodcasts().first().firstOrNull { it.id == episode.podcastId }
                 val uri = episode.localFilePath?.let { Uri.fromFile(java.io.File(it)) } ?: Uri.parse(episode.audioUrl)
                 val resumeMs = repository.lastPosition(episode.id)
-                startPlayback(uri, episode.title, podcast?.author?.ifBlank { podcast.title }, podcast?.artworkUrl, resumeMs)
+                startPlayback(uri, episode.title, podcast?.author?.ifBlank { podcast.title }, podcast?.artworkUrl, resumeMs, mediaId)
             }
         }
     }
@@ -419,6 +470,7 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
     private inner class SessionCallback : MediaSessionCompat.Callback() {
         override fun onPlay() {
             ensureStarted()
+            ensureLoaded()
             player.play()
         }
 
@@ -468,6 +520,7 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
                 artist = extras?.getString(EXTRA_ARTIST),
                 artworkUrl = extras?.getString(EXTRA_ARTWORK_URL),
                 resumePositionMs = extras?.getLong(EXTRA_RESUME_POSITION_MS) ?: 0L,
+                mediaId = extras?.getString(EXTRA_MEDIA_ID),
             )
         }
 

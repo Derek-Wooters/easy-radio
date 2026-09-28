@@ -48,13 +48,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import android.support.v4.media.MediaBrowserCompat
+import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaControllerCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import com.easyradio.app.playback.EXTRA_ARTIST
 import com.easyradio.app.playback.EXTRA_ARTWORK_URL
+import com.easyradio.app.playback.EXTRA_MEDIA_ID
 import com.easyradio.app.playback.EXTRA_RESUME_POSITION_MS
 import com.easyradio.app.playback.EXTRA_TITLE
 import com.easyradio.app.playback.EasyRadioPlaybackService
+import com.easyradio.core.media.MediaBrowseTree
+import com.easyradio.core.model.CuratedRadioStations
 import com.easyradio.app.ui.PodcastsScreen
 import com.easyradio.app.ui.RadioBrowseScreen
 import com.easyradio.app.ui.theme.EasyRadioTheme
@@ -167,6 +171,18 @@ class MainActivity : ComponentActivity() {
         // whatever stale state happened to be cached at connect time.
         override fun onSessionReady() {
             uiState = mapPlaybackState(mediaController?.playbackState)
+            syncNowPlayingFromMediaId(mediaController?.metadata?.getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID))
+        }
+
+        // currentStation/currentEpisode used to only ever be set by MainActivity's own
+        // playStation()/playEpisode() -- fine while the Activity was the only thing that could
+        // start playback. Once the service could resume on its own after being recreated (see
+        // EasyRadioPlaybackService.ensureLoaded()), audio could genuinely be playing with the
+        // mini-player still hidden, because nothing ever told this Activity about it. Observing
+        // the session's own metadata (which now always carries a media id) instead of only
+        // trusting local state closes that gap regardless of what caused playback to start.
+        override fun onMetadataChanged(metadata: MediaMetadataCompat?) {
+            syncNowPlayingFromMediaId(metadata?.getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID))
         }
 
         // The session can be destroyed out from under us (e.g. the service process was
@@ -177,6 +193,9 @@ class MainActivity : ComponentActivity() {
             uiState = PlaybackUiState.IDLE
         }
     }
+    /** Guards [syncNowPlayingFromMediaId] against redoing work for a media id this Activity
+     * already knows about (either because it started playback itself, or already synced it). */
+    private var lastSyncedMediaId: String? = null
     private var uiState by mutableStateOf(PlaybackUiState.IDLE)
     private var currentStation by mutableStateOf<RadioStation?>(null)
     private var currentEpisode by mutableStateOf<Episode?>(null)
@@ -570,18 +589,57 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * Resolves a browse-tree media id (as published in the session's own metadata) into full
+     * RadioStation/Episode+Podcast objects and applies them as this Activity's own "now playing"
+     * state -- see the comment on controllerCallback.onMetadataChanged for why this exists.
+     * Mirrors EasyRadioPlaybackService.startPlaybackFromMediaId()'s resolution logic since this
+     * Activity has the same repository/curated-list access.
+     */
+    private fun syncNowPlayingFromMediaId(mediaId: String?) {
+        if (mediaId == null || mediaId == lastSyncedMediaId) return
+        lastSyncedMediaId = mediaId
+        when {
+            mediaId.startsWith(MediaBrowseTree.STATION_PREFIX) -> {
+                val station = CuratedRadioStations.ALL.firstOrNull {
+                    MediaBrowseTree.STATION_PREFIX + it.id == mediaId
+                } ?: return
+                currentEpisode = null
+                currentPodcast = null
+                currentStation = station
+            }
+            mediaId.startsWith(MediaBrowseTree.EPISODE_PREFIX) -> {
+                val episodeId = mediaId.removePrefix(MediaBrowseTree.EPISODE_PREFIX)
+                lifecycleScope.launch {
+                    val podcasts = podcastRepository.subscribedPodcasts().first()
+                    for (podcast in podcasts) {
+                        val episode = podcastRepository.episodesFor(podcast.id).first()
+                            .firstOrNull { it.id == episodeId } ?: continue
+                        currentStation = null
+                        currentPodcast = podcast
+                        currentEpisode = episode
+                        startPositionSaving(episode.id)
+                        break
+                    }
+                }
+            }
+        }
+    }
+
     private fun playStation(station: RadioStation) {
         positionSaveJob?.cancel()
         currentEpisode = null
         currentPodcast = null
         currentStation = station
         expandRequestId++
+        lastSyncedMediaId = MediaBrowseTree.STATION_PREFIX + station.id
         mediaController?.transportControls?.playFromUri(
             android.net.Uri.parse(station.streamUrl),
             android.os.Bundle().apply {
                 putString(EXTRA_TITLE, station.name)
                 putString(EXTRA_ARTIST, station.tagline)
                 putString(EXTRA_ARTWORK_URL, station.imageUrl)
+                putString(EXTRA_MEDIA_ID, MediaBrowseTree.STATION_PREFIX + station.id)
             },
         )
         lifecycleScope.launch {
@@ -642,6 +700,7 @@ class MainActivity : ComponentActivity() {
         currentPodcast = podcast
         playbackSpeedIndex = 0
         expandRequestId++
+        lastSyncedMediaId = MediaBrowseTree.EPISODE_PREFIX + episode.id
         val controller = mediaController ?: return
 
         val localPath = episode.localFilePath
@@ -668,6 +727,7 @@ class MainActivity : ComponentActivity() {
                     putString(EXTRA_ARTIST, podcast.author.ifBlank { podcast.title })
                     putString(EXTRA_ARTWORK_URL, podcast.artworkUrl)
                     putLong(EXTRA_RESUME_POSITION_MS, resumeMs)
+                    putString(EXTRA_MEDIA_ID, MediaBrowseTree.EPISODE_PREFIX + episode.id)
                 },
             )
         }
@@ -791,6 +851,7 @@ class MainActivity : ComponentActivity() {
                     // until something else happens to nudge it. Sync immediately on connect
                     // instead of waiting for the first subsequent callback.
                     uiState = mapPlaybackState(controller.playbackState)
+                    syncNowPlayingFromMediaId(controller.metadata?.getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID))
                 }
             },
             null,
