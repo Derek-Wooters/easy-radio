@@ -12,6 +12,17 @@
         android:name="android.hardware.type.automotive"
         android:required="false" />
 
+    <!-- Without this, Android's package-visibility filtering (enforced since API 30) hides
+         the Wear OS companion app from our own process, confirmed via
+         "MediaSessionManager: Package com.google.android.apps.wear.companion doesn't exist"
+         logged from inside our app when the watch dispatched a pause/play/skip command. The
+         OS-level relay (system_server) still delivers the call, but our own session can't
+         resolve the calling package into a valid controller, so the command silently never
+         reaches our callback at all. -->
+    <queries>
+        <package android:name="com.google.android.apps.wear.companion" />
+    </queries>
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -39,10 +50,22 @@
             android:exported="true"
             android:foregroundServiceType="mediaPlayback">
             <intent-filter>
-                <action android:name="androidx.media3.session.MediaLibraryService" />
                 <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>
         </service>
+
+        <!-- Legacy media-button dispatch target. Remote/companion surfaces that relay this
+             session's controls (e.g. Wear OS's system media card, Bluetooth AVRCP) need a
+             registered receiver to deliver a button press to; without one, Pocket Casts'
+             session (which registers one) renders enabled controls while ours renders all
+             transport buttons greyed out and inert, confirmed side by side on a real device. -->
+        <receiver
+            android:name="androidx.media.session.MediaButtonReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
+        </receiver>
 
         <!-- Serves cached artwork to Auto/AAOS as local content:// uris. Exported
              so the Auto/AAOS host (a separate uid) can read the icons; it only
