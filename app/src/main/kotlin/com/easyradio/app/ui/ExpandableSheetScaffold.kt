@@ -23,6 +23,11 @@ import kotlinx.coroutines.launch
  * Bump [expandRequestId] (e.g. a counter incremented from outside composition) to request the
  * sheet expand, since callers that aren't themselves composables can't call the underlying
  * suspend `SheetState.expand()` directly.
+ *
+ * [onExpandedChange] fires whenever the sheet switches between showing [collapsedContent] and
+ * [expandedContent] (mirroring that same switch, not the drag animation), so a caller that needs
+ * to hide other bottom-anchored UI (e.g. a nav bar) while the sheet is full-screen can do so in
+ * lockstep rather than guessing at animation timing.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,6 +37,7 @@ fun ExpandableSheetScaffold(
     peekHeight: Dp,
     collapsedContent: @Composable ColumnScope.(onExpand: () -> Unit) -> Unit,
     expandedContent: @Composable (onCollapse: () -> Unit) -> Unit,
+    onExpandedChange: (Boolean) -> Unit = {},
     content: @Composable () -> Unit,
 ) {
     // Starts Hidden (nothing has played yet) rather than PartiallyExpanded so peekHeight can
@@ -46,6 +52,10 @@ fun ExpandableSheetScaffold(
 
     LaunchedEffect(expandRequestId) {
         if (expandRequestId > 0) sheetState.expand()
+    }
+
+    LaunchedEffect(sheetState.targetValue) {
+        onExpandedChange(sheetState.targetValue == SheetValue.Expanded)
     }
 
     BackHandler(enabled = sheetState.currentValue == SheetValue.Expanded) {
