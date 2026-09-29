@@ -34,7 +34,7 @@ import com.easyradio.core.model.ThemeMode
 
 // Design order (7e): Light, Dark, System.
 private val THEME_ORDER = listOf(ThemeMode.LIGHT, ThemeMode.DARK, ThemeMode.SYSTEM)
-private val SLEEP_TIMER_OPTIONS = listOf(0, 15, 30, 45, 60)
+private val SLEEP_TIMER_OPTIONS = listOf(0, 5, 15, 30, 45, 60)
 private val SKIP_SECONDS_OPTIONS = listOf(5, 10, 15, 30, 45, 60)
 
 @Composable
@@ -51,6 +51,7 @@ fun SettingsScreen(
     onVoiceBoostEnabledChange: (Boolean) -> Unit = {},
     listenedTodaySeconds: Long = 0L,
     listenedThisWeekSeconds: Long = 0L,
+    listenedAllTimeSeconds: Long = 0L,
     onBack: (() -> Unit)? = null,
 ) {
     Column(
@@ -88,6 +89,17 @@ fun SettingsScreen(
                 )
                 Text(
                     text = "This week",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = formatListeningDuration(listenedAllTimeSeconds),
+                    style = MaterialTheme.typography.headlineSmall,
+                )
+                Text(
+                    text = "All time",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

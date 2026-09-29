@@ -214,6 +214,7 @@ class MainActivity : ComponentActivity() {
             val settings by settingsRepository.settings.collectAsState(initial = AppSettings())
             val listenedTodaySeconds by listeningStatsRepository.totalSecondsForLast(1).collectAsState(initial = 0L)
             val listenedThisWeekSeconds by listeningStatsRepository.totalSecondsForLast(7).collectAsState(initial = 0L)
+            val listenedAllTimeSeconds by listeningStatsRepository.totalSecondsAllTime().collectAsState(initial = 0L)
 
             LaunchedEffect(Unit) {
                 // Wait for the first real DataStore emission rather than the collectAsState
@@ -303,7 +304,7 @@ class MainActivity : ComponentActivity() {
                         title = { Text("Sleep timer") },
                         text = {
                             Column {
-                                listOf(0, 15, 30, 45, 60).forEach { minutes ->
+                                listOf(0, 5, 15, 30, 45, 60).forEach { minutes ->
                                     TextButton(onClick = {
                                         lifecycleScope.launch { settingsRepository.setSleepTimerMinutes(minutes) }
                                         showSleepTimerPicker = false
@@ -365,6 +366,7 @@ class MainActivity : ComponentActivity() {
                         },
                         listenedTodaySeconds = listenedTodaySeconds,
                         listenedThisWeekSeconds = listenedThisWeekSeconds,
+                        listenedAllTimeSeconds = listenedAllTimeSeconds,
                         onBack = { showSettings = false },
                     )
                 } else if (showQueue) {

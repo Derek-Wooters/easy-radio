@@ -22,4 +22,7 @@ class ListeningStatsRepository(
         val sinceDate = today().minusDays(days - 1).toString()
         return dao.observeSince(sinceDate).map { rows -> rows.sumOf { it.secondsListened } }
     }
+
+    /** Total seconds listened across all recorded days. */
+    fun totalSecondsAllTime(): Flow<Long> = dao.observeLifetimeTotal()
 }
