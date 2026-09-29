@@ -20,6 +20,9 @@ private class FakeListeningStatsDao : ListeningStatsDao {
 
     override fun observeSince(sinceDate: String) =
         state.map { list -> list.filter { it.date >= sinceDate } }
+
+    override fun observeLifetimeTotal() =
+        state.map { list -> list.sumOf { it.secondsListened } }
 }
 
 class ListeningStatsRepositoryTest {
@@ -59,5 +62,17 @@ class ListeningStatsRepositoryTest {
         val total = repository.totalSecondsForLast(days = 7).first()
 
         assertThat(total).isEqualTo(300)
+    }
+
+    @Test
+    fun `totalSecondsAllTime sums every recorded day, including ones outside any weekly window`() = runTest {
+        val dao = FakeListeningStatsDao()
+        dao.upsert(ListeningStatsEntity(date = "2026-09-12", secondsListened = 100)) // today
+        dao.upsert(ListeningStatsEntity(date = "2026-09-01", secondsListened = 999)) // 11 days ago
+        val repository = ListeningStatsRepository(dao, today = { fixedToday })
+
+        val total = repository.totalSecondsAllTime().first()
+
+        assertThat(total).isEqualTo(1099)
     }
 }

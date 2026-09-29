@@ -17,4 +17,7 @@ interface ListeningStatsDao {
 
     @Query("SELECT * FROM listening_stats WHERE date >= :sinceDate ORDER BY date DESC")
     fun observeSince(sinceDate: String): Flow<List<ListeningStatsEntity>>
+
+    @Query("SELECT COALESCE(SUM(secondsListened), 0) FROM listening_stats")
+    fun observeLifetimeTotal(): Flow<Long>
 }

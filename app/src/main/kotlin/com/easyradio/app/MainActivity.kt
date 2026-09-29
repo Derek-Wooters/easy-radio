@@ -193,6 +193,10 @@ class MainActivity : ComponentActivity() {
     // inside the composable (which does have access to the sheet state) reacts to it.
     private var expandRequestId by mutableStateOf(0)
     private var selectedTab by mutableStateOf(AppTab.HOME)
+    // Mirrors the mini-player sheet's collapsed/expanded state so the bottom nav bar can hide
+    // itself while Now Playing is full-screen, instead of being pushed around inside a shared
+    // Scaffold (see the mini-player/nav-bar ordering fix in ExpandableSheetScaffold usage below).
+    private var sheetExpanded by mutableStateOf(false)
     private var showQueue by mutableStateOf(false)
     private var showSettings by mutableStateOf(false)
     private var showSleepTimerPicker by mutableStateOf(false)
@@ -210,6 +214,7 @@ class MainActivity : ComponentActivity() {
             val settings by settingsRepository.settings.collectAsState(initial = AppSettings())
             val listenedTodaySeconds by listeningStatsRepository.totalSecondsForLast(1).collectAsState(initial = 0L)
             val listenedThisWeekSeconds by listeningStatsRepository.totalSecondsForLast(7).collectAsState(initial = 0L)
+            val listenedAllTimeSeconds by listeningStatsRepository.totalSecondsAllTime().collectAsState(initial = 0L)
 
             LaunchedEffect(Unit) {
                 // Wait for the first real DataStore emission rather than the collectAsState
@@ -299,7 +304,7 @@ class MainActivity : ComponentActivity() {
                         title = { Text("Sleep timer") },
                         text = {
                             Column {
-                                listOf(0, 15, 30, 45, 60).forEach { minutes ->
+                                listOf(0, 5, 15, 30, 45, 60).forEach { minutes ->
                                     TextButton(onClick = {
                                         lifecycleScope.launch { settingsRepository.setSleepTimerMinutes(minutes) }
                                         showSleepTimerPicker = false
@@ -361,6 +366,7 @@ class MainActivity : ComponentActivity() {
                         },
                         listenedTodaySeconds = listenedTodaySeconds,
                         listenedThisWeekSeconds = listenedThisWeekSeconds,
+                        listenedAllTimeSeconds = listenedAllTimeSeconds,
                         onBack = { showSettings = false },
                     )
                 } else if (showQueue) {
@@ -381,10 +387,13 @@ class MainActivity : ComponentActivity() {
                     )
                 } else {
                 val nothingPlaying = currentStation == null && currentEpisode == null
+                Column(modifier = Modifier.fillMaxSize()) {
+                Box(modifier = Modifier.weight(1f)) {
                 ExpandableSheetScaffold(
                     hasContent = !nothingPlaying,
                     expandRequestId = expandRequestId,
                     peekHeight = MINI_PLAYER_HEIGHT,
+                    onExpandedChange = { sheetExpanded = it },
                     collapsedContent = { onExpand ->
                         val station = currentStation
                         val episode = currentEpisode
@@ -504,18 +513,6 @@ class MainActivity : ComponentActivity() {
                 Scaffold(
                     modifier = Modifier.padding(bottom = if (nothingPlaying) 0.dp else MINI_PLAYER_HEIGHT),
                     snackbarHost = { SnackbarHost(snackbarHostState) },
-                    bottomBar = {
-                        NavigationBar {
-                            AppTab.entries.forEach { tab ->
-                                NavigationBarItem(
-                                    selected = selectedTab == tab,
-                                    onClick = { selectedTab = tab },
-                                    icon = { Icon(tab.icon, contentDescription = tab.label) },
-                                    label = { Text(tab.label) },
-                                )
-                            }
-                        }
-                    },
                 ) { innerPadding ->
                     Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                         when (selectedTab) {
@@ -559,7 +556,23 @@ class MainActivity : ComponentActivity() {
                             )
                             AppTab.PLAYLISTS -> PlaylistsScreen(
                                 repository = favoriteStationRepository,
+                                podcastRepository = podcastRepository,
                                 onStationSelected = ::playStation,
+                                onEpisodeSelected = { podcast, episode -> playEpisode(podcast, episode) },
+                            )
+                        }
+                    }
+                }
+                }
+                }
+                if (!sheetExpanded) {
+                    NavigationBar {
+                        AppTab.entries.forEach { tab ->
+                            NavigationBarItem(
+                                selected = selectedTab == tab,
+                                onClick = { selectedTab = tab },
+                                icon = { Icon(tab.icon, contentDescription = tab.label) },
+                                label = { Text(tab.label) },
                             )
                         }
                     }

@@ -36,4 +36,7 @@ interface EpisodeDao {
 
     @Query("SELECT * FROM episodes WHERE localFilePath IS NOT NULL ORDER BY publishedAtEpochMillis DESC")
     fun observeDownloaded(): Flow<List<EpisodeEntity>>
+
+    @Query("SELECT * FROM episodes ORDER BY publishedAtEpochMillis DESC")
+    fun observeAll(): Flow<List<EpisodeEntity>>
 }

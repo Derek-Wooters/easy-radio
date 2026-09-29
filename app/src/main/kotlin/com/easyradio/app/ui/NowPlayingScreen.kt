@@ -25,11 +25,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.Bedtime
-import androidx.compose.material.icons.filled.Forward30
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarOutline
 import androidx.compose.material3.CircularProgressIndicator
@@ -280,7 +278,7 @@ fun NowPlayingScreen(
                 }
                 if (onSkipBack != null) {
                     IconButton(onClick = onSkipBack) {
-                        Icon(Icons.Filled.Replay, contentDescription = "Skip back $skipBackSeconds seconds")
+                        SkipIcon(seconds = skipBackSeconds, direction = SkipDirection.BACK)
                     }
                 }
                 FilledIconButton(
@@ -299,7 +297,7 @@ fun NowPlayingScreen(
                 }
                 if (onSkipForward != null) {
                     IconButton(onClick = onSkipForward) {
-                        Icon(Icons.Filled.Forward30, contentDescription = "Skip forward $skipForwardSeconds seconds")
+                        SkipIcon(seconds = skipForwardSeconds, direction = SkipDirection.FORWARD)
                     }
                 }
                 if (onSleepTimerClick != null && onQueueClick != null) {

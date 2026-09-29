@@ -214,6 +214,10 @@ class PodcastRepository(
     fun downloadedEpisodes(): Flow<List<Episode>> =
         episodeDao.observeDownloaded().map { list -> list.map { it.toEpisode() } }
 
+    /** Every stored episode across every subscribed podcast, for cross-podcast smart lists. */
+    fun allEpisodes(): Flow<List<Episode>> =
+        episodeDao.observeAll().map { list -> list.map { it.toEpisode() } }
+
     suspend fun savePosition(episodeId: String, positionMs: Long) {
         episodeDao.updatePosition(episodeId, positionMs)
     }
