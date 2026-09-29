@@ -405,21 +405,11 @@ class MainActivity : ComponentActivity() {
                         repository = podcastRepository,
                         onBack = { showQueue = false },
                         onEpisodeSelected = { episode ->
-                            // Queuing an episode never required subscribing to its podcast, so
-                            // this can't assume subscribedPodcasts() has it -- fall back to a
-                            // placeholder (title must be non-blank, or the Podcast constructor
-                            // itself throws) rather than crashing on an unsubscribed show's
-                            // queued episode.
                             lifecycleScope.launch {
-                                val podcast = podcastRepository.subscribedPodcasts().first()
-                                    .firstOrNull { it.id == episode.podcastId }
-                                    ?: Podcast(
-                                        id = episode.podcastId,
-                                        title = "Podcast",
-                                        author = "",
-                                        artworkUrl = null,
-                                        feedUrl = "https://placeholder.invalid/",
-                                    )
+                                val podcast = resolvePlayablePodcast(
+                                    episode,
+                                    podcastRepository.subscribedPodcasts().first(),
+                                )
                                 playEpisode(podcast, episode)
                             }
                             showQueue = false
@@ -774,19 +764,7 @@ class MainActivity : ComponentActivity() {
         val episodeId = mediaId.removePrefix(MediaBrowseTree.EPISODE_PREFIX)
         lifecycleScope.launch {
             val episode = podcastRepository.allEpisodes().first().firstOrNull { it.id == episodeId } ?: return@launch
-            // Queuing (and thus auto-advancing to) an episode never required subscribing to its
-            // podcast -- the service itself tolerates an unresolvable podcast when it auto-plays
-            // this episode (see EasyRadioPlaybackService.playEpisode). Falling back to a
-            // placeholder here, rather than bailing out, is what keeps the UI in sync with what's
-            // actually playing in exactly that case instead of silently going stale.
-            val podcast = podcastRepository.subscribedPodcasts().first().firstOrNull { it.id == episode.podcastId }
-                ?: Podcast(
-                    id = episode.podcastId,
-                    title = "Podcast",
-                    author = "",
-                    artworkUrl = null,
-                    feedUrl = "https://placeholder.invalid/",
-                )
+            val podcast = resolvePlayablePodcast(episode, podcastRepository.subscribedPodcasts().first())
             adoptNowPlayingEpisode(podcast, episode)
         }
     }

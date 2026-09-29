@@ -29,6 +29,8 @@ import com.easyradio.app.EasyRadioGraph
 import com.easyradio.app.MainActivity
 import com.easyradio.core.database.PodcastRepository
 import com.easyradio.core.media.BrowseNode
+import com.easyradio.core.media.EpisodeEndAction
+import com.easyradio.core.media.EpisodeEndDecision
 import com.easyradio.core.media.MediaBrowseTree
 import com.easyradio.core.model.CuratedRadioStations
 import com.easyradio.core.model.Episode
@@ -260,13 +262,15 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
      */
     private suspend fun handleEpisodeEnded() {
         currentEpisodeId = null
-        if (sleepAtEndOfEpisode) {
-            sleepAtEndOfEpisode = false
-            return
+        val wasArmed = sleepAtEndOfEpisode
+        sleepAtEndOfEpisode = false
+        when (val action = EpisodeEndDecision.resolve(wasArmed, repository.queue().first())) {
+            is EpisodeEndAction.Advance -> {
+                repository.removeFromQueue(action.next.id)
+                playEpisode(action.next)
+            }
+            EpisodeEndAction.Stop -> Unit
         }
-        val next = repository.queue().first().firstOrNull() ?: return
-        repository.removeFromQueue(next.id)
-        playEpisode(next)
     }
 
     /**
