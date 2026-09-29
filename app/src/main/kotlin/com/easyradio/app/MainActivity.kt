@@ -50,11 +50,14 @@ import androidx.lifecycle.lifecycleScope
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.session.MediaControllerCompat
 import android.support.v4.media.session.PlaybackStateCompat
+import com.easyradio.app.playback.ACTION_SLEEP_AT_END_OF_EPISODE
 import com.easyradio.app.playback.EXTRA_ARTIST
 import com.easyradio.app.playback.EXTRA_ARTWORK_URL
+import com.easyradio.app.playback.EXTRA_EPISODE_ID
 import com.easyradio.app.playback.EXTRA_RESUME_POSITION_MS
 import com.easyradio.app.playback.EXTRA_TITLE
 import com.easyradio.app.playback.EasyRadioPlaybackService
+import com.easyradio.core.media.MediaBrowseTree
 import com.easyradio.app.ui.PodcastsScreen
 import com.easyradio.app.ui.RadioBrowseScreen
 import com.easyradio.app.ui.theme.EasyRadioTheme
@@ -154,9 +157,24 @@ class MainActivity : ComponentActivity() {
 
     private var mediaBrowser: MediaBrowserCompat? = null
     private var mediaController by mutableStateOf<MediaControllerCompat?>(null)
+
+    // The last episode media id this activity has already reflected in currentEpisode/
+    // currentPodcast, so a metadata echo of our own playEpisode() call (or a repeat) doesn't
+    // trigger a redundant resync. Set both when we resync from a controller callback and
+    // immediately in playEpisode() itself, since a manual play already knows the answer.
+    private var lastSyncedMediaId: String? = null
+
     private val controllerCallback = object : MediaControllerCompat.Callback() {
         override fun onPlaybackStateChanged(state: PlaybackStateCompat?) {
             uiState = mapPlaybackState(state)
+        }
+
+        // The service can advance to the next queued episode on its own (auto-advance when one
+        // episode ends) without MainActivity ever calling playEpisode() -- without this,
+        // currentEpisode/currentPodcast would keep showing the episode that just finished while
+        // something else is actually playing.
+        override fun onMetadataChanged(metadata: android.support.v4.media.MediaMetadataCompat?) {
+            syncNowPlayingFromMediaId(metadata?.getString(android.support.v4.media.MediaMetadataCompat.METADATA_KEY_MEDIA_ID))
         }
 
         // Right after connecting, MediaControllerCompat's cached playbackState/metadata can
@@ -167,6 +185,9 @@ class MainActivity : ComponentActivity() {
         // whatever stale state happened to be cached at connect time.
         override fun onSessionReady() {
             uiState = mapPlaybackState(mediaController?.playbackState)
+            syncNowPlayingFromMediaId(
+                mediaController?.metadata?.getString(android.support.v4.media.MediaMetadataCompat.METADATA_KEY_MEDIA_ID),
+            )
         }
 
         // The session can be destroyed out from under us (e.g. the service process was
@@ -312,6 +333,16 @@ class MainActivity : ComponentActivity() {
                                         Text(if (minutes == 0) "Off" else "$minutes min")
                                     }
                                 }
+                                TextButton(onClick = {
+                                    // Mutually exclusive with the minutes-based countdown above --
+                                    // clear any running one so it can't also fire later and pause
+                                    // (again, redundantly) after this episode has already stopped.
+                                    lifecycleScope.launch { settingsRepository.setSleepTimerMinutes(0) }
+                                    mediaController?.transportControls?.sendCustomAction(ACTION_SLEEP_AT_END_OF_EPISODE, null)
+                                    showSleepTimerPicker = false
+                                }) {
+                                    Text("End of episode")
+                                }
                             }
                         },
                     )
@@ -374,14 +405,23 @@ class MainActivity : ComponentActivity() {
                         repository = podcastRepository,
                         onBack = { showQueue = false },
                         onEpisodeSelected = { episode ->
-                            val podcast = Podcast(
-                                id = episode.podcastId,
-                                title = "",
-                                author = "",
-                                artworkUrl = null,
-                                feedUrl = "https://placeholder.invalid/",
-                            )
-                            playEpisode(podcast, episode)
+                            // Queuing an episode never required subscribing to its podcast, so
+                            // this can't assume subscribedPodcasts() has it -- fall back to a
+                            // placeholder (title must be non-blank, or the Podcast constructor
+                            // itself throws) rather than crashing on an unsubscribed show's
+                            // queued episode.
+                            lifecycleScope.launch {
+                                val podcast = podcastRepository.subscribedPodcasts().first()
+                                    .firstOrNull { it.id == episode.podcastId }
+                                    ?: Podcast(
+                                        id = episode.podcastId,
+                                        title = "Podcast",
+                                        author = "",
+                                        artworkUrl = null,
+                                        feedUrl = "https://placeholder.invalid/",
+                                    )
+                                playEpisode(podcast, episode)
+                            }
                             showQueue = false
                         },
                     )
@@ -650,10 +690,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun playEpisode(podcast: Podcast, episode: Episode) {
-        currentStation = null
-        currentEpisode = episode
-        currentPodcast = podcast
-        playbackSpeedIndex = 0
+        adoptNowPlayingEpisode(podcast, episode)
         expandRequestId++
         val controller = mediaController ?: return
 
@@ -681,10 +718,25 @@ class MainActivity : ComponentActivity() {
                     putString(EXTRA_ARTIST, podcast.author.ifBlank { podcast.title })
                     putString(EXTRA_ARTWORK_URL, podcast.artworkUrl)
                     putLong(EXTRA_RESUME_POSITION_MS, resumeMs)
+                    putString(EXTRA_EPISODE_ID, episode.id)
                 },
             )
         }
+    }
 
+    /**
+     * Local UI bookkeeping for "this episode is now playing" -- currentEpisode/currentPodcast,
+     * position-saving, and Recently Played/markPlayed -- shared by [playEpisode] (a manual,
+     * user-initiated play, which also sends the actual playFromUri) and
+     * [syncNowPlayingFromMediaId] (the service advanced to this episode on its own; playback is
+     * already underway, only the local UI needs to catch up).
+     */
+    private fun adoptNowPlayingEpisode(podcast: Podcast, episode: Episode) {
+        lastSyncedMediaId = MediaBrowseTree.EPISODE_PREFIX + episode.id
+        currentStation = null
+        currentEpisode = episode
+        currentPodcast = podcast
+        playbackSpeedIndex = 0
         startPositionSaving(episode.id)
 
         lifecycleScope.launch {
@@ -705,6 +757,37 @@ class MainActivity : ComponentActivity() {
             )
             // No-op if this podcast isn't subscribed -- there's no row to update.
             podcastRepository.markPlayed(podcast.id)
+        }
+    }
+
+    /**
+     * Reacts to the service's own now-playing media id -- the only case that matters today is
+     * auto-advance to the next queued episode, which the service does on its own with no call
+     * into MainActivity. A no-op if [mediaId] isn't an episode, or is one we've already adopted
+     * (our own playEpisode() call echoing back through the session, or a repeat notification).
+     */
+    private fun syncNowPlayingFromMediaId(mediaId: String?) {
+        if (mediaId == null || mediaId == lastSyncedMediaId || !mediaId.startsWith(MediaBrowseTree.EPISODE_PREFIX)) {
+            return
+        }
+        lastSyncedMediaId = mediaId
+        val episodeId = mediaId.removePrefix(MediaBrowseTree.EPISODE_PREFIX)
+        lifecycleScope.launch {
+            val episode = podcastRepository.allEpisodes().first().firstOrNull { it.id == episodeId } ?: return@launch
+            // Queuing (and thus auto-advancing to) an episode never required subscribing to its
+            // podcast -- the service itself tolerates an unresolvable podcast when it auto-plays
+            // this episode (see EasyRadioPlaybackService.playEpisode). Falling back to a
+            // placeholder here, rather than bailing out, is what keeps the UI in sync with what's
+            // actually playing in exactly that case instead of silently going stale.
+            val podcast = podcastRepository.subscribedPodcasts().first().firstOrNull { it.id == episode.podcastId }
+                ?: Podcast(
+                    id = episode.podcastId,
+                    title = "Podcast",
+                    author = "",
+                    artworkUrl = null,
+                    feedUrl = "https://placeholder.invalid/",
+                )
+            adoptNowPlayingEpisode(podcast, episode)
         }
     }
 

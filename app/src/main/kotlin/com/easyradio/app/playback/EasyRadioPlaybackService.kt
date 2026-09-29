@@ -50,6 +50,16 @@ const val EXTRA_ARTIST = "com.easyradio.app.EXTRA_ARTIST"
 const val EXTRA_ARTWORK_URL = "com.easyradio.app.EXTRA_ARTWORK_URL"
 const val EXTRA_RESUME_POSITION_MS = "com.easyradio.app.EXTRA_RESUME_POSITION_MS"
 
+/** Extras key identifying which podcast episode is being played, for auto-advance/end-of-episode. */
+const val EXTRA_EPISODE_ID = "com.easyradio.app.EXTRA_EPISODE_ID"
+
+/**
+ * Custom [MediaSessionCompat.Callback.onCustomAction] sent by [MainActivity]'s sleep-timer picker
+ * to arm a one-shot "stop instead of advancing to the next queued episode" for the episode
+ * currently playing, rather than the persisted minutes-based default.
+ */
+const val ACTION_SLEEP_AT_END_OF_EPISODE = "com.easyradio.app.ACTION_SLEEP_AT_END_OF_EPISODE"
+
 /**
  * Hand-built [MediaSessionCompat]/[PlaybackStateCompat] session backing all playback surfaces,
  * replacing an earlier Media3 [androidx.media3.session.MediaLibraryService]-based
@@ -83,6 +93,15 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
     private var currentTitle: String? = null
     private var currentArtist: String? = null
     private var currentArtworkUrl: String? = null
+
+    // Null whenever radio (or nothing) is playing -- auto-advance/end-of-episode only apply to
+    // podcast episodes, which is exactly what a non-null id here means.
+    private var currentEpisodeId: String? = null
+
+    // Armed by the "End of episode" sleep-timer option (ACTION_SLEEP_AT_END_OF_EPISODE) for the
+    // *current* episode only; reset whenever any new item starts playing so it never leaks onto
+    // whatever plays next.
+    private var sleepAtEndOfEpisode: Boolean = false
 
     override fun onCreate() {
         super.onCreate()
@@ -222,6 +241,32 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
             // override exists so future callers can't accidentally reintroduce a dependency
             // on stream-derived metadata for the legacy session's title.
         }
+
+        // Fires once per genuine transition (unlike onEvents, which fires broadly), so this is
+        // the correct edge to react to the player reaching the true end of an item exactly once.
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            if (playbackState == Player.STATE_ENDED && currentEpisodeId != null) {
+                serviceScope.launch { handleEpisodeEnded() }
+            }
+        }
+    }
+
+    /**
+     * Called exactly once when a podcast episode reaches its natural end. Advances to the next
+     * queued episode (Easy Radio has no other auto-advance path -- finishing an episode with
+     * nothing queued just stops, same as before this existed), unless the "End of episode" sleep
+     * timer was armed for this episode, in which case it's consumed here and playback is left
+     * stopped instead.
+     */
+    private suspend fun handleEpisodeEnded() {
+        currentEpisodeId = null
+        if (sleepAtEndOfEpisode) {
+            sleepAtEndOfEpisode = false
+            return
+        }
+        val next = repository.queue().first().firstOrNull() ?: return
+        repository.removeFromQueue(next.id)
+        playEpisode(next)
     }
 
     /**
@@ -281,11 +326,16 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
      */
     private fun publishMetadata() {
         val durationMs = player.duration.takeIf { it != C.TIME_UNSET }
+        // MEDIA_ID lets MainActivity notice a change of episode it didn't itself initiate (e.g.
+        // auto-advancing to the next queued episode) and resync its own now-playing UI state to
+        // match, rather than going stale showing the episode that just finished.
+        val mediaId = currentEpisodeId?.let { MediaBrowseTree.EPISODE_PREFIX + it }
         mediaSession.setMetadata(
             MediaMetadataCompat.Builder()
                 .putString(MediaMetadataCompat.METADATA_KEY_TITLE, currentTitle)
                 .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, currentArtist)
                 .putString(MediaMetadataCompat.METADATA_KEY_ART_URI, currentArtworkUrl)
+                .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, mediaId)
                 .apply { durationMs?.let { putLong(MediaMetadataCompat.METADATA_KEY_DURATION, it) } }
                 .build(),
         )
@@ -374,11 +424,20 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
         ContextCompat.startForegroundService(this, Intent(this, EasyRadioPlaybackService::class.java))
     }
 
-    private fun startPlayback(uri: Uri, title: String?, artist: String?, artworkUrl: String?, resumePositionMs: Long) {
+    private fun startPlayback(
+        uri: Uri,
+        title: String?,
+        artist: String?,
+        artworkUrl: String?,
+        resumePositionMs: Long,
+        episodeId: String? = null,
+    ) {
         ensureStarted()
         currentTitle = title
         currentArtist = artist
         currentArtworkUrl = artworkUrl
+        currentEpisodeId = episodeId
+        sleepAtEndOfEpisode = false
         publishMetadata()
         val mediaItem = MediaItem.Builder()
             .setUri(uri)
@@ -408,12 +467,28 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
                 val episode = allSubscribedEpisodes().firstOrNull {
                     MediaBrowseTree.EPISODE_PREFIX + it.id == mediaId
                 } ?: return
-                val podcast = repository.subscribedPodcasts().first().firstOrNull { it.id == episode.podcastId }
-                val uri = episode.localFilePath?.let { Uri.fromFile(java.io.File(it)) } ?: Uri.parse(episode.audioUrl)
-                val resumeMs = repository.lastPosition(episode.id)
-                startPlayback(uri, episode.title, podcast?.author?.ifBlank { podcast.title }, podcast?.artworkUrl, resumeMs)
+                playEpisode(episode)
             }
         }
+    }
+
+    /**
+     * Starts playback of [episode], resolving its podcast (for artist/artwork) and saved position
+     * the same way a media-id tap-to-play does. Shared by [startPlaybackFromMediaId] and
+     * [handleEpisodeEnded]'s auto-advance-to-next-queued-episode.
+     */
+    private suspend fun playEpisode(episode: Episode) {
+        val podcast = repository.subscribedPodcasts().first().firstOrNull { it.id == episode.podcastId }
+        val uri = episode.localFilePath?.let { Uri.fromFile(java.io.File(it)) } ?: Uri.parse(episode.audioUrl)
+        val resumeMs = repository.lastPosition(episode.id)
+        startPlayback(
+            uri = uri,
+            title = episode.title,
+            artist = podcast?.author?.ifBlank { podcast.title },
+            artworkUrl = podcast?.artworkUrl,
+            resumePositionMs = resumeMs,
+            episodeId = episode.id,
+        )
     }
 
     private inner class SessionCallback : MediaSessionCompat.Callback() {
@@ -468,11 +543,18 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
                 artist = extras?.getString(EXTRA_ARTIST),
                 artworkUrl = extras?.getString(EXTRA_ARTWORK_URL),
                 resumePositionMs = extras?.getLong(EXTRA_RESUME_POSITION_MS) ?: 0L,
+                episodeId = extras?.getString(EXTRA_EPISODE_ID),
             )
         }
 
         override fun onPlayFromMediaId(mediaId: String, extras: Bundle?) {
             serviceScope.launch { startPlaybackFromMediaId(mediaId) }
+        }
+
+        override fun onCustomAction(action: String, extras: Bundle?) {
+            if (action == ACTION_SLEEP_AT_END_OF_EPISODE) {
+                sleepAtEndOfEpisode = true
+            }
         }
     }
 
