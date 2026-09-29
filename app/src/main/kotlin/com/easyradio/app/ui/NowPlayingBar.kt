@@ -11,10 +11,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Forward30
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -120,7 +118,7 @@ fun NowPlayingBar(
                 }
                 if (onSkipBackClick != null) {
                     IconButton(onClick = onSkipBackClick) {
-                        Icon(Icons.Filled.Replay, contentDescription = "Skip back $skipBackSeconds seconds")
+                        SkipIcon(seconds = skipBackSeconds, direction = SkipDirection.BACK)
                     }
                 }
                 IconButton(onClick = if (isPlaying) onPauseClick else onPlayClick) {
@@ -135,7 +133,7 @@ fun NowPlayingBar(
                 }
                 if (onSkipForwardClick != null) {
                     IconButton(onClick = onSkipForwardClick) {
-                        Icon(Icons.Filled.Forward30, contentDescription = "Skip forward $skipForwardSeconds seconds")
+                        SkipIcon(seconds = skipForwardSeconds, direction = SkipDirection.FORWARD)
                     }
                 }
             }
