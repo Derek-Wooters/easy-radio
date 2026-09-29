@@ -28,8 +28,8 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.unit.dp
-import com.easyradio.app.ui.ExpandableSheetScaffold
 import com.easyradio.app.ui.HomeScreen
+import com.easyradio.app.ui.MiniPlayerScaffold
 import com.easyradio.app.ui.NowPlayingBar
 import com.easyradio.app.ui.NowPlayingScreen
 import com.easyradio.app.ui.OnboardingScreen
@@ -214,10 +214,6 @@ class MainActivity : ComponentActivity() {
     // inside the composable (which does have access to the sheet state) reacts to it.
     private var expandRequestId by mutableStateOf(0)
     private var selectedTab by mutableStateOf(AppTab.HOME)
-    // Mirrors the mini-player sheet's collapsed/expanded state so the bottom nav bar can hide
-    // itself while Now Playing is full-screen, instead of being pushed around inside a shared
-    // Scaffold (see the mini-player/nav-bar ordering fix in ExpandableSheetScaffold usage below).
-    private var sheetExpanded by mutableStateOf(false)
     private var showQueue by mutableStateOf(false)
     private var showSettings by mutableStateOf(false)
     private var showSleepTimerPicker by mutableStateOf(false)
@@ -417,13 +413,22 @@ class MainActivity : ComponentActivity() {
                     )
                 } else {
                 val nothingPlaying = currentStation == null && currentEpisode == null
-                Column(modifier = Modifier.fillMaxSize()) {
-                Box(modifier = Modifier.weight(1f)) {
-                ExpandableSheetScaffold(
+                MiniPlayerScaffold(
                     hasContent = !nothingPlaying,
                     expandRequestId = expandRequestId,
                     peekHeight = MINI_PLAYER_HEIGHT,
-                    onExpandedChange = { sheetExpanded = it },
+                    navigationBar = {
+                        NavigationBar {
+                            AppTab.entries.forEach { tab ->
+                                NavigationBarItem(
+                                    selected = selectedTab == tab,
+                                    onClick = { selectedTab = tab },
+                                    icon = { Icon(tab.icon, contentDescription = tab.label) },
+                                    label = { Text(tab.label) },
+                                )
+                            }
+                        }
+                    },
                     collapsedContent = { onExpand ->
                         val station = currentStation
                         val episode = currentEpisode
@@ -594,23 +599,9 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 }
-                }
-                if (!sheetExpanded) {
-                    NavigationBar {
-                        AppTab.entries.forEach { tab ->
-                            NavigationBarItem(
-                                selected = selectedTab == tab,
-                                onClick = { selectedTab = tab },
-                                icon = { Icon(tab.icon, contentDescription = tab.label) },
-                                label = { Text(tab.label) },
-                            )
-                        }
-                    }
-                }
-                }
-                }
             }
         }
+    }
     }
 
     private fun playStation(station: RadioStation) {
