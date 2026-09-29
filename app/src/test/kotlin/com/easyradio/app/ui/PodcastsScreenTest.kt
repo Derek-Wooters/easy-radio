@@ -41,6 +41,7 @@ private class RecordingEpisodeDao : EpisodeDao {
     override suspend fun updateLocalFilePath(episodeId: String, localFilePath: String?) {}
     override suspend fun getByIds(ids: List<String>): List<EpisodeEntity> = emptyList()
     override fun observeDownloaded() = MutableStateFlow<List<EpisodeEntity>>(emptyList())
+    override fun observeAll() = MutableStateFlow<List<EpisodeEntity>>(emptyList())
 }
 
 class PodcastsScreenTest {

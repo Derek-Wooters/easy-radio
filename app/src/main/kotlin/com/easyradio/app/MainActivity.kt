@@ -556,7 +556,9 @@ class MainActivity : ComponentActivity() {
                             )
                             AppTab.PLAYLISTS -> PlaylistsScreen(
                                 repository = favoriteStationRepository,
+                                podcastRepository = podcastRepository,
                                 onStationSelected = ::playStation,
+                                onEpisodeSelected = { podcast, episode -> playEpisode(podcast, episode) },
                             )
                         }
                     }
