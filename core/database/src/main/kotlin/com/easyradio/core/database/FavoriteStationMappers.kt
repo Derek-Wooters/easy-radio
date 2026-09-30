@@ -21,4 +21,5 @@ fun FavoriteStationEntity.toRadioStation(): RadioStation = RadioStation(
     tagline = tagline,
     imageUrl = imageUrl,
     lastPlayedAtEpochMillis = lastPlayedAtEpochMillis,
+    favoritedAtEpochMillis = favoritedAtEpochMillis,
 )
