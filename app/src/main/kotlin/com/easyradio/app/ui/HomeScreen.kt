@@ -60,15 +60,33 @@ fun HomeScreen(
         .collectAsState(initial = emptyList())
     val followedStations by remember(favoriteStationRepository) { favoriteStationRepository.favorites() }
         .collectAsState(initial = emptyList())
+    val allEpisodes by remember(podcastRepository) { podcastRepository.allEpisodes() }
+        .collectAsState(initial = emptyList())
 
+    // A podcast "has a new episode" the same way Playlists' New Episodes smart list defines it --
+    // any episode never started -- so a fresh, unplayed episode is what pulls a show forward here,
+    // not just "we haven't played anything from this show in a while."
+    val podcastIdsWithNewEpisodes = remember(allEpisodes) {
+        allEpisodes.filter { episodeListenState(it) == EpisodeListenState.LISTEN }.mapTo(mutableSetOf()) { it.podcastId }
+    }
+
+    // Ordered by subscription/follow recency (not by when it was last played, so a show you just
+    // subscribed to shows up immediately rather than waiting for a first play), with shows that
+    // have a fresh unplayed episode pulled to the front of that order so what's new is visible at
+    // a glance without opening each show.
     val subscribedChannels = (
         subscribedPodcasts.mapNotNull { podcast ->
-            podcast.lastPlayedAtEpochMillis?.let { SubscribedChannel.PodcastChannel(podcast, it) }
+            podcast.subscribedAtEpochMillis?.let {
+                SubscribedChannel.PodcastChannel(podcast, it, hasNewEpisode = podcast.id in podcastIdsWithNewEpisodes)
+            }
         } +
             followedStations.mapNotNull { station ->
-                station.lastPlayedAtEpochMillis?.let { SubscribedChannel.StationChannel(station, it) }
+                station.favoritedAtEpochMillis?.let { SubscribedChannel.StationChannel(station, it) }
             }
-        ).sortedByDescending { it.lastPlayedAtEpochMillis }.take(4)
+        ).sortedWith(
+            compareByDescending<SubscribedChannel> { it.hasNewEpisode }
+                .thenByDescending { it.subscribedAtEpochMillis },
+        ).take(4)
 
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         Row(
@@ -218,16 +236,24 @@ private sealed interface SubscribedChannel {
     val id: String
     val label: String
     val imageUrl: String?
-    val lastPlayedAtEpochMillis: Long
+    val subscribedAtEpochMillis: Long
+    val hasNewEpisode: Boolean
 
-    data class StationChannel(val station: RadioStation, override val lastPlayedAtEpochMillis: Long) :
+    data class StationChannel(val station: RadioStation, override val subscribedAtEpochMillis: Long) :
         SubscribedChannel {
         override val id get() = station.id
         override val label get() = station.name
         override val imageUrl get() = station.imageUrl
+        // A station has no episode concept, so it never "jumps ahead" -- only subscription
+        // recency orders it.
+        override val hasNewEpisode get() = false
     }
 
-    data class PodcastChannel(val podcast: Podcast, override val lastPlayedAtEpochMillis: Long) : SubscribedChannel {
+    data class PodcastChannel(
+        val podcast: Podcast,
+        override val subscribedAtEpochMillis: Long,
+        override val hasNewEpisode: Boolean,
+    ) : SubscribedChannel {
         override val id get() = podcast.id
         override val label get() = podcast.title
         override val imageUrl get() = podcast.artworkUrl

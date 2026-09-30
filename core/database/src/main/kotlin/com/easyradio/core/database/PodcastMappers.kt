@@ -22,6 +22,7 @@ fun PodcastEntity.toPodcast(): Podcast = Podcast(
     feedUrl = feedUrl,
     isPreset = isPreset,
     lastPlayedAtEpochMillis = lastPlayedAtEpochMillis,
+    subscribedAtEpochMillis = subscribedAtEpochMillis,
 )
 
 fun Episode.toEntity(): EpisodeEntity = EpisodeEntity(
