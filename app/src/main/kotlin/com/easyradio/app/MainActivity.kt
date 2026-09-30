@@ -106,6 +106,20 @@ internal fun formatDuration(ms: Long): String {
     return if (hours > 0) "%d:%02d:%02d".format(hours, minutes, seconds) else "%d:%02d".format(minutes, seconds)
 }
 
+/** Null (no progress bar) until a duration is actually known -- see [formatDuration]'s caller. */
+internal fun episodeProgressFraction(positionMs: Long, durationMs: Long): Float? =
+    if (durationMs > 0) positionMs.toFloat() / durationMs else null
+
+/**
+ * The mini-player's subtitle for a playing episode: "<podcast> · <time left> left" once a
+ * duration is known, falling back to just the podcast title (or an empty string) until then.
+ */
+internal fun episodeMiniPlayerTagline(podcastTitle: String, positionMs: Long, durationMs: Long): String {
+    if (durationMs <= 0) return podcastTitle
+    val left = formatDuration((durationMs - positionMs).coerceAtLeast(0))
+    return if (podcastTitle.isNotEmpty()) "$podcastTitle · $left left" else "$left left"
+}
+
 class MainActivity : ComponentActivity() {
 
     private val notificationPermissionLauncher =
@@ -447,13 +461,8 @@ class MainActivity : ComponentActivity() {
                             )
                             episode != null -> {
                                 val podcastTitle = podcast?.title.orEmpty()
-                                val fraction = if (durationMs > 0) positionMs.toFloat() / durationMs else null
-                                val tagline = if (durationMs > 0) {
-                                    val left = formatDuration((durationMs - positionMs).coerceAtLeast(0))
-                                    if (podcastTitle.isNotEmpty()) "$podcastTitle · $left left" else "$left left"
-                                } else {
-                                    podcastTitle
-                                }
+                                val fraction = episodeProgressFraction(positionMs, durationMs)
+                                val tagline = episodeMiniPlayerTagline(podcastTitle, positionMs, durationMs)
                                 NowPlayingBar(
                                     title = episode.title,
                                     tagline = tagline,
@@ -521,7 +530,7 @@ class MainActivity : ComponentActivity() {
                                 isLive = false,
                                 isPlaying = playing,
                                 isBuffering = uiState == PlaybackUiState.BUFFERING,
-                                progress = if (durationMs > 0) positionMs.toFloat() / durationMs else null,
+                                progress = episodeProgressFraction(positionMs, durationMs),
                                 positionLabel = formatDuration(positionMs),
                                 durationLabel = formatDuration(durationMs),
                                 durationMs = durationMs,
@@ -748,11 +757,9 @@ class MainActivity : ComponentActivity() {
      * (our own playEpisode() call echoing back through the session, or a repeat notification).
      */
     private fun syncNowPlayingFromMediaId(mediaId: String?) {
-        if (mediaId == null || mediaId == lastSyncedMediaId || !mediaId.startsWith(MediaBrowseTree.EPISODE_PREFIX)) {
-            return
-        }
+        val episodeId = com.easyradio.core.media.NowPlayingSyncDecision.episodeIdToSync(mediaId, lastSyncedMediaId)
+            ?: return
         lastSyncedMediaId = mediaId
-        val episodeId = mediaId.removePrefix(MediaBrowseTree.EPISODE_PREFIX)
         lifecycleScope.launch {
             val episode = podcastRepository.allEpisodes().first().firstOrNull { it.id == episodeId } ?: return@launch
             val podcast = resolvePlayablePodcast(episode, podcastRepository.subscribedPodcasts().first())
@@ -792,14 +799,8 @@ class MainActivity : ComponentActivity() {
     private fun controllerDurationMs(controller: MediaControllerCompat): Long =
         controller.metadata?.getLong(android.support.v4.media.MediaMetadataCompat.METADATA_KEY_DURATION) ?: 0L
 
-    private fun mapPlaybackState(state: PlaybackStateCompat?): PlaybackUiState = when (state?.state) {
-        null -> PlaybackUiState.IDLE
-        PlaybackStateCompat.STATE_ERROR -> PlaybackUiState.ERROR
-        PlaybackStateCompat.STATE_BUFFERING -> PlaybackUiState.BUFFERING
-        PlaybackStateCompat.STATE_PLAYING -> PlaybackUiState.PLAYING
-        PlaybackStateCompat.STATE_PAUSED -> PlaybackUiState.PAUSED
-        else -> PlaybackUiState.IDLE
-    }
+    private fun mapPlaybackState(state: PlaybackStateCompat?): PlaybackUiState =
+        com.easyradio.app.playback.LegacyPlaybackStateMapper.toUiState(state?.state)
 
     private fun skip(deltaMs: Long) {
         val controller = mediaController ?: return
