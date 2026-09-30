@@ -164,7 +164,6 @@ class MainActivity : ComponentActivity() {
     private val listeningStatsRepository by lazy { EasyRadioGraph.listeningStats(applicationContext) }
 
     private var mediaBrowser: MediaBrowserCompat? = null
-    private var mediaController by mutableStateOf<MediaControllerCompat?>(null)
 
     // The last episode media id this activity has already reflected in currentEpisode/
     // currentPodcast, so a metadata echo of our own playEpisode() call (or a repeat) doesn't
@@ -172,41 +171,13 @@ class MainActivity : ComponentActivity() {
     // immediately in playEpisode() itself, since a manual play already knows the answer.
     private var lastSyncedMediaId: String? = null
 
-    private val controllerCallback = object : MediaControllerCompat.Callback() {
-        override fun onPlaybackStateChanged(state: PlaybackStateCompat?) {
-            uiState = mapPlaybackState(state)
-        }
+    // Owns the MediaControllerCompat connection, the reactive uiState it derives from it, and
+    // the reconnect/stale-state recovery logic around both -- see SessionConnection's own doc for
+    // why that logic lives there now instead of inline here.
+    private val sessionConnection = com.easyradio.app.playback.SessionConnection(
+        onNowPlayingMediaIdChanged = ::syncNowPlayingFromMediaId,
+    )
 
-        // The service can advance to the next queued episode on its own (auto-advance when one
-        // episode ends) without MainActivity ever calling playEpisode() -- without this,
-        // currentEpisode/currentPodcast would keep showing the episode that just finished while
-        // something else is actually playing.
-        override fun onMetadataChanged(metadata: android.support.v4.media.MediaMetadataCompat?) {
-            syncNowPlayingFromMediaId(metadata?.getString(android.support.v4.media.MediaMetadataCompat.METADATA_KEY_MEDIA_ID))
-        }
-
-        // Right after connecting, MediaControllerCompat's cached playbackState/metadata can
-        // still be stale (a real connection isn't synchronous the way Media3's MediaController
-        // is) -- onSessionReady fires once the real, current state has actually landed. Without
-        // this, returning to the app after another session became the system's active one (or
-        // any other state change happening while disconnected) could leave the UI showing
-        // whatever stale state happened to be cached at connect time.
-        override fun onSessionReady() {
-            uiState = mapPlaybackState(mediaController?.playbackState)
-            syncNowPlayingFromMediaId(
-                mediaController?.metadata?.getString(android.support.v4.media.MediaMetadataCompat.METADATA_KEY_MEDIA_ID),
-            )
-        }
-
-        // The session can be destroyed out from under us (e.g. the service process was
-        // reclaimed); without handling this the controller reference goes stale and the UI
-        // never updates again. Dropping it here lets onStart's next reconnect attempt recover.
-        override fun onSessionDestroyed() {
-            mediaController = null
-            uiState = PlaybackUiState.IDLE
-        }
-    }
-    private var uiState by mutableStateOf(PlaybackUiState.IDLE)
     private var currentStation by mutableStateOf<RadioStation?>(null)
     private var currentEpisode by mutableStateOf<Episode?>(null)
     private var currentChapters by mutableStateOf<List<com.easyradio.core.model.Chapter>>(emptyList())
@@ -251,7 +222,7 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(Unit) {
                 while (true) {
                     delay(PODCAST_POSITION_SAVE_INTERVAL_MS)
-                    if (uiState == PlaybackUiState.PLAYING) {
+                    if (sessionConnection.uiState == PlaybackUiState.PLAYING) {
                         listeningStatsRepository.addListenedSeconds(PODCAST_POSITION_SAVE_INTERVAL_MS / 1_000)
                     }
                 }
@@ -265,8 +236,8 @@ class MainActivity : ComponentActivity() {
                 currentTranscript = currentEpisode?.let { podcastRepository.loadTranscript(it) }
             }
 
-            LaunchedEffect(currentEpisode?.id, mediaController) {
-                val controller = mediaController
+            LaunchedEffect(currentEpisode?.id, sessionConnection.controller) {
+                val controller = sessionConnection.controller
                 if (currentEpisode != null && controller != null) {
                     while (true) {
                         positionMs = controllerPositionMs(controller).coerceAtLeast(0)
@@ -284,12 +255,12 @@ class MainActivity : ComponentActivity() {
                     while (!SleepTimer.isExpired(start, durationMs, SystemClock.elapsedRealtime())) {
                         delay(1_000)
                     }
-                    mediaController?.transportControls?.pause()
+                    sessionConnection.controller?.transportControls?.pause()
                 }
             }
 
             EasyRadioTheme(darkTheme = settings.themeMode.resolveDarkTheme(isSystemInDarkTheme())) {
-                val playing = uiState == PlaybackUiState.PLAYING || uiState == PlaybackUiState.BUFFERING
+                val playing = sessionConnection.uiState == PlaybackUiState.PLAYING || sessionConnection.uiState == PlaybackUiState.BUFFERING
                 val favoriteStationIds by favoriteStationRepository.favoriteIds()
                     .collectAsState(initial = emptySet())
                 val snackbarHostState = remember { SnackbarHostState() }
@@ -300,8 +271,8 @@ class MainActivity : ComponentActivity() {
                     com.easyradio.app.widget.EasyRadioWidget.updateState(applicationContext, title, subtitle, playing)
                 }
 
-                LaunchedEffect(uiState) {
-                    if (uiState == PlaybackUiState.ERROR) {
+                LaunchedEffect(sessionConnection.uiState) {
+                    if (sessionConnection.uiState == PlaybackUiState.ERROR) {
                         val name = currentStation?.name ?: currentEpisode?.title
                         val message = if (name != null) {
                             "Couldn't play \"$name\". Check your connection and try again."
@@ -342,7 +313,7 @@ class MainActivity : ComponentActivity() {
                                     // clear any running one so it can't also fire later and pause
                                     // (again, redundantly) after this episode has already stopped.
                                     lifecycleScope.launch { settingsRepository.setSleepTimerMinutes(0) }
-                                    mediaController?.transportControls?.sendCustomAction(ACTION_SLEEP_AT_END_OF_EPISODE, null)
+                                    sessionConnection.controller?.transportControls?.sendCustomAction(ACTION_SLEEP_AT_END_OF_EPISODE, null)
                                     showSleepTimerPicker = false
                                 }) {
                                     Text("End of episode")
@@ -448,9 +419,9 @@ class MainActivity : ComponentActivity() {
                                 tintSeed = station.id,
                                 imageUrl = station.imageUrl,
                                 badgeText = "LIVE",
-                                playbackState = uiState,
+                                playbackState = sessionConnection.uiState,
                                 onPlayClick = { playStation(station) },
-                                onPauseClick = { mediaController?.transportControls?.pause() },
+                                onPauseClick = { sessionConnection.controller?.transportControls?.pause() },
                                 onExpand = onExpand,
                             )
                             episode != null -> {
@@ -463,9 +434,9 @@ class MainActivity : ComponentActivity() {
                                     tintSeed = episode.podcastId,
                                     imageUrl = podcast?.artworkUrl,
                                     badgeText = null,
-                                    playbackState = uiState,
-                                    onPlayClick = { mediaController?.transportControls?.play() },
-                                    onPauseClick = { mediaController?.transportControls?.pause() },
+                                    playbackState = sessionConnection.uiState,
+                                    onPlayClick = { sessionConnection.controller?.transportControls?.play() },
+                                    onPauseClick = { sessionConnection.controller?.transportControls?.pause() },
                                     onSkipBackClick = { skip(-settings.skipBackSeconds * 1_000L) },
                                     onSkipForwardClick = { skip(settings.skipForwardSeconds * 1_000L) },
                                     skipBackSeconds = settings.skipBackSeconds,
@@ -491,13 +462,13 @@ class MainActivity : ComponentActivity() {
                                 tintSeed = station.id,
                                 isLive = true,
                                 isPlaying = playing,
-                                isBuffering = uiState == PlaybackUiState.BUFFERING,
+                                isBuffering = sessionConnection.uiState == PlaybackUiState.BUFFERING,
                                 progress = null,
                                 positionLabel = null,
                                 durationLabel = null,
                                 speedLabel = null,
                                 onCollapse = onCollapse,
-                                onPlayPause = { if (playing) mediaController?.transportControls?.pause() else playStation(station) },
+                                onPlayPause = { if (playing) sessionConnection.controller?.transportControls?.pause() else playStation(station) },
                                 onQueueClick = { showQueue = true },
                                 isFavorite = station.id in favoriteStationIds,
                                 onFavoriteClick = {
@@ -523,7 +494,7 @@ class MainActivity : ComponentActivity() {
                                 tintSeed = episode.podcastId,
                                 isLive = false,
                                 isPlaying = playing,
-                                isBuffering = uiState == PlaybackUiState.BUFFERING,
+                                isBuffering = sessionConnection.uiState == PlaybackUiState.BUFFERING,
                                 progress = episodeProgressFraction(positionMs, durationMs),
                                 positionLabel = formatDuration(positionMs),
                                 durationLabel = formatDuration(durationMs),
@@ -531,7 +502,7 @@ class MainActivity : ComponentActivity() {
                                 onSeek = ::seekToFraction,
                                 speedLabel = "${PLAYBACK_SPEEDS[playbackSpeedIndex]}x",
                                 onCollapse = onCollapse,
-                                onPlayPause = { if (playing) mediaController?.transportControls?.pause() else mediaController?.transportControls?.play() },
+                                onPlayPause = { if (playing) sessionConnection.controller?.transportControls?.pause() else sessionConnection.controller?.transportControls?.play() },
                                 onSkipBack = { skip(-settings.skipBackSeconds * 1_000L) },
                                 onSkipForward = { skip(settings.skipForwardSeconds * 1_000L) },
                                 skipBackSeconds = settings.skipBackSeconds,
@@ -614,7 +585,7 @@ class MainActivity : ComponentActivity() {
         currentStation = station
         expandRequestId++
         val request = com.easyradio.app.playback.PlaybackRequests.forStation(station)
-        mediaController?.transportControls?.playFromUri(request.uri, request.extras)
+        sessionConnection.controller?.transportControls?.playFromUri(request.uri, request.extras)
         lifecycleScope.launch {
             recentlyPlayedRepository.record(
                 RecentlyPlayedItem(
@@ -670,7 +641,7 @@ class MainActivity : ComponentActivity() {
     private fun playEpisode(podcast: Podcast, episode: Episode) {
         adoptNowPlayingEpisode(podcast, episode)
         expandRequestId++
-        val controller = mediaController ?: return
+        val controller = sessionConnection.controller ?: return
 
         // The resume position must be baked into the initial playFromUri call, not applied via
         // a later seekTo(): if playWhenReady was already true from a previous item (e.g. the user
@@ -772,11 +743,8 @@ class MainActivity : ComponentActivity() {
     private fun controllerDurationMs(controller: MediaControllerCompat): Long =
         controller.metadata?.getLong(android.support.v4.media.MediaMetadataCompat.METADATA_KEY_DURATION) ?: 0L
 
-    private fun mapPlaybackState(state: PlaybackStateCompat?): PlaybackUiState =
-        com.easyradio.app.playback.LegacyPlaybackStateMapper.toUiState(state?.state)
-
     private fun skip(deltaMs: Long) {
-        val controller = mediaController ?: return
+        val controller = sessionConnection.controller ?: return
         val target = com.easyradio.core.media.SeekMath.clampSeek(
             currentMs = controllerPositionMs(controller),
             deltaMs = deltaMs,
@@ -786,7 +754,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun seekToFraction(fraction: Float) {
-        val controller = mediaController ?: return
+        val controller = sessionConnection.controller ?: return
         val duration = controllerDurationMs(controller).coerceAtLeast(0)
         if (duration <= 0) return
         controller.transportControls.seekTo((fraction.coerceIn(0f, 1f) * duration).toLong())
@@ -794,7 +762,7 @@ class MainActivity : ComponentActivity() {
 
     private fun cyclePlaybackSpeed() {
         playbackSpeedIndex = (playbackSpeedIndex + 1) % PLAYBACK_SPEEDS.size
-        mediaController?.transportControls?.setPlaybackSpeed(PLAYBACK_SPEEDS[playbackSpeedIndex])
+        sessionConnection.controller?.transportControls?.setPlaybackSpeed(PLAYBACK_SPEEDS[playbackSpeedIndex])
     }
 
     private fun startPositionSaving(episodeId: String) {
@@ -802,7 +770,7 @@ class MainActivity : ComponentActivity() {
         positionSaveJob = lifecycleScope.launch {
             while (isActive) {
                 delay(PODCAST_POSITION_SAVE_INTERVAL_MS)
-                val controller = mediaController ?: continue
+                val controller = sessionConnection.controller ?: continue
                 if (controller.playbackState?.state == PlaybackStateCompat.STATE_PLAYING) {
                     podcastRepository.savePosition(episodeId, controllerPositionMs(controller))
                 }
@@ -819,17 +787,8 @@ class MainActivity : ComponentActivity() {
                 override fun onConnected() {
                     val browserRef = mediaBrowser ?: return
                     val controller = MediaControllerCompat(this@MainActivity, browserRef.sessionToken)
-                    controller.registerCallback(controllerCallback)
-                    mediaController = controller
+                    sessionConnection.attach(controller)
                     MediaControllerCompat.setMediaController(this@MainActivity, controller)
-                    // A fresh controller only reports playback state via the callback above on
-                    // the NEXT change -- reconnecting here (e.g. returning from background) after
-                    // the player's real state already settled to whatever uiState was last
-                    // showing means no change ever fires, leaving a stale uiState (e.g. still
-                    // "Playing" with no audio, and the button then toggling the wrong direction)
-                    // until something else happens to nudge it. Sync immediately on connect
-                    // instead of waiting for the first subsequent callback.
-                    uiState = mapPlaybackState(controller.playbackState)
                 }
             },
             null,
@@ -840,13 +799,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         currentEpisode?.let { episode ->
-            mediaController?.let { controller ->
+            sessionConnection.controller?.let { controller ->
                 lifecycleScope.launch { podcastRepository.savePosition(episode.id, controllerPositionMs(controller)) }
             }
         }
         positionSaveJob?.cancel()
-        mediaController?.unregisterCallback(controllerCallback)
-        mediaController = null
+        sessionConnection.detach()
         mediaBrowser?.disconnect()
         mediaBrowser = null
         super.onStop()
