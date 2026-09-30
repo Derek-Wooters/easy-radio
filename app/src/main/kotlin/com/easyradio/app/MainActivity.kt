@@ -51,11 +51,6 @@ import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.session.MediaControllerCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import com.easyradio.app.playback.ACTION_SLEEP_AT_END_OF_EPISODE
-import com.easyradio.app.playback.EXTRA_ARTIST
-import com.easyradio.app.playback.EXTRA_ARTWORK_URL
-import com.easyradio.app.playback.EXTRA_EPISODE_ID
-import com.easyradio.app.playback.EXTRA_RESUME_POSITION_MS
-import com.easyradio.app.playback.EXTRA_TITLE
 import com.easyradio.app.playback.EasyRadioPlaybackService
 import com.easyradio.core.media.MediaBrowseTree
 import com.easyradio.app.ui.PodcastsScreen
@@ -71,7 +66,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import java.io.File
 import android.os.SystemClock
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.LaunchedEffect
@@ -619,14 +613,8 @@ class MainActivity : ComponentActivity() {
         currentPodcast = null
         currentStation = station
         expandRequestId++
-        mediaController?.transportControls?.playFromUri(
-            android.net.Uri.parse(station.streamUrl),
-            android.os.Bundle().apply {
-                putString(EXTRA_TITLE, station.name)
-                putString(EXTRA_ARTIST, station.tagline)
-                putString(EXTRA_ARTWORK_URL, station.imageUrl)
-            },
-        )
+        val request = com.easyradio.app.playback.PlaybackRequests.forStation(station)
+        mediaController?.transportControls?.playFromUri(request.uri, request.extras)
         lifecycleScope.launch {
             recentlyPlayedRepository.record(
                 RecentlyPlayedItem(
@@ -684,13 +672,6 @@ class MainActivity : ComponentActivity() {
         expandRequestId++
         val controller = mediaController ?: return
 
-        val localPath = episode.localFilePath
-        val uri = if (localPath != null && File(localPath).exists()) {
-            android.net.Uri.fromFile(File(localPath))
-        } else {
-            android.net.Uri.parse(episode.audioUrl)
-        }
-
         // The resume position must be baked into the initial playFromUri call, not applied via
         // a later seekTo(): if playWhenReady was already true from a previous item (e.g. the user
         // was already playing something else), starting playback alone would begin this item
@@ -701,16 +682,8 @@ class MainActivity : ComponentActivity() {
         // atomically via ExoPlayer's own setMediaItem(item, startPositionMs).
         lifecycleScope.launch {
             val resumeMs = podcastRepository.lastPosition(episode.id)
-            controller.transportControls.playFromUri(
-                uri,
-                android.os.Bundle().apply {
-                    putString(EXTRA_TITLE, episode.title)
-                    putString(EXTRA_ARTIST, podcast.author.ifBlank { podcast.title })
-                    putString(EXTRA_ARTWORK_URL, podcast.artworkUrl)
-                    putLong(EXTRA_RESUME_POSITION_MS, resumeMs)
-                    putString(EXTRA_EPISODE_ID, episode.id)
-                },
-            )
+            val request = com.easyradio.app.playback.PlaybackRequests.forEpisode(podcast, episode, resumeMs)
+            controller.transportControls.playFromUri(request.uri, request.extras)
         }
     }
 
