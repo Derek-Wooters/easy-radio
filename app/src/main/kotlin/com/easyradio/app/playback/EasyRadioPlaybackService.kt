@@ -10,7 +10,6 @@ import android.os.Build
 import android.os.Bundle
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.MediaDescriptionCompat
-import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import androidx.core.app.NotificationCompat
@@ -21,24 +20,17 @@ import androidx.media.app.NotificationCompat.MediaStyle
 import androidx.media.session.MediaButtonReceiver
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
-import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import com.easyradio.app.EasyRadioGraph
 import com.easyradio.app.MainActivity
-import com.easyradio.core.database.PodcastRepository
 import com.easyradio.core.media.BrowseNode
-import com.easyradio.core.media.EpisodeEndAction
-import com.easyradio.core.media.EpisodeEndDecision
 import com.easyradio.core.media.MediaBrowseTree
-import com.easyradio.core.model.CuratedRadioStations
-import com.easyradio.core.model.Episode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /** LoudnessEnhancer gain, in millibels (100 mB = 1 dB), applied when "voice boost" is on. */
@@ -76,15 +68,18 @@ const val ACTION_SLEEP_AT_END_OF_EPISODE = "com.easyradio.app.ACTION_SLEEP_AT_EN
  * ExoPlayer remains the actual playback engine; only the session/control layer around it
  * changed. Beyond serving the session the phone UI controls, this also exposes a browse tree
  * (root -> Radio / Podcasts -> stations / episodes) so Android Auto and Android Automotive OS
- * can browse and play without the phone screen. The tree structure comes from the pure
- * [MediaBrowseTree]; this class only adapts [BrowseNode]s to [MediaBrowserCompat.MediaItem]s and
- * resolves a tapped item's uri for ExoPlayer.
+ * can browse and play without the phone screen.
+ *
+ * This class itself only owns genuinely Android-only concerns: building the real ExoPlayer and
+ * MediaSessionCompat, the foreground-service/notification lifecycle, and forwarding
+ * Player.Listener/MediaSessionCompat.Callback events into [PlaybackSessionController], which owns
+ * the actual playback/session-state orchestration in a plain, unit-testable class.
  */
 class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
 
     private lateinit var player: ExoPlayer
     private lateinit var mediaSession: MediaSessionCompat
-    private lateinit var repository: PodcastRepository
+    private lateinit var sessionController: PlaybackSessionController
     private lateinit var wearStatePublisher: WearStatePublisher
     private lateinit var notificationManager: NotificationManager
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -92,22 +87,9 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
     private var audioSessionId: Int = C.AUDIO_SESSION_ID_UNSET
     private var voiceBoostEnabled: Boolean = false
     private var isForegroundService = false
-    private var currentTitle: String? = null
-    private var currentArtist: String? = null
-    private var currentArtworkUrl: String? = null
-
-    // Null whenever radio (or nothing) is playing -- auto-advance/end-of-episode only apply to
-    // podcast episodes, which is exactly what a non-null id here means.
-    private var currentEpisodeId: String? = null
-
-    // Armed by the "End of episode" sleep-timer option (ACTION_SLEEP_AT_END_OF_EPISODE) for the
-    // *current* episode only; reset whenever any new item starts playing so it never leaks onto
-    // whatever plays next.
-    private var sleepAtEndOfEpisode: Boolean = false
 
     override fun onCreate() {
         super.onCreate()
-        repository = EasyRadioGraph.repository(applicationContext)
         notificationManager = ContextCompat.getSystemService(this, NotificationManager::class.java)!!
 
         player = ExoPlayer.Builder(this)
@@ -162,12 +144,20 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
         }
         sessionToken = mediaSession.sessionToken
 
+        sessionController = PlaybackSessionController(
+            player = player,
+            repository = EasyRadioGraph.repository(applicationContext),
+            onPlaybackStateChanged = mediaSession::setPlaybackState,
+            onMetadataChanged = mediaSession::setMetadata,
+            onPlaybackStarting = ::ensureStarted,
+        )
+
         player.addListener(PlayerEventListener())
 
         wearStatePublisher = WearStatePublisher(this, player).also { it.attach() }
 
         ensureNotificationChannel()
-        publishPlaybackState()
+        sessionController.publishPlaybackState()
 
         serviceScope.launch {
             EasyRadioGraph.settings(applicationContext).settings.collect { settings ->
@@ -211,6 +201,7 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
     override fun onDestroy() {
         loudnessEnhancer?.release()
         wearStatePublisher.detach()
+        sessionController.release()
         mediaSession.run {
             isActive = false
             release()
@@ -231,8 +222,8 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
 
     private inner class PlayerEventListener : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) {
-            publishPlaybackState()
-            publishMetadata()
+            sessionController.publishPlaybackState()
+            sessionController.publishMetadata()
             updateNotification()
         }
 
@@ -244,102 +235,9 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
             // on stream-derived metadata for the legacy session's title.
         }
 
-        // Fires once per genuine transition (unlike onEvents, which fires broadly), so this is
-        // the correct edge to react to the player reaching the true end of an item exactly once.
         override fun onPlaybackStateChanged(playbackState: Int) {
-            if (playbackState == Player.STATE_ENDED && currentEpisodeId != null) {
-                serviceScope.launch { handleEpisodeEnded() }
-            }
+            sessionController.onPlayerPlaybackStateChanged(playbackState)
         }
-    }
-
-    /**
-     * Called exactly once when a podcast episode reaches its natural end. Advances to the next
-     * queued episode (Easy Radio has no other auto-advance path -- finishing an episode with
-     * nothing queued just stops, same as before this existed), unless the "End of episode" sleep
-     * timer was armed for this episode, in which case it's consumed here and playback is left
-     * stopped instead.
-     */
-    private suspend fun handleEpisodeEnded() {
-        currentEpisodeId = null
-        val wasArmed = sleepAtEndOfEpisode
-        sleepAtEndOfEpisode = false
-        when (val action = EpisodeEndDecision.resolve(wasArmed, repository.queue().first())) {
-            is EpisodeEndAction.Advance -> {
-                repository.removeFromQueue(action.next.id)
-                playEpisode(action.next)
-            }
-            EpisodeEndAction.Stop -> Unit
-        }
-    }
-
-    /**
-     * Rebuilds and publishes [PlaybackStateCompat] on every relevant player event. Matches
-     * Pocket Casts' own advertised action set bit-for-bit: ACTION_REWIND/ACTION_FAST_FORWARD
-     * alongside the standard ACTION_SKIP_TO_PREVIOUS/ACTION_SKIP_TO_NEXT.
-     *
-     * Tried removing SKIP_TO_PREVIOUS/NEXT (in case the "hardcoded generic icon" bug that
-     * originally motivated keeping them was specific to Media3's automatic legacy-session
-     * bridge, which this hand-rolled session doesn't use) hoping the system would then bind
-     * its rewind/fast-forward icons directly to ACTION_REWIND/ACTION_FAST_FORWARD. Confirmed
-     * on a real Pixel Watch 3 this made things worse, not better: the same seek-arrow icons
-     * remained (they were never actually tied to SKIP_TO_PREVIOUS/NEXT's presence) but went
-     * fully greyed out/non-functional -- on this device the flanking button slots appear
-     * hardcoded to SKIP_TO_PREVIOUS/NEXT specifically, with no fallback to REWIND/FAST_FORWARD
-     * when they're absent. Keeping both pairs is what's actually confirmed working.
-     */
-    private fun publishPlaybackState() {
-        val state = LegacyPlaybackStateMapper.toCompatState(
-            hasError = player.playerError != null,
-            playbackState = player.playbackState,
-            playWhenReady = player.playWhenReady,
-        )
-        val actions = PlaybackStateCompat.ACTION_PLAY or
-            PlaybackStateCompat.ACTION_PAUSE or
-            PlaybackStateCompat.ACTION_PLAY_PAUSE or
-            PlaybackStateCompat.ACTION_STOP or
-            PlaybackStateCompat.ACTION_SEEK_TO or
-            PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
-            PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
-            PlaybackStateCompat.ACTION_REWIND or
-            PlaybackStateCompat.ACTION_FAST_FORWARD or
-            PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID or
-            PlaybackStateCompat.ACTION_PLAY_FROM_URI
-
-        val playbackSpeed = if (state == PlaybackStateCompat.STATE_PLAYING) player.playbackParameters.speed else 0f
-        mediaSession.setPlaybackState(
-            PlaybackStateCompat.Builder()
-                .setState(state, player.currentPosition, playbackSpeed)
-                .setBufferedPosition(player.bufferedPosition)
-                .setActions(actions)
-                .build(),
-        )
-    }
-
-    /**
-     * Republishes [MediaMetadataCompat] including the player's current duration. ExoPlayer
-     * doesn't know an item's duration until it's loaded enough of the stream/file to determine
-     * it, so this has to be re-published as events arrive (not just once in startPlayback()) --
-     * omitting METADATA_KEY_DURATION entirely (the original bug here) left
-     * MainActivity.controllerDurationMs() always reading 0, which hid the seek/progress
-     * indicator on the Now Playing screen since its progress fraction is only shown when a
-     * duration is known.
-     */
-    private fun publishMetadata() {
-        val durationMs = player.duration.takeIf { it != C.TIME_UNSET }
-        // MEDIA_ID lets MainActivity notice a change of episode it didn't itself initiate (e.g.
-        // auto-advancing to the next queued episode) and resync its own now-playing UI state to
-        // match, rather than going stale showing the episode that just finished.
-        val mediaId = currentEpisodeId?.let { MediaBrowseTree.EPISODE_PREFIX + it }
-        mediaSession.setMetadata(
-            MediaMetadataCompat.Builder()
-                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, currentTitle)
-                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, currentArtist)
-                .putString(MediaMetadataCompat.METADATA_KEY_ART_URI, currentArtworkUrl)
-                .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, mediaId)
-                .apply { durationMs?.let { putLong(MediaMetadataCompat.METADATA_KEY_DURATION, it) } }
-                .build(),
-        )
     }
 
     private fun updateNotification() {
@@ -383,8 +281,8 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
         }
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(applicationInfo.icon)
-            .setContentTitle(currentTitle ?: "Easy Radio")
-            .setContentText(currentArtist)
+            .setContentTitle(sessionController.currentTitle ?: "Easy Radio")
+            .setContentText(sessionController.currentArtist)
             .setContentIntent(mediaSession.controller.sessionActivity)
             .setDeleteIntent(
                 MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_STOP),
@@ -423,73 +321,6 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
      */
     private fun ensureStarted() {
         ContextCompat.startForegroundService(this, Intent(this, EasyRadioPlaybackService::class.java))
-    }
-
-    private fun startPlayback(
-        uri: Uri,
-        title: String?,
-        artist: String?,
-        artworkUrl: String?,
-        resumePositionMs: Long,
-        episodeId: String? = null,
-    ) {
-        ensureStarted()
-        currentTitle = title
-        currentArtist = artist
-        currentArtworkUrl = artworkUrl
-        currentEpisodeId = episodeId
-        sleepAtEndOfEpisode = false
-        publishMetadata()
-        val mediaItem = MediaItem.Builder()
-            .setUri(uri)
-            .setMediaMetadata(
-                androidx.media3.common.MediaMetadata.Builder()
-                    .setTitle(title)
-                    .setArtist(artist)
-                    .setArtworkUri(artworkUrl?.let { Uri.parse(it) })
-                    .build(),
-            )
-            .build()
-        player.setMediaItem(mediaItem, resumePositionMs)
-        player.prepare()
-        player.play()
-    }
-
-    /** Resolves a browse-tree media id (used by Android Auto's tap-to-play) to a playable uri. */
-    private suspend fun startPlaybackFromMediaId(mediaId: String) {
-        when {
-            mediaId.startsWith(MediaBrowseTree.STATION_PREFIX) -> {
-                val station = CuratedRadioStations.ALL.firstOrNull {
-                    MediaBrowseTree.STATION_PREFIX + it.id == mediaId
-                } ?: return
-                startPlayback(Uri.parse(station.streamUrl), station.name, station.tagline, station.imageUrl, 0L)
-            }
-            mediaId.startsWith(MediaBrowseTree.EPISODE_PREFIX) -> {
-                val episode = allSubscribedEpisodes().firstOrNull {
-                    MediaBrowseTree.EPISODE_PREFIX + it.id == mediaId
-                } ?: return
-                playEpisode(episode)
-            }
-        }
-    }
-
-    /**
-     * Starts playback of [episode], resolving its podcast (for artist/artwork) and saved position
-     * the same way a media-id tap-to-play does. Shared by [startPlaybackFromMediaId] and
-     * [handleEpisodeEnded]'s auto-advance-to-next-queued-episode.
-     */
-    private suspend fun playEpisode(episode: Episode) {
-        val podcast = repository.subscribedPodcasts().first().firstOrNull { it.id == episode.podcastId }
-        val uri = episode.localFilePath?.let { Uri.fromFile(java.io.File(it)) } ?: Uri.parse(episode.audioUrl)
-        val resumeMs = repository.lastPosition(episode.id)
-        startPlayback(
-            uri = uri,
-            title = episode.title,
-            artist = podcast?.author?.ifBlank { podcast.title },
-            artworkUrl = podcast?.artworkUrl,
-            resumePositionMs = resumeMs,
-            episodeId = episode.id,
-        )
     }
 
     private inner class SessionCallback : MediaSessionCompat.Callback() {
@@ -538,7 +369,7 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
         }
 
         override fun onPlayFromUri(uri: Uri, extras: Bundle?) {
-            startPlayback(
+            sessionController.startPlayback(
                 uri = uri,
                 title = extras?.getString(EXTRA_TITLE),
                 artist = extras?.getString(EXTRA_ARTIST),
@@ -549,12 +380,12 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
         }
 
         override fun onPlayFromMediaId(mediaId: String, extras: Bundle?) {
-            serviceScope.launch { startPlaybackFromMediaId(mediaId) }
+            serviceScope.launch { sessionController.startPlaybackFromMediaId(mediaId) }
         }
 
         override fun onCustomAction(action: String, extras: Bundle?) {
             if (action == ACTION_SLEEP_AT_END_OF_EPISODE) {
-                sleepAtEndOfEpisode = true
+                sessionController.armSleepAtEndOfEpisode()
             }
         }
     }
@@ -567,24 +398,9 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
     override fun onLoadChildren(parentId: String, result: Result<List<MediaBrowserCompat.MediaItem>>) {
         result.detach()
         serviceScope.launch {
-            val items = childrenOf(parentId).map { it.toMediaItem() }
+            val items = sessionController.childrenOf(parentId).map { it.toMediaItem() }
             result.sendResult(items)
         }
-    }
-
-    private suspend fun allSubscribedEpisodes(): List<Episode> =
-        repository.subscribedPodcasts().first().flatMap { repository.episodesFor(it.id).first() }
-
-    private suspend fun childrenOf(parentId: String): List<BrowseNode> = when {
-        parentId == MediaBrowseTree.ROOT_ID -> MediaBrowseTree.rootChildren()
-        parentId == MediaBrowseTree.RADIO_ID -> MediaBrowseTree.stationNodes(CuratedRadioStations.ALL)
-        parentId == MediaBrowseTree.PODCASTS_ID ->
-            MediaBrowseTree.podcastNodes(repository.subscribedPodcasts().first())
-        parentId.startsWith(MediaBrowseTree.PODCAST_PREFIX) ->
-            MediaBrowseTree.episodeNodes(
-                repository.episodesFor(parentId.removePrefix(MediaBrowseTree.PODCAST_PREFIX)).first(),
-            )
-        else -> emptyList()
     }
 
     private fun BrowseNode.toMediaItem(): MediaBrowserCompat.MediaItem {
