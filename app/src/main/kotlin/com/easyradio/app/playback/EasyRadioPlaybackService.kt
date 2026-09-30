@@ -289,14 +289,11 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
      * when they're absent. Keeping both pairs is what's actually confirmed working.
      */
     private fun publishPlaybackState() {
-        val state = when {
-            player.playerError != null -> PlaybackStateCompat.STATE_ERROR
-            player.playbackState == Player.STATE_BUFFERING -> PlaybackStateCompat.STATE_BUFFERING
-            player.playbackState == Player.STATE_IDLE -> PlaybackStateCompat.STATE_NONE
-            player.playbackState == Player.STATE_ENDED -> PlaybackStateCompat.STATE_STOPPED
-            player.playWhenReady -> PlaybackStateCompat.STATE_PLAYING
-            else -> PlaybackStateCompat.STATE_PAUSED
-        }
+        val state = LegacyPlaybackStateMapper.toCompatState(
+            hasError = player.playerError != null,
+            playbackState = player.playbackState,
+            playWhenReady = player.playWhenReady,
+        )
         val actions = PlaybackStateCompat.ACTION_PLAY or
             PlaybackStateCompat.ACTION_PAUSE or
             PlaybackStateCompat.ACTION_PLAY_PAUSE or
