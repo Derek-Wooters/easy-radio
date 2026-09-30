@@ -21,11 +21,15 @@ import org.robolectric.RobolectricTestRunner
  * A third scenario -- the nav bar hiding once Now Playing is expanded -- isn't covered here.
  * Driving ExpandableSheetScaffold's sheet to Expanded (either starting there or bumping
  * expandRequestId mid-test) never actually reaches that state once nested inside this composable's
- * own Box(Modifier.weight(1f)): the sheet's anchors depend on a layout pass this extra indirection
- * delays past what waitForIdle()/mainClock.advanceTimeBy() settle, so the assertion would be
- * exercising a test-environment timing quirk rather than the app's actual behavior. That behavior
- * (confirmed correct on a real device) belongs in an instrumented/on-device test instead, not a
- * Robolectric one -- flagged here rather than landing a flaky assertion.
+ * own Box(Modifier.weight(1f)), whether under Robolectric OR in a real instrumented test of
+ * MiniPlayerScaffold alone (confirmed both ways -- an earlier version of this comment attributed
+ * it to a Robolectric-only timing quirk, which turned out to be wrong). The real, full app does
+ * expand correctly, confirmed both manually on a device and by
+ * MainActivityMiniPlayerInstrumentedTest, which drives the actual MainActivity end-to-end rather
+ * than this composable in isolation -- something about the app's full composition (EasyRadioTheme,
+ * enableEdgeToEdge(), the real Scaffold nesting) makes the difference, and a synthetic harness
+ * good enough for the first two scenarios above isn't sufficient to also reproduce this one
+ * faithfully. Flagged here rather than landing a misleading assertion against that harness.
  */
 @RunWith(RobolectricTestRunner::class)
 class MiniPlayerScaffoldTest {
