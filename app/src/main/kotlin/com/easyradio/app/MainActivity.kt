@@ -447,7 +447,7 @@ class MainActivity : ComponentActivity() {
                                     imageUrl = podcast?.artworkUrl,
                                     badgeText = null,
                                     playbackState = sessionConnection.uiState,
-                                    onPlayClick = { sessionConnection.controller?.transportControls?.play() },
+                                    onPlayClick = { resumeOrRestartEpisode(episode) },
                                     onPauseClick = { sessionConnection.controller?.transportControls?.pause() },
                                     onSkipBackClick = { skip(-settings.skipBackSeconds * 1_000L) },
                                     onSkipForwardClick = { skip(settings.skipForwardSeconds * 1_000L) },
@@ -528,7 +528,7 @@ class MainActivity : ComponentActivity() {
                                 onSeek = ::seekToFraction,
                                 speedLabel = "${PLAYBACK_SPEEDS[playbackSpeedIndex]}x",
                                 onCollapse = onCollapse,
-                                onPlayPause = { if (playing) sessionConnection.controller?.transportControls?.pause() else sessionConnection.controller?.transportControls?.play() },
+                                onPlayPause = { if (playing) sessionConnection.controller?.transportControls?.pause() else resumeOrRestartEpisode(episode) },
                                 onSkipBack = { skip(-settings.skipBackSeconds * 1_000L) },
                                 onSkipForward = { skip(settings.skipForwardSeconds * 1_000L) },
                                 skipBackSeconds = settings.skipBackSeconds,
@@ -704,6 +704,31 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
+     * What tapping Play for the currently-adopted episode should actually do: a cheap
+     * transportControls.play() resume when the live session still genuinely has this episode
+     * loaded (the common pause<->play toggle during normal use), or a full restart via
+     * [playEpisode] (which looks up the saved position itself) when it doesn't.
+     *
+     * uiState == IDLE is what a freshly (re)connected session with nothing loaded at all reports
+     * -- confirmed via LegacyPlaybackStateMapper: a brand-new ExoPlayer instance is
+     * Player.STATE_IDLE, which maps to PlaybackStateCompat.STATE_NONE, which maps to
+     * PlaybackUiState.IDLE. This is a real scenario, not a hypothetical: the service stopping
+     * itself while the app is backgrounded (onTaskRemoved while paused, or an explicit
+     * ACTION_STOP) and reconnecting fresh when reopened leaves exactly this state, and a bare
+     * transportControls.play() in it is a silent no-op -- there's no media item left on the new,
+     * empty player for it to resume. currentEpisode/currentPodcast staying exactly as they were
+     * (this function doesn't touch them) is deliberate: what the app was last playing is the
+     * app's own knowledge, not something the live session's own lifecycle should get to erase.
+     */
+    private fun resumeOrRestartEpisode(episode: Episode) {
+        if (sessionConnection.uiState == PlaybackUiState.IDLE) {
+            currentPodcast?.let { playEpisode(it, episode) }
+        } else {
+            sessionConnection.controller?.transportControls?.play()
+        }
+    }
+
+    /**
      * Local UI bookkeeping for "this episode is now playing" -- currentEpisode/currentPodcast,
      * position-saving, and Recently Played/markPlayed -- shared by [playEpisode] (a manual,
      * user-initiated play, which also sends the actual playFromUri) and
@@ -764,12 +789,6 @@ class MainActivity : ComponentActivity() {
      */
     private fun syncNowPlayingFromMediaId(mediaId: String?) {
         when (val target = com.easyradio.core.media.NowPlayingSyncDecision.resolve(mediaId, lastSyncedMediaId)) {
-            com.easyradio.core.media.NowPlayingSyncTarget.Nothing -> {
-                lastSyncedMediaId = null
-                currentStation = null
-                currentEpisode = null
-                currentPodcast = null
-            }
             is com.easyradio.core.media.NowPlayingSyncTarget.Episode -> {
                 lastSyncedMediaId = mediaId
                 lifecycleScope.launch {

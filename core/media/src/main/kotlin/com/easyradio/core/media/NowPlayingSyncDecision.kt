@@ -4,16 +4,6 @@ package com.easyradio.core.media
 sealed interface NowPlayingSyncTarget {
     data class Episode(val episodeId: String) : NowPlayingSyncTarget
     data class Station(val stationId: String) : NowPlayingSyncTarget
-
-    /**
-     * The session genuinely has nothing loaded anymore -- most commonly a fresh service instance
-     * recreated after the app was backgrounded and the old one was torn down (onTaskRemoved while
-     * paused, or an explicit ACTION_STOP). MainActivity should clear whatever it had adopted
-     * before. Confirmed as a real bug report's root cause: without this, the screen kept showing
-     * stale episode/station info with a Play button that could never do anything, since there was
-     * no media item left on the new, empty player for a bare transportControls.play() to resume.
-     */
-    data object Nothing : NowPlayingSyncTarget
 }
 
 /**
@@ -35,15 +25,21 @@ object NowPlayingSyncDecision {
 
     /**
      * Returns what MainActivity should resync to, or null if [mediaId] doesn't call for a
-     * resync: it's already what [lastSyncedMediaId] shows as adopted (including both being null,
-     * i.e. nothing was adopted and there's still nothing to sync), or it isn't a station or
-     * episode. A [mediaId] that's null while [lastSyncedMediaId] isn't resolves to
-     * [NowPlayingSyncTarget.Nothing], not null -- that's a genuine change (something was playing,
-     * now nothing is), as opposed to null meaning no actionable change at all.
+     * resync: it's absent, isn't a station or episode, or is already what [lastSyncedMediaId]
+     * shows as adopted.
+     *
+     * A null/absent [mediaId] is deliberately treated the same as an echo, not as "nothing is
+     * playing anymore, clear the screen" -- the live session's own now-playing state is routinely
+     * empty right after it's torn down and recreated (e.g. the service stopping itself while the
+     * app is backgrounded, then reconnecting fresh when reopened), but that's a fact about the
+     * session's current lifecycle, not about what the user was doing. The app's own idea of what
+     * it was last playing is more durable than that and shouldn't be discarded just because the
+     * OS happened to recycle the session underneath it; see MainActivity's play/pause handling for
+     * how it instead detects a torn-down session (uiState == IDLE) and does a full restart rather
+     * than a resume, which is what actually needed fixing.
      */
     fun resolve(mediaId: String?, lastSyncedMediaId: String?): NowPlayingSyncTarget? {
-        if (mediaId == lastSyncedMediaId) return null
-        if (mediaId == null) return NowPlayingSyncTarget.Nothing
+        if (mediaId == null || mediaId == lastSyncedMediaId) return null
         return when {
             mediaId.startsWith(MediaBrowseTree.EPISODE_PREFIX) ->
                 NowPlayingSyncTarget.Episode(mediaId.removePrefix(MediaBrowseTree.EPISODE_PREFIX))
