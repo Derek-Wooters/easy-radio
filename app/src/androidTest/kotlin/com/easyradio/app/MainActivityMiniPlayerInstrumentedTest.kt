@@ -74,4 +74,48 @@ class MainActivityMiniPlayerInstrumentedTest {
 
         composeTestRule.onNodeWithText("LIVE").assertExists()
     }
+
+    @Test
+    fun recreatingTheActivityWhileAStationPlaysStillShowsTheMiniPlayer() {
+        // Regression test for the actual bug report this fix was built for: MainActivity being
+        // recreated (e.g. backing out of the app, or the process being reclaimed) while a
+        // station keeps playing independently in the background service previously left the
+        // mini-player permanently missing. Two separate root causes combined to cause this,
+        // both fixed: the service never published a station media id for MainActivity to resync
+        // from, and -- even once it did -- ExpandableSheetScaffold's sheet state starts Hidden on
+        // every new Activity instance, and nothing ever told it to leave Hidden outside of the
+        // expandRequestId/playStation() path, which a resync (as opposed to a direct user tap)
+        // doesn't go through.
+        composeTestRule.waitUntil(timeoutMillis = 10_000) {
+            composeTestRule.onAllNodesWithText("Radio").fetchSemanticsNodes().isNotEmpty() ||
+                composeTestRule.onAllNodesWithText("Skip").fetchSemanticsNodes().isNotEmpty()
+        }
+        if (composeTestRule.onAllNodesWithText("Skip").fetchSemanticsNodes().isNotEmpty()) {
+            composeTestRule.onNodeWithText("Skip").performClick()
+            composeTestRule.waitUntil(timeoutMillis = 10_000) {
+                composeTestRule.onAllNodesWithText("Radio").fetchSemanticsNodes().isNotEmpty()
+            }
+        }
+
+        composeTestRule.onNodeWithText("Radio").performClick()
+        composeTestRule.onAllNodes(hasContentDescription("Play", substring = true))[0].performClick()
+
+        composeTestRule.waitUntil(timeoutMillis = 10_000) {
+            composeTestRule.onAllNodesWithText("LIVE").fetchSemanticsNodes().isNotEmpty()
+        }
+        // The Recently Played write playStation() kicks off is what the resync below reads back
+        // to reconstruct the playing station -- give it a moment to land before recreating.
+        Thread.sleep(500)
+
+        composeTestRule.activityRule.scenario.recreate()
+
+        // The new Activity instance starts with no nav bar/mini-player shown at all while its
+        // onboarding-vs-main-UI DataStore read and session resync are in flight -- assert they
+        // both end up showing together, which only happens once currentStation has been resynced
+        // AND the sheet has actually left Hidden to show it.
+        composeTestRule.waitUntil(timeoutMillis = 10_000) {
+            composeTestRule.onAllNodesWithText("LIVE").fetchSemanticsNodes().isNotEmpty() &&
+                composeTestRule.onAllNodesWithText("Radio").fetchSemanticsNodes().isNotEmpty()
+        }
+    }
 }

@@ -24,6 +24,7 @@ object PlaybackRequests {
             putString(EXTRA_TITLE, station.name)
             putString(EXTRA_ARTIST, station.tagline)
             putString(EXTRA_ARTWORK_URL, station.imageUrl)
+            putString(EXTRA_STATION_ID, station.id)
         },
     )
 

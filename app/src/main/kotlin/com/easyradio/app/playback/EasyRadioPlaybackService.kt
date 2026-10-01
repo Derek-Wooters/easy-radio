@@ -48,6 +48,15 @@ const val EXTRA_RESUME_POSITION_MS = "com.easyradio.app.EXTRA_RESUME_POSITION_MS
 const val EXTRA_EPISODE_ID = "com.easyradio.app.EXTRA_EPISODE_ID"
 
 /**
+ * Extras key identifying which radio station is being played, published back out via the
+ * session's own media id (see PlaybackSessionController.publishMetadata()) so MainActivity can
+ * resync currentStation if it's recreated while the service keeps a station playing -- without
+ * this, reconnecting after e.g. the user backing out of the app left the mini-player/Now Playing
+ * bar missing entirely despite audio still genuinely playing.
+ */
+const val EXTRA_STATION_ID = "com.easyradio.app.EXTRA_STATION_ID"
+
+/**
  * Custom [MediaSessionCompat.Callback.onCustomAction] sent by [MainActivity]'s sleep-timer picker
  * to arm a one-shot "stop instead of advancing to the next queued episode" for the episode
  * currently playing, rather than the persisted minutes-based default.
@@ -376,6 +385,7 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
                 artworkUrl = extras?.getString(EXTRA_ARTWORK_URL),
                 resumePositionMs = extras?.getLong(EXTRA_RESUME_POSITION_MS) ?: 0L,
                 episodeId = extras?.getString(EXTRA_EPISODE_ID),
+                stationId = extras?.getString(EXTRA_STATION_ID),
             )
         }
 

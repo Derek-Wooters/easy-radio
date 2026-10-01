@@ -55,6 +55,13 @@ class PlaybackSessionController(
     // podcast episodes, which is exactly what a non-null id here means.
     private var currentEpisodeId: String? = null
 
+    // Null whenever a podcast episode (or nothing) is playing -- mutually exclusive with
+    // currentEpisodeId. Published as the session's own media id the same way currentEpisodeId is,
+    // so MainActivity can resync currentStation if it's recreated while a station keeps playing --
+    // without this, reconnecting left the mini-player/Now Playing bar missing entirely despite
+    // audio still genuinely playing (the bug this field exists to fix).
+    private var currentStationId: String? = null
+
     // Armed by the "End of episode" sleep-timer option (ACTION_SLEEP_AT_END_OF_EPISODE) for the
     // *current* episode only; reset whenever any new item starts playing so it never leaks onto
     // whatever plays next.
@@ -102,10 +109,13 @@ class PlaybackSessionController(
      */
     fun publishMetadata() {
         val durationMs = player.duration.takeIf { it != C.TIME_UNSET }
-        // MEDIA_ID lets MainActivity notice a change of episode it didn't itself initiate (e.g.
-        // auto-advancing to the next queued episode) and resync its own now-playing UI state to
-        // match, rather than going stale showing the episode that just finished.
+        // MEDIA_ID lets MainActivity notice a change it didn't itself initiate -- either the
+        // service auto-advancing to the next queued episode, or MainActivity itself being
+        // recreated while this station/episode keeps playing -- and resync its own now-playing UI
+        // state to match, rather than going stale (or, for a station recreated mid-playback,
+        // showing nothing at all: see currentStationId's doc).
         val mediaId = currentEpisodeId?.let { MediaBrowseTree.EPISODE_PREFIX + it }
+            ?: currentStationId?.let { MediaBrowseTree.STATION_PREFIX + it }
         onMetadataChanged(
             MediaMetadataCompat.Builder()
                 .putString(MediaMetadataCompat.METADATA_KEY_TITLE, currentTitle)
@@ -155,12 +165,14 @@ class PlaybackSessionController(
         artworkUrl: String?,
         resumePositionMs: Long,
         episodeId: String? = null,
+        stationId: String? = null,
     ) {
         onPlaybackStarting()
         currentTitle = title
         currentArtist = artist
         currentArtworkUrl = artworkUrl
         currentEpisodeId = episodeId
+        currentStationId = stationId
         sleepAtEndOfEpisode = false
         publishMetadata()
         val mediaItem = MediaItem.Builder()
@@ -185,7 +197,14 @@ class PlaybackSessionController(
                 val station = CuratedRadioStations.ALL.firstOrNull {
                     MediaBrowseTree.STATION_PREFIX + it.id == mediaId
                 } ?: return
-                startPlayback(Uri.parse(station.streamUrl), station.name, station.tagline, station.imageUrl, 0L)
+                startPlayback(
+                    uri = Uri.parse(station.streamUrl),
+                    title = station.name,
+                    artist = station.tagline,
+                    artworkUrl = station.imageUrl,
+                    resumePositionMs = 0L,
+                    stationId = station.id,
+                )
             }
             mediaId.startsWith(MediaBrowseTree.EPISODE_PREFIX) -> {
                 val episode = allSubscribedEpisodes().firstOrNull {

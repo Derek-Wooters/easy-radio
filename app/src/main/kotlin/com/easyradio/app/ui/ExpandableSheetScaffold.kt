@@ -54,6 +54,21 @@ fun ExpandableSheetScaffold(
         if (expandRequestId > 0) sheetState.expand()
     }
 
+    // hasContent flipping true is the only other way the sheet should ever leave Hidden --
+    // besides an explicit expandRequestId bump, which jumps straight to full-screen. Without
+    // this, a caller that adopts now-playing state without going through expandRequestId (e.g.
+    // MainActivity resyncing what's already playing in the background after being recreated)
+    // left the sheet stuck at its initial Hidden value forever: hasContent correctly became
+    // true, sheetContent correctly started emitting collapsedContent, but the sheet itself was
+    // never told to actually become visible, so the peek area stayed a blank, untappable strip
+    // despite the state being otherwise fully correct. Only promote out of Hidden, never out of
+    // Expanded/PartiallyExpanded, so this can't fight a drag or an explicit expand in progress.
+    LaunchedEffect(hasContent) {
+        if (hasContent && sheetState.currentValue == SheetValue.Hidden) {
+            sheetState.partialExpand()
+        }
+    }
+
     LaunchedEffect(sheetState.targetValue) {
         onExpandedChange(sheetState.targetValue == SheetValue.Expanded)
     }
