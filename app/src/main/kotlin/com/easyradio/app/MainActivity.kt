@@ -579,10 +579,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun playStation(station: RadioStation) {
-        positionSaveJob?.cancel()
-        currentEpisode = null
-        currentPodcast = null
-        currentStation = station
+        adoptNowPlayingStation(station)
         expandRequestId++
         val request = com.easyradio.app.playback.PlaybackRequests.forStation(station)
         sessionConnection.controller?.transportControls?.playFromUri(request.uri, request.extras)
@@ -695,19 +692,64 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Reacts to the service's own now-playing media id -- the only case that matters today is
-     * auto-advance to the next queued episode, which the service does on its own with no call
-     * into MainActivity. A no-op if [mediaId] isn't an episode, or is one we've already adopted
-     * (our own playEpisode() call echoing back through the session, or a repeat notification).
+     * Local UI bookkeeping for "this station is now playing" -- currentStation/currentEpisode --
+     * shared by [playStation] (a manual, user-initiated play, which also sends the actual
+     * playFromUri and records Recently Played/markPlayed) and [syncNowPlayingFromMediaId]
+     * (MainActivity was recreated while the service kept this exact station playing; nothing new
+     * actually started, so -- unlike [adoptNowPlayingEpisode], which auto-advance uses for a
+     * genuinely new episode -- this never re-records Recently Played or re-bumps markPlayed).
+     */
+    private fun adoptNowPlayingStation(station: RadioStation) {
+        lastSyncedMediaId = MediaBrowseTree.STATION_PREFIX + station.id
+        positionSaveJob?.cancel()
+        currentEpisode = null
+        currentPodcast = null
+        currentStation = station
+    }
+
+    /**
+     * Reacts to the service's own now-playing media id. Two real cases: the service
+     * auto-advancing to the next queued episode on its own, and -- the bug this was extended to
+     * fix -- MainActivity being recreated (e.g. backing out of the app, or the process being
+     * reclaimed) while the service keeps a station playing independently, which previously left
+     * currentStation null and the mini-player/Now Playing bar missing despite audio still
+     * genuinely playing. A no-op if [mediaId] isn't a station or episode, or is one we've already
+     * adopted (our own play call echoing back through the session, or a repeat notification).
      */
     private fun syncNowPlayingFromMediaId(mediaId: String?) {
-        val episodeId = com.easyradio.core.media.NowPlayingSyncDecision.episodeIdToSync(mediaId, lastSyncedMediaId)
-            ?: return
-        lastSyncedMediaId = mediaId
-        lifecycleScope.launch {
-            val episode = podcastRepository.allEpisodes().first().firstOrNull { it.id == episodeId } ?: return@launch
-            val podcast = resolvePlayablePodcast(episode, podcastRepository.subscribedPodcasts().first())
-            adoptNowPlayingEpisode(podcast, episode)
+        when (val target = com.easyradio.core.media.NowPlayingSyncDecision.resolve(mediaId, lastSyncedMediaId)) {
+            is com.easyradio.core.media.NowPlayingSyncTarget.Episode -> {
+                lastSyncedMediaId = mediaId
+                lifecycleScope.launch {
+                    val episode = podcastRepository.allEpisodes().first().firstOrNull { it.id == target.episodeId }
+                        ?: return@launch
+                    val podcast = resolvePlayablePodcast(episode, podcastRepository.subscribedPodcasts().first())
+                    adoptNowPlayingEpisode(podcast, episode)
+                }
+            }
+            is com.easyradio.core.media.NowPlayingSyncTarget.Station -> {
+                lastSyncedMediaId = mediaId
+                lifecycleScope.launch {
+                    // Recently Played already carries everything needed to resume showing this
+                    // station -- including a resumable streamUrl -- since playStation() records it
+                    // there the moment the station actually started playing (well before this
+                    // resync could ever run).
+                    val recent = recentlyPlayedRepository.recent().first().firstOrNull {
+                        it.type == RecentlyPlayedType.STATION && it.contentId == target.stationId
+                    }
+                    val streamUrl = recent?.stationStreamUrl ?: return@launch
+                    adoptNowPlayingStation(
+                        RadioStation(
+                            id = target.stationId,
+                            name = recent.title,
+                            streamUrl = streamUrl,
+                            tagline = recent.subtitle,
+                            imageUrl = recent.imageUrl,
+                        ),
+                    )
+                }
+            }
+            null -> Unit
         }
     }
 

@@ -15,6 +15,7 @@ import com.easyradio.core.database.PodcastRepository
 import com.easyradio.core.database.QueueDao
 import com.easyradio.core.database.QueueItemEntity
 import com.easyradio.core.database.toEntity
+import com.easyradio.core.media.MediaBrowseTree
 import com.easyradio.core.model.Episode
 import com.easyradio.core.model.Podcast
 import com.easyradio.core.network.podcast.ItunesSearchApi
@@ -189,6 +190,40 @@ class PlaybackSessionControllerTest {
 
         assertThat(metadata!!.getString(MediaMetadataCompat.METADATA_KEY_TITLE)).isEqualTo("KFAN FM")
         assertThat(metadata!!.getString(MediaMetadataCompat.METADATA_KEY_ARTIST)).isEqualTo("Sports Talk")
+    }
+
+    @Test
+    fun `startPlayback with a stationId publishes it as the session's media id`() {
+        // The actual bug this guards against: without a published station media id, MainActivity
+        // being recreated while a station keeps playing had nothing to resync currentStation
+        // from, leaving the mini-player/Now Playing bar missing despite audio still playing.
+        val player = fakePlayer()
+        var metadata: MediaMetadataCompat? = null
+        val sut = controller(player, onMetadataChanged = { metadata = it })
+
+        sut.startPlayback(Uri.parse("https://example.com/stream"), "KFAN FM", "Sports Talk", null, 0L, stationId = "kfan")
+
+        assertThat(metadata!!.getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID))
+            .isEqualTo(MediaBrowseTree.STATION_PREFIX + "kfan")
+    }
+
+    @Test
+    fun `startPlayback with an episodeId publishes it as the session's media id`() {
+        val player = fakePlayer()
+        var metadata: MediaMetadataCompat? = null
+        val sut = controller(player, onMetadataChanged = { metadata = it })
+
+        sut.startPlayback(
+            Uri.parse("https://example.com/ep1.mp3"),
+            "Ep1",
+            "Podcast",
+            null,
+            0L,
+            episodeId = "ep1",
+        )
+
+        assertThat(metadata!!.getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID))
+            .isEqualTo(MediaBrowseTree.EPISODE_PREFIX + "ep1")
     }
 
     @Test

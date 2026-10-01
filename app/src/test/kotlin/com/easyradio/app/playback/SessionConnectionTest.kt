@@ -41,16 +41,27 @@ class SessionConnectionTest {
     @Test
     fun `attach immediately syncs uiState from the controller's already-current state`() {
         val (controller, _) = fakeController(playbackState = stateOf(PlaybackStateCompat.STATE_PLAYING))
-        var reportedMediaId: String? = "unset"
-        val sut = SessionConnection(onNowPlayingMediaIdChanged = { reportedMediaId = it })
+        val sut = SessionConnection(onNowPlayingMediaIdChanged = {})
 
         sut.attach(controller)
 
         assertThat(sut.uiState).isEqualTo(PlaybackUiState.PLAYING)
         assertThat(sut.controller).isSameInstanceAs(controller)
-        // attach() alone reports uiState, not now-playing -- that only ever comes from a real
-        // metadata change or onSessionReady.
-        assertThat(reportedMediaId).isEqualTo("unset")
+    }
+
+    @Test
+    fun `attach immediately reports the now-playing media id from the controller's already-current metadata`() {
+        // The actual bug this guards against: onSessionReady doesn't fire once a session is
+        // already stable (confirmed on a real device), so a controller reconnecting to an
+        // already-playing station never resynced MainActivity's now-playing state at all,
+        // leaving the mini-player/Now Playing bar missing despite audio genuinely still playing.
+        val (controller, _) = fakeController(metadata = metadataWithMediaId("station/kfan"))
+        var reportedMediaId: String? = "unset"
+        val sut = SessionConnection(onNowPlayingMediaIdChanged = { reportedMediaId = it })
+
+        sut.attach(controller)
+
+        assertThat(reportedMediaId).isEqualTo("station/kfan")
     }
 
     @Test

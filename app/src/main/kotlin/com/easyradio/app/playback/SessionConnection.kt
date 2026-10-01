@@ -72,12 +72,16 @@ class SessionConnection(
     fun attach(newController: MediaControllerCompat) {
         controller = newController
         newController.registerCallback(callback)
-        // A fresh controller only reports playback state via the callback above on the NEXT
-        // change -- attaching here after the player's real state already settled to whatever
-        // uiState was last showing means no change ever fires, leaving a stale uiState (e.g.
-        // still "Playing" with no audio, and the button then toggling the wrong direction) until
-        // something else happens to nudge it. Sync immediately instead of waiting for that.
+        // A fresh controller only reports playback state/metadata via the callbacks above on the
+        // NEXT change -- attaching here after the session already settled to whatever it's
+        // currently showing means no change ever fires. For uiState that leaves it stale (e.g.
+        // still "Playing" with no audio, toggling the wrong direction); for the now-playing media
+        // id, onSessionReady turned out not to fire at all once the session was already stable
+        // (confirmed on a real device: a station kept playing correctly in the background, but
+        // reopening the app after it was recreated showed no mini-player at all, since nothing
+        // ever told MainActivity what was playing). Sync both immediately instead of waiting.
         uiState = LegacyPlaybackStateMapper.toUiState(newController.playbackState?.state)
+        onNowPlayingMediaIdChanged(newController.metadata?.getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID))
     }
 
     fun detach() {
