@@ -335,6 +335,13 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
     private inner class SessionCallback : MediaSessionCompat.Callback() {
         override fun onPlay() {
             ensureStarted()
+            // onStop() (ACTION_STOP, e.g. the notification's delete intent) calls player.stop(),
+            // which transitions to STATE_IDLE -- Media3's contract is that an idle player needs
+            // prepare() again before play() has any effect, but this just called play() directly.
+            // Confirmed on a real device (and reproduced by sending a STOP media button while the
+            // app stayed open): the Play button looked real but silently did nothing at all,
+            // since play() on an unprepared, idle player is a no-op.
+            if (player.playbackState == Player.STATE_IDLE) player.prepare()
             player.play()
         }
 
