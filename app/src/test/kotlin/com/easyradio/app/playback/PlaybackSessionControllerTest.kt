@@ -61,7 +61,9 @@ private class FakeEpisodeDao : EpisodeDao {
     override fun observeByPodcast(podcastId: String) = state.map { list -> list.filter { it.podcastId == podcastId } }
     override suspend fun insertIgnore(episodes: List<EpisodeEntity>) {}
     override suspend fun updateMetadata(updates: List<EpisodeMetadata>) {}
-    override suspend fun updatePosition(episodeId: String, positionMs: Long) {}
+    override suspend fun updatePosition(episodeId: String, positionMs: Long) {
+        state.update { list -> list.map { if (it.id == episodeId) it.copy(positionMs = positionMs) else it } }
+    }
     override suspend fun getPosition(episodeId: String): Long? = state.value.find { it.id == episodeId }?.positionMs
     override suspend fun updateLocalFilePath(episodeId: String, localFilePath: String?) {}
     override suspend fun getByIds(ids: List<String>) = state.value.filter { it.id in ids }
@@ -115,6 +117,7 @@ class PlaybackSessionControllerTest {
         hasError: Boolean = false,
         playbackState: Int = Player.STATE_READY,
         playWhenReady: Boolean = true,
+        isPlaying: Boolean = true,
         positionMs: Long = 0L,
         bufferedPositionMs: Long = 0L,
     ): Player {
@@ -123,6 +126,7 @@ class PlaybackSessionControllerTest {
             if (hasError) PlaybackException("boom", null, PlaybackException.ERROR_CODE_UNSPECIFIED) else null
         every { player.playbackState } returns playbackState
         every { player.playWhenReady } returns playWhenReady
+        every { player.isPlaying } returns isPlaying
         every { player.playbackParameters } returns PlaybackParameters(1.0f)
         every { player.currentPosition } returns positionMs
         every { player.bufferedPosition } returns bufferedPositionMs
@@ -233,7 +237,7 @@ class PlaybackSessionControllerTest {
         sut.startPlayback(Uri.parse("https://example.com/ep1.mp3"), "Ep1", "Podcast", null, 0L, episodeId = "ep1")
 
         sut.onPlayerPlaybackStateChanged(Player.STATE_ENDED)
-        dispatcher.scheduler.advanceUntilIdle()
+        dispatcher.scheduler.runCurrent()
 
         // Only the original startPlayback call -- nothing queued to advance to.
         verify(exactly = 1) { player.setMediaItem(any(), any<Long>()) }
@@ -259,11 +263,12 @@ class PlaybackSessionControllerTest {
         sut.startPlayback(Uri.parse("https://example.com/ep1.mp3"), "Ep1", "Podcast", null, 0L, episodeId = "ep1")
 
         sut.onPlayerPlaybackStateChanged(Player.STATE_ENDED)
-        dispatcher.scheduler.advanceUntilIdle()
+        dispatcher.scheduler.runCurrent()
 
         // startPlayback for ep1, then again for the auto-advanced ep2.
         verify(exactly = 2) { player.setMediaItem(any(), any<Long>()) }
         assertThat(queueDao.state.value).isEmpty()
+        sut.release() // ep2's position-save loop is still running; runs forever otherwise
     }
 
     @Test
@@ -287,10 +292,64 @@ class PlaybackSessionControllerTest {
         sut.armSleepAtEndOfEpisode()
 
         sut.onPlayerPlaybackStateChanged(Player.STATE_ENDED)
-        dispatcher.scheduler.advanceUntilIdle()
+        dispatcher.scheduler.runCurrent()
 
         // Only the original startPlayback -- no auto-advance despite something queued.
         verify(exactly = 1) { player.setMediaItem(any(), any<Long>()) }
         assertThat(queueDao.state.value).hasSize(1)
+    }
+
+    @Test
+    fun `periodically saves the playing episode's position for as long as the controller is alive`() = runTest(dispatcher) {
+        // Regression test for a real bug report: MainActivity previously owned this on its own
+        // lifecycleScope (saving only while the Activity was started, plus one flush in onStop()),
+        // but onTaskRemoved() deliberately keeps this service -- and playback -- alive after the
+        // app is swiped away while playing. ~30 minutes of unattended background listening got
+        // zero saves, so reopening the app and tapping "Resume" started the episode over from a
+        // position minutes old instead of where it had actually gotten to. Saving here instead,
+        // on the controller's own scope, ties it to the service's lifetime, which already spans
+        // exactly this case.
+        val episode = Episode(
+            id = "ep1",
+            podcastId = "p1",
+            title = "Episode 1",
+            audioUrl = "https://example.com/ep1.mp3",
+            publishedAtEpochMillis = null,
+            durationSeconds = 3_600,
+        )
+        episodeDao.state.value = listOf(episode.toEntity())
+
+        val player = fakePlayer(isPlaying = true, positionMs = 42_000L)
+        val sut = controller(player)
+        sut.startPlayback(Uri.parse("https://example.com/ep1.mp3"), "Ep1", "Podcast", null, 0L, episodeId = "ep1")
+
+        dispatcher.scheduler.advanceTimeBy(POSITION_SAVE_INTERVAL_MS + 100)
+        dispatcher.scheduler.runCurrent()
+
+        assertThat(episodeDao.state.value.find { it.id == "ep1" }?.positionMs).isEqualTo(42_000L)
+        sut.release() // the save loop runs forever otherwise, hanging runTest's cleanup
+    }
+
+    @Test
+    fun `does not save position while paused`() = runTest(dispatcher) {
+        val episode = Episode(
+            id = "ep1",
+            podcastId = "p1",
+            title = "Episode 1",
+            audioUrl = "https://example.com/ep1.mp3",
+            publishedAtEpochMillis = null,
+            durationSeconds = 3_600,
+        )
+        episodeDao.state.value = listOf(episode.toEntity())
+
+        val player = fakePlayer(isPlaying = false, positionMs = 42_000L)
+        val sut = controller(player)
+        sut.startPlayback(Uri.parse("https://example.com/ep1.mp3"), "Ep1", "Podcast", null, 0L, episodeId = "ep1")
+
+        dispatcher.scheduler.advanceTimeBy(POSITION_SAVE_INTERVAL_MS + 100)
+        dispatcher.scheduler.runCurrent()
+
+        assertThat(episodeDao.state.value.find { it.id == "ep1" }?.positionMs).isEqualTo(0L)
+        sut.release() // the save loop runs forever otherwise, hanging runTest's cleanup
     }
 }
