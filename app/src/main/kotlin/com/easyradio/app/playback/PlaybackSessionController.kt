@@ -16,11 +16,16 @@ import com.easyradio.core.model.CuratedRadioStations
 import com.easyradio.core.model.Episode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.File
+
+internal const val POSITION_SAVE_INTERVAL_MS = 5_000L
 
 /**
  * Owns the playback/session-state orchestration [EasyRadioPlaybackService] used to do entirely
@@ -67,8 +72,34 @@ class PlaybackSessionController(
     // whatever plays next.
     private var sleepAtEndOfEpisode: Boolean = false
 
+    private var positionSaveJob: Job? = null
+
     fun release() {
         scope.cancel()
+    }
+
+    /**
+     * Periodically persists the current episode's playback position for as long as this
+     * controller (i.e. the service) is alive, independent of whether any Activity is bound.
+     * MainActivity previously owned this on its own lifecycleScope, saving only while it was
+     * started, plus one final flush in onStop() -- but onTaskRemoved() deliberately keeps this
+     * service (and playback) alive after the app is swiped away from Recents while playing, and
+     * reopening the app later while the service kept playing meant no Activity existed to do that
+     * onStop() flush at all. Confirmed as the cause of a real resume-to-the-wrong-spot bug report:
+     * ~30 minutes of unattended background listening with zero saves, so "Resume" started the
+     * episode over from a position minutes old instead of where it had actually gotten to.
+     */
+    private fun restartPositionSaving(episodeId: String?) {
+        positionSaveJob?.cancel()
+        if (episodeId == null) return
+        positionSaveJob = scope.launch {
+            while (isActive) {
+                delay(POSITION_SAVE_INTERVAL_MS)
+                if (player.isPlaying) {
+                    repository.savePosition(episodeId, player.currentPosition)
+                }
+            }
+        }
     }
 
     // -- Playback state / metadata publishing --------------------------------------------
@@ -145,6 +176,7 @@ class PlaybackSessionController(
      */
     private suspend fun handleEpisodeEnded() {
         currentEpisodeId = null
+        restartPositionSaving(null)
         val wasArmed = sleepAtEndOfEpisode
         sleepAtEndOfEpisode = false
         when (val action = EpisodeEndDecision.resolve(wasArmed, repository.queue().first())) {
@@ -174,6 +206,7 @@ class PlaybackSessionController(
         currentEpisodeId = episodeId
         currentStationId = stationId
         sleepAtEndOfEpisode = false
+        restartPositionSaving(episodeId)
         publishMetadata()
         val mediaItem = MediaItem.Builder()
             .setUri(uri)

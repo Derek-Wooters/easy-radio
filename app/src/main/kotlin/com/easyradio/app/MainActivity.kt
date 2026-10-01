@@ -49,7 +49,6 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.session.MediaControllerCompat
-import android.support.v4.media.session.PlaybackStateCompat
 import com.easyradio.app.playback.ACTION_SLEEP_AT_END_OF_EPISODE
 import com.easyradio.app.playback.EasyRadioPlaybackService
 import com.easyradio.core.media.MediaBrowseTree
@@ -62,9 +61,7 @@ import com.easyradio.core.model.Podcast
 import com.easyradio.core.model.RadioStation
 import com.easyradio.core.network.radiobrowser.RadioBrowserApiFactory
 import com.easyradio.core.network.radiobrowser.RadioStationRepository
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import android.os.SystemClock
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -184,7 +181,6 @@ class MainActivity : ComponentActivity() {
     private var currentTranscript by mutableStateOf<String?>(null)
     private var currentPodcast by mutableStateOf<Podcast?>(null)
 
-    private var positionSaveJob: Job? = null
     private var playbackSpeedIndex by mutableStateOf(0)
     private var positionMs by mutableStateOf(0L)
     private var durationMs by mutableStateOf(0L)
@@ -668,7 +664,6 @@ class MainActivity : ComponentActivity() {
         currentEpisode = episode
         currentPodcast = podcast
         playbackSpeedIndex = 0
-        startPositionSaving(episode.id)
 
         lifecycleScope.launch {
             recentlyPlayedRepository.record(
@@ -701,7 +696,6 @@ class MainActivity : ComponentActivity() {
      */
     private fun adoptNowPlayingStation(station: RadioStation) {
         lastSyncedMediaId = MediaBrowseTree.STATION_PREFIX + station.id
-        positionSaveJob?.cancel()
         currentEpisode = null
         currentPodcast = null
         currentStation = station
@@ -807,19 +801,6 @@ class MainActivity : ComponentActivity() {
         sessionConnection.controller?.transportControls?.setPlaybackSpeed(PLAYBACK_SPEEDS[playbackSpeedIndex])
     }
 
-    private fun startPositionSaving(episodeId: String) {
-        positionSaveJob?.cancel()
-        positionSaveJob = lifecycleScope.launch {
-            while (isActive) {
-                delay(PODCAST_POSITION_SAVE_INTERVAL_MS)
-                val controller = sessionConnection.controller ?: continue
-                if (controller.playbackState?.state == PlaybackStateCompat.STATE_PLAYING) {
-                    podcastRepository.savePosition(episodeId, controllerPositionMs(controller))
-                }
-            }
-        }
-    }
-
     override fun onStart() {
         super.onStart()
         val browser = MediaBrowserCompat(
@@ -840,12 +821,6 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
-        currentEpisode?.let { episode ->
-            sessionConnection.controller?.let { controller ->
-                lifecycleScope.launch { podcastRepository.savePosition(episode.id, controllerPositionMs(controller)) }
-            }
-        }
-        positionSaveJob?.cancel()
         sessionConnection.detach()
         mediaBrowser?.disconnect()
         mediaBrowser = null
