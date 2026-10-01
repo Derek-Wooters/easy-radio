@@ -387,7 +387,11 @@ class MainActivity : ComponentActivity() {
                         },
                     )
                 } else {
-                val nothingPlaying = currentStation == null && currentEpisode == null
+                val nothingPlaying = !hasNowPlayingContent(
+                    uiState = sessionConnection.uiState,
+                    hasStation = currentStation != null,
+                    hasEpisode = currentEpisode != null,
+                )
                 MiniPlayerScaffold(
                     hasContent = !nothingPlaying,
                     expandRequestId = expandRequestId,
@@ -443,6 +447,20 @@ class MainActivity : ComponentActivity() {
                                     onExpand = onExpand,
                                 )
                             }
+                            // uiState says something's active but the resync hasn't resolved
+                            // which station/episode yet (or never will) -- a generic but fully
+                            // functional bar beats showing nothing at all.
+                            else -> NowPlayingBar(
+                                title = "Loading…",
+                                tagline = "",
+                                tintSeed = "loading",
+                                imageUrl = null,
+                                badgeText = null,
+                                playbackState = sessionConnection.uiState,
+                                onPlayClick = { sessionConnection.controller?.transportControls?.play() },
+                                onPauseClick = { sessionConnection.controller?.transportControls?.pause() },
+                                onExpand = onExpand,
+                            )
                         }
                     },
                     expandedContent = { onCollapse ->
@@ -511,6 +529,28 @@ class MainActivity : ComponentActivity() {
                                     if (durationMs > 0) seekToFraction(chapter.startTimeMs.toFloat() / durationMs)
                                 },
                                 transcript = currentTranscript,
+                            )
+                            else -> NowPlayingScreen(
+                                topLabel = "",
+                                title = "Loading…",
+                                subtitle = "",
+                                imageUrl = null,
+                                tintSeed = "loading",
+                                isLive = false,
+                                isPlaying = playing,
+                                isBuffering = sessionConnection.uiState == PlaybackUiState.BUFFERING,
+                                progress = null,
+                                positionLabel = null,
+                                durationLabel = null,
+                                speedLabel = null,
+                                onCollapse = onCollapse,
+                                onPlayPause = {
+                                    if (playing) {
+                                        sessionConnection.controller?.transportControls?.pause()
+                                    } else {
+                                        sessionConnection.controller?.transportControls?.play()
+                                    }
+                                },
                             )
                         }
                     },
