@@ -29,6 +29,7 @@ import com.easyradio.core.media.PlaybackUiState
  */
 class SessionConnection(
     private val onNowPlayingMediaIdChanged: (String?) -> Unit,
+    private val onSessionDestroyed: () -> Unit = {},
 ) {
     var controller: MediaControllerCompat? by mutableStateOf(null)
         private set
@@ -59,12 +60,20 @@ class SessionConnection(
             onNowPlayingMediaIdChanged(controller?.metadata?.getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID))
         }
 
-        // The session can be destroyed out from under us (e.g. the service process was
-        // reclaimed); without handling this the controller reference goes stale and the UI never
-        // updates again. Dropping it here lets the next attach() (e.g. onStart's reconnect) recover.
+        // The session can be destroyed out from under us -- the service stops itself
+        // (onTaskRemoved while paused, or an explicit ACTION_STOP) -- without ever going through
+        // another onStop()/onStart() cycle if MainActivity stayed in the foreground the whole
+        // time. The old assumption that "the next attach() (e.g. onStart's reconnect) recovers"
+        // only held when something actually called attach() again; confirmed on a real device
+        // (and reproduced by sending a STOP media button while the app stayed open) that it
+        // otherwise left a dead controller and stale now-playing info on screen forever -- the
+        // Play button looked real but called transportControls on a null controller, doing
+        // nothing. onSessionDestroyed lets MainActivity notice and reconnect proactively instead
+        // of only reacting to its own lifecycle.
         override fun onSessionDestroyed() {
             controller = null
             uiState = PlaybackUiState.IDLE
+            this@SessionConnection.onSessionDestroyed()
         }
     }
 

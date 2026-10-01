@@ -145,4 +145,25 @@ class EasyRadioPlaybackServiceInstrumentedTest {
         val paused = awaitState { it == PlaybackStateCompat.STATE_PAUSED }
         assertThat(paused.state).isEqualTo(PlaybackStateCompat.STATE_PAUSED)
     }
+
+    @Test
+    fun playingAgainAfterStopActuallyResumesPlayback() {
+        // Regression test for a real bug report: ACTION_STOP (e.g. the notification's delete
+        // intent) calls player.stop(), which transitions ExoPlayer to STATE_IDLE -- an idle
+        // player needs prepare() again before play() has any effect. onPlay() previously called
+        // player.play() directly with no such check, so the Play button looked real (and showed
+        // the right icon) but silently did nothing at all, confirmed on a real device and
+        // reproduced by sending a STOP media button while the app stayed open.
+        val uri = localTestAudioUri()
+        instrumentation.runOnMainSync { controller.transportControls.playFromUri(uri, null) }
+        awaitState { it == PlaybackStateCompat.STATE_PLAYING }
+
+        instrumentation.runOnMainSync { controller.transportControls.stop() }
+        awaitState { it == PlaybackStateCompat.STATE_NONE || it == PlaybackStateCompat.STATE_STOPPED }
+
+        instrumentation.runOnMainSync { controller.transportControls.play() }
+
+        val playing = awaitState { it == PlaybackStateCompat.STATE_PLAYING }
+        assertThat(playing.state).isEqualTo(PlaybackStateCompat.STATE_PLAYING)
+    }
 }

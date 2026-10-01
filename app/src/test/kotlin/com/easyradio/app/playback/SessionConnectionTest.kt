@@ -116,6 +116,22 @@ class SessionConnectionTest {
     }
 
     @Test
+    fun `onSessionDestroyed notifies the caller so it can reconnect`() {
+        // Regression test for a real bug report: the service stopping itself (onTaskRemoved
+        // while paused, or an explicit ACTION_STOP) while MainActivity stayed in the foreground
+        // never went through another onStop()/onStart() cycle to naturally reconnect, leaving a
+        // dead controller and a stale, unresponsive now-playing bar on screen forever.
+        val (controller, callback) = fakeController()
+        var notified = false
+        val sut = SessionConnection(onNowPlayingMediaIdChanged = {}, onSessionDestroyed = { notified = true })
+        sut.attach(controller)
+
+        callback().onSessionDestroyed()
+
+        assertThat(notified).isTrue()
+    }
+
+    @Test
     fun `detach unregisters the callback and clears the controller`() {
         val (controller, _) = fakeController()
         val sut = SessionConnection(onNowPlayingMediaIdChanged = {})

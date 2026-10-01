@@ -173,6 +173,18 @@ class MainActivity : ComponentActivity() {
     // why that logic lives there now instead of inline here.
     private val sessionConnection = com.easyradio.app.playback.SessionConnection(
         onNowPlayingMediaIdChanged = ::syncNowPlayingFromMediaId,
+        onSessionDestroyed = {
+            // The service stopping itself out from under an already-foregrounded MainActivity
+            // (no onStop()/onStart() cycle to naturally reconnect through) previously left stale
+            // now-playing info on screen with a Play button that called transportControls on a
+            // dead controller -- clear it so the UI matches reality, then reconnect so playback
+            // (new or resumed) works again without the user needing to background/reopen the app.
+            lastSyncedMediaId = null
+            currentStation = null
+            currentEpisode = null
+            currentPodcast = null
+            connectToPlaybackService()
+        },
     )
 
     private var currentStation by mutableStateOf<RadioStation?>(null)
@@ -841,8 +853,19 @@ class MainActivity : ComponentActivity() {
         sessionConnection.controller?.transportControls?.setPlaybackSpeed(PLAYBACK_SPEEDS[playbackSpeedIndex])
     }
 
-    override fun onStart() {
-        super.onStart()
+    /**
+     * Connects (or reconnects) to [EasyRadioPlaybackService] via a fresh [MediaBrowserCompat].
+     * Called from [onStart], and also from the [sessionConnection]'s onSessionDestroyed handler
+     * -- the service can stop itself (onTaskRemoved while paused, or an explicit ACTION_STOP)
+     * without MainActivity ever going through another onStop()/onStart() cycle if it stayed in
+     * the foreground the whole time, which otherwise left a dead controller and a stale,
+     * unresponsive now-playing bar on screen forever (confirmed on a real device, and reproduced
+     * by sending a STOP media button while the app stayed open). A fresh connect() here
+     * recreates the service (MediaBrowserServiceCompat binds with BIND_AUTO_CREATE) exactly as
+     * it would on a normal cold start.
+     */
+    private fun connectToPlaybackService() {
+        mediaBrowser?.disconnect()
         val browser = MediaBrowserCompat(
             this,
             ComponentName(this, EasyRadioPlaybackService::class.java),
@@ -858,6 +881,11 @@ class MainActivity : ComponentActivity() {
         )
         mediaBrowser = browser
         browser.connect()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        connectToPlaybackService()
     }
 
     override fun onStop() {
