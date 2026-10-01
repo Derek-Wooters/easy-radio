@@ -40,7 +40,7 @@ See [`docs/future-enhancements.md`](docs/future-enhancements.md) for ideas that 
 |---|---|
 | Language | Kotlin |
 | UI | Jetpack Compose (Compose for Wear OS on the watch) |
-| Playback | Media3 (ExoPlayer + `MediaLibraryService`) — one playback/session implementation shared by the phone UI, notification, Android Auto, and Wear OS |
+| Playback | Media3 `ExoPlayer` as the playback engine, with a hand-rolled legacy `MediaSessionCompat`/`PlaybackStateCompat` session (not Media3's `MediaLibraryService`) for bit-exact control over what remote surfaces advertise — needed to get real Wear OS media-card support working |
 | Local storage | Room |
 | Async | Kotlin Coroutines + Flow |
 | Networking | Retrofit + OkHttp + kotlinx.serialization (Radio-Browser, iTunes Search), a hand-rolled SAX parser for podcast RSS/OPML/chapters/transcripts |
@@ -73,7 +73,7 @@ Requires a `local.properties` with your Android SDK location (standard Android S
 ## Testing
 
 ```
-./gradlew :core:model:test :core:network:test :core:database:testDebugUnitTest :app:testDebugUnitTest
+./gradlew :core:model:test :core:network:test :core:database:testDebugUnitTest :core:media:testDebugUnitTest :app:testDebugUnitTest
 ```
 
 ## License
