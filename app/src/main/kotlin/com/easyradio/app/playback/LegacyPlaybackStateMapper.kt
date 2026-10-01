@@ -14,12 +14,20 @@ import com.easyradio.core.media.PlaybackUiState
  */
 object LegacyPlaybackStateMapper {
 
-    fun toCompatState(hasError: Boolean, playbackState: Int, playWhenReady: Boolean): Int = when {
+    // isPlaying, not playWhenReady: ExoPlayer keeps playWhenReady=true during a transient audio
+    // focus loss it expects to auto-recover from (e.g. another app briefly taking focus), only
+    // setting Player.playbackSuppressionReason instead -- confirmed on-device (a real bug report)
+    // that playWhenReady alone reported STATE_PLAYING, pause icon and all, while the stream was
+    // genuinely silent and the user had no way to tell short of tapping the (wrongly labeled)
+    // button. isPlaying is Media3's own definitive "is this actually audible right now" signal:
+    // true only when playbackState == STATE_READY, playWhenReady == true, AND suppressionReason
+    // == NONE.
+    fun toCompatState(hasError: Boolean, playbackState: Int, isPlaying: Boolean): Int = when {
         hasError -> PlaybackStateCompat.STATE_ERROR
         playbackState == Player.STATE_BUFFERING -> PlaybackStateCompat.STATE_BUFFERING
         playbackState == Player.STATE_IDLE -> PlaybackStateCompat.STATE_NONE
         playbackState == Player.STATE_ENDED -> PlaybackStateCompat.STATE_STOPPED
-        playWhenReady -> PlaybackStateCompat.STATE_PLAYING
+        isPlaying -> PlaybackStateCompat.STATE_PLAYING
         else -> PlaybackStateCompat.STATE_PAUSED
     }
 
