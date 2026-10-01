@@ -109,7 +109,7 @@ class PlaybackSessionController(
         val state = LegacyPlaybackStateMapper.toCompatState(
             hasError = player.playerError != null,
             playbackState = player.playbackState,
-            playWhenReady = player.playWhenReady,
+            isPlaying = player.isPlaying,
         )
         val actions = PlaybackStateCompat.ACTION_PLAY or
             PlaybackStateCompat.ACTION_PAUSE or
