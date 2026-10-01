@@ -56,4 +56,19 @@ class NowPlayingSyncDecisionTest {
 
         assertThat(result).isEqualTo(NowPlayingSyncTarget.Station("kfan"))
     }
+
+    @Test
+    fun `the session going from something adopted to nothing resolves to Nothing, not null -- the bug this was extended to fix`() {
+        // A real bug report's root cause: a fresh service instance recreated after the app was
+        // backgrounded (the old one torn down by onTaskRemoved while paused, or an explicit
+        // ACTION_STOP) reports a null mediaId, same as "nothing to sync" -- but MainActivity still
+        // had a station/episode adopted from before. Treating this the same as a plain null left
+        // stale now-playing info on screen with a Play button that could never do anything.
+        val result = NowPlayingSyncDecision.resolve(
+            mediaId = null,
+            lastSyncedMediaId = MediaBrowseTree.EPISODE_PREFIX + "ep1",
+        )
+
+        assertThat(result).isEqualTo(NowPlayingSyncTarget.Nothing)
+    }
 }

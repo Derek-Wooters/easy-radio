@@ -764,6 +764,12 @@ class MainActivity : ComponentActivity() {
      */
     private fun syncNowPlayingFromMediaId(mediaId: String?) {
         when (val target = com.easyradio.core.media.NowPlayingSyncDecision.resolve(mediaId, lastSyncedMediaId)) {
+            com.easyradio.core.media.NowPlayingSyncTarget.Nothing -> {
+                lastSyncedMediaId = null
+                currentStation = null
+                currentEpisode = null
+                currentPodcast = null
+            }
             is com.easyradio.core.media.NowPlayingSyncTarget.Episode -> {
                 lastSyncedMediaId = mediaId
                 lifecycleScope.launch {
