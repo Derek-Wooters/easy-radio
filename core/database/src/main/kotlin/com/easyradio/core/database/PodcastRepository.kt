@@ -40,7 +40,13 @@ class PodcastRepository(
         if (query.isBlank()) return emptyList()
 
         return try {
-            itunesApi.searchPodcasts(term = query).results.mapNotNull { it.toPodcastOrNull() }.distinctBy { it.id }
+            // A larger raw pool than the default gives PodcastSearchRanking more to work with --
+            // Apple's own relevance order can otherwise bury an exact title match for a partial
+            // or slightly misspelled query well past its default page.
+            val results = itunesApi.searchPodcasts(term = query, limit = 50).results
+                .mapNotNull { it.toPodcastOrNull() }
+                .distinctBy { it.id }
+            PodcastSearchRanking.rank(results, query)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
