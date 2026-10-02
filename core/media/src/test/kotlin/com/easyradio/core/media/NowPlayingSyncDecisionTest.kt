@@ -56,4 +56,14 @@ class NowPlayingSyncDecisionTest {
 
         assertThat(result).isEqualTo(NowPlayingSyncTarget.Station("kfan"))
     }
+
+    @Test
+    fun `a null mediaId is a no-op even if something was adopted before -- the live session resets routinely and shouldn't dictate what the app remembers playing`() {
+        val result = NowPlayingSyncDecision.resolve(
+            mediaId = null,
+            lastSyncedMediaId = MediaBrowseTree.EPISODE_PREFIX + "ep1",
+        )
+
+        assertThat(result).isNull()
+    }
 }

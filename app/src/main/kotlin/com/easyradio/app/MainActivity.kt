@@ -200,6 +200,14 @@ class MainActivity : ComponentActivity() {
     // SheetState.expand() directly, so they bump this counter instead; a LaunchedEffect
     // inside the composable (which does have access to the sheet state) reacts to it.
     private var expandRequestId by mutableStateOf(0)
+    // Bumped from onStart() (the app gaining focus) so the mini-player's sheet gets another
+    // explicit chance to leave Hidden if it should already be showing content -- the sheet's own
+    // hasContent-keyed effect only fires on an actual false-to-true transition, which can miss
+    // cases where hasContent was already true for the entire time the app was backgrounded (e.g.
+    // resyncing to a station/episode kept alive by the service the whole time). Reported from a
+    // real device: reopening the app after that could leave the now-playing bar invisible despite
+    // the underlying state being entirely correct.
+    private var visibilityRefreshToken by mutableStateOf(0)
     private var selectedTab by mutableStateOf(AppTab.HOME)
     private var showQueue by mutableStateOf(false)
     private var showSettings by mutableStateOf(false)
@@ -246,10 +254,26 @@ class MainActivity : ComponentActivity() {
 
             LaunchedEffect(currentEpisode?.id, sessionConnection.controller) {
                 val controller = sessionConnection.controller
-                if (currentEpisode != null && controller != null) {
+                val episode = currentEpisode
+                if (episode != null) {
                     while (true) {
-                        positionMs = controllerPositionMs(controller).coerceAtLeast(0)
-                        durationMs = controllerDurationMs(controller).coerceAtLeast(0)
+                        if (controller != null && sessionConnection.uiState != PlaybackUiState.IDLE) {
+                            positionMs = controllerPositionMs(controller).coerceAtLeast(0)
+                            durationMs = controllerDurationMs(controller).coerceAtLeast(0)
+                        } else {
+                            // The live session can genuinely have nothing loaded right after
+                            // reconnecting (e.g. the service was torn down while the app was
+                            // backgrounded and reconnected fresh) -- its own position/duration
+                            // read 0/0 in that state, which made the progress bar look broken
+                            // (reset to the very start) despite a real, resumable position
+                            // existing. Show the app's own saved position/known duration instead
+                            // until something's actually loaded and playing again -- checked
+                            // every tick, not just once, so a later resumeOrRestartEpisode() tap
+                            // (which reuses this same controller, just with real media loaded)
+                            // switches back to live polling without needing this effect to restart.
+                            positionMs = podcastRepository.lastPosition(episode.id)
+                            durationMs = (episode.durationSeconds ?: 0) * 1_000L
+                        }
                         delay(1_000)
                     }
                 }
@@ -407,6 +431,7 @@ class MainActivity : ComponentActivity() {
                 MiniPlayerScaffold(
                     hasContent = !nothingPlaying,
                     expandRequestId = expandRequestId,
+                    visibilityRefreshToken = visibilityRefreshToken,
                     peekHeight = MINI_PLAYER_HEIGHT,
                     navigationBar = {
                         NavigationBar {
@@ -447,7 +472,7 @@ class MainActivity : ComponentActivity() {
                                     imageUrl = podcast?.artworkUrl,
                                     badgeText = null,
                                     playbackState = sessionConnection.uiState,
-                                    onPlayClick = { sessionConnection.controller?.transportControls?.play() },
+                                    onPlayClick = { resumeOrRestartEpisode(episode) },
                                     onPauseClick = { sessionConnection.controller?.transportControls?.pause() },
                                     onSkipBackClick = { skip(-settings.skipBackSeconds * 1_000L) },
                                     onSkipForwardClick = { skip(settings.skipForwardSeconds * 1_000L) },
@@ -528,7 +553,7 @@ class MainActivity : ComponentActivity() {
                                 onSeek = ::seekToFraction,
                                 speedLabel = "${PLAYBACK_SPEEDS[playbackSpeedIndex]}x",
                                 onCollapse = onCollapse,
-                                onPlayPause = { if (playing) sessionConnection.controller?.transportControls?.pause() else sessionConnection.controller?.transportControls?.play() },
+                                onPlayPause = { if (playing) sessionConnection.controller?.transportControls?.pause() else resumeOrRestartEpisode(episode) },
                                 onSkipBack = { skip(-settings.skipBackSeconds * 1_000L) },
                                 onSkipForward = { skip(settings.skipForwardSeconds * 1_000L) },
                                 skipBackSeconds = settings.skipBackSeconds,
@@ -700,6 +725,31 @@ class MainActivity : ComponentActivity() {
             val resumeMs = podcastRepository.lastPosition(episode.id)
             val request = com.easyradio.app.playback.PlaybackRequests.forEpisode(podcast, episode, resumeMs)
             controller.transportControls.playFromUri(request.uri, request.extras)
+        }
+    }
+
+    /**
+     * What tapping Play for the currently-adopted episode should actually do: a cheap
+     * transportControls.play() resume when the live session still genuinely has this episode
+     * loaded (the common pause<->play toggle during normal use), or a full restart via
+     * [playEpisode] (which looks up the saved position itself) when it doesn't.
+     *
+     * uiState == IDLE is what a freshly (re)connected session with nothing loaded at all reports
+     * -- confirmed via LegacyPlaybackStateMapper: a brand-new ExoPlayer instance is
+     * Player.STATE_IDLE, which maps to PlaybackStateCompat.STATE_NONE, which maps to
+     * PlaybackUiState.IDLE. This is a real scenario, not a hypothetical: the service stopping
+     * itself while the app is backgrounded (onTaskRemoved while paused, or an explicit
+     * ACTION_STOP) and reconnecting fresh when reopened leaves exactly this state, and a bare
+     * transportControls.play() in it is a silent no-op -- there's no media item left on the new,
+     * empty player for it to resume. currentEpisode/currentPodcast staying exactly as they were
+     * (this function doesn't touch them) is deliberate: what the app was last playing is the
+     * app's own knowledge, not something the live session's own lifecycle should get to erase.
+     */
+    private fun resumeOrRestartEpisode(episode: Episode) {
+        if (sessionConnection.uiState == PlaybackUiState.IDLE) {
+            currentPodcast?.let { playEpisode(it, episode) }
+        } else {
+            sessionConnection.controller?.transportControls?.play()
         }
     }
 
@@ -886,6 +936,7 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         connectToPlaybackService()
+        visibilityRefreshToken++
     }
 
     override fun onStop() {
