@@ -28,6 +28,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.unit.dp
+import com.easyradio.app.ui.DownloadsScreen
 import com.easyradio.app.ui.HomeScreen
 import com.easyradio.app.ui.MiniPlayerScaffold
 import com.easyradio.app.ui.NowPlayingBar
@@ -211,6 +212,7 @@ class MainActivity : ComponentActivity() {
     private var selectedTab by mutableStateOf(AppTab.HOME)
     private var showQueue by mutableStateOf(false)
     private var showSettings by mutableStateOf(false)
+    private var showDownloads by mutableStateOf(false)
     private var showSleepTimerPicker by mutableStateOf(false)
     private var searchSelectedPodcast by mutableStateOf<Podcast?>(null)
     private var showOnboarding by mutableStateOf(false)
@@ -324,6 +326,7 @@ class MainActivity : ComponentActivity() {
 
                 BackHandler(enabled = showQueue) { showQueue = false }
                 BackHandler(enabled = showSettings) { showSettings = false }
+                BackHandler(enabled = showDownloads) { showDownloads = false }
 
                 if (showSleepTimerPicker) {
                     AlertDialog(
@@ -402,10 +405,19 @@ class MainActivity : ComponentActivity() {
                         onVoiceBoostEnabledChange = {
                             lifecycleScope.launch { settingsRepository.setVoiceBoostEnabled(it) }
                         },
+                        onManageDownloadsClick = {
+                            showSettings = false
+                            showDownloads = true
+                        },
                         listenedTodaySeconds = listenedTodaySeconds,
                         listenedThisWeekSeconds = listenedThisWeekSeconds,
                         listenedAllTimeSeconds = listenedAllTimeSeconds,
                         onBack = { showSettings = false },
+                    )
+                } else if (showDownloads) {
+                    DownloadsScreen(
+                        repository = podcastRepository,
+                        onBack = { showDownloads = false },
                     )
                 } else if (showQueue) {
                     QueueScreen(
