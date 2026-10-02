@@ -36,7 +36,6 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.PlayArrow
@@ -613,6 +612,7 @@ private fun EpisodeListScreen(
                                 onListen = { replayAwareListen(scope, repository, episode) { onEpisodeSelected(episode) } },
                                 onQueue = { scope.launch { repository.enqueue(episode) } },
                                 onDownload = { scope.launch { repository.deleteDownload(episode) } },
+                                remainingLabel = ::episodeDownloadRemainingLabel,
                             )
                             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
                         }
@@ -648,6 +648,7 @@ private fun EpisodeRow(
     onListen: () -> Unit,
     onQueue: () -> Unit,
     onDownload: () -> Unit,
+    remainingLabel: (Episode) -> String? = ::episodeRemainingLabel,
 ) {
     Column(
         modifier = Modifier
@@ -718,11 +719,11 @@ private fun EpisodeRow(
             }
             IconButton(onClick = onDownload) {
                 Icon(
-                    if (episode.localFilePath != null) Icons.Filled.DownloadDone else Icons.Filled.Download,
-                    contentDescription = if (episode.localFilePath != null) "Downloaded" else "Download",
+                    if (episode.localFilePath != null) Icons.Filled.Delete else Icons.Filled.Download,
+                    contentDescription = if (episode.localFilePath != null) "Remove download" else "Download",
                 )
             }
-            episodeRemainingLabel(episode)?.let {
+            remainingLabel(episode)?.let {
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
                     text = it,
@@ -848,8 +849,8 @@ private fun EpisodeDetailScreen(
                 },
             ) {
                 Icon(
-                    if (episode.localFilePath != null) Icons.Filled.DownloadDone else Icons.Filled.Download,
-                    contentDescription = if (episode.localFilePath != null) "Downloaded" else "Download",
+                    if (episode.localFilePath != null) Icons.Filled.Delete else Icons.Filled.Download,
+                    contentDescription = if (episode.localFilePath != null) "Remove download" else "Download",
                 )
             }
         }
@@ -930,6 +931,24 @@ internal fun episodeRemainingLabel(episode: Episode): String? {
     val positionSeconds = (episode.positionMs / 1000L).toInt().coerceIn(0, durationSeconds)
     val remainingSeconds = (durationSeconds - positionSeconds).coerceAtLeast(0)
     return "${formatEpisodeDuration(remainingSeconds)} remaining"
+}
+
+/**
+ * Unlike [episodeRemainingLabel] (silent until an episode is actually in progress), a downloaded
+ * episode always shows how much listening is left -- the whole runtime if untouched, the time left
+ * if partway through, or "Finished" if done -- since deciding whether a download is worth the
+ * storage depends on how much of it is left, not just whether it's been started.
+ */
+internal fun episodeDownloadRemainingLabel(episode: Episode): String? {
+    val durationSeconds = episode.durationSeconds ?: return null
+    return when (episodeListenState(episode)) {
+        EpisodeListenState.REPLAY -> "Finished"
+        EpisodeListenState.RESUME -> {
+            val positionSeconds = (episode.positionMs / 1000L).toInt().coerceIn(0, durationSeconds)
+            "${formatEpisodeDuration((durationSeconds - positionSeconds).coerceAtLeast(0))} left"
+        }
+        EpisodeListenState.LISTEN -> "${formatEpisodeDuration(durationSeconds)} left"
+    }
 }
 
 @Composable
