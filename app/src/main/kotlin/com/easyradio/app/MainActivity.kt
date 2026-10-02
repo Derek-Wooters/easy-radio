@@ -254,10 +254,26 @@ class MainActivity : ComponentActivity() {
 
             LaunchedEffect(currentEpisode?.id, sessionConnection.controller) {
                 val controller = sessionConnection.controller
-                if (currentEpisode != null && controller != null) {
+                val episode = currentEpisode
+                if (episode != null) {
                     while (true) {
-                        positionMs = controllerPositionMs(controller).coerceAtLeast(0)
-                        durationMs = controllerDurationMs(controller).coerceAtLeast(0)
+                        if (controller != null && sessionConnection.uiState != PlaybackUiState.IDLE) {
+                            positionMs = controllerPositionMs(controller).coerceAtLeast(0)
+                            durationMs = controllerDurationMs(controller).coerceAtLeast(0)
+                        } else {
+                            // The live session can genuinely have nothing loaded right after
+                            // reconnecting (e.g. the service was torn down while the app was
+                            // backgrounded and reconnected fresh) -- its own position/duration
+                            // read 0/0 in that state, which made the progress bar look broken
+                            // (reset to the very start) despite a real, resumable position
+                            // existing. Show the app's own saved position/known duration instead
+                            // until something's actually loaded and playing again -- checked
+                            // every tick, not just once, so a later resumeOrRestartEpisode() tap
+                            // (which reuses this same controller, just with real media loaded)
+                            // switches back to live polling without needing this effect to restart.
+                            positionMs = podcastRepository.lastPosition(episode.id)
+                            durationMs = (episode.durationSeconds ?: 0) * 1_000L
+                        }
                         delay(1_000)
                     }
                 }
