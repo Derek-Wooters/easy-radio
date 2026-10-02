@@ -642,7 +642,6 @@ class MainActivity : ComponentActivity() {
                             AppTab.PODCASTS -> PodcastsScreen(
                                 repository = podcastRepository,
                                 onEpisodeSelected = { podcast, episode -> playEpisode(podcast, episode) },
-                                nowPlayingEpisode = currentEpisode,
                                 initialPodcast = searchSelectedPodcast,
                                 onInitialPodcastConsumed = { searchSelectedPodcast = null },
                                 onExportOpml = { exportOpmlLauncher.launch("easy-radio-subscriptions.opml") },

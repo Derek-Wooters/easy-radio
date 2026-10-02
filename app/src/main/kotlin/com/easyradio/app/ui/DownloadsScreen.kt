@@ -194,7 +194,7 @@ private fun PodcastDownloadHeader(
     )
 }
 
-private fun formatStorageSize(bytes: Long): String {
+internal fun formatStorageSize(bytes: Long): String {
     val mb = bytes / (1024.0 * 1024.0)
     return if (mb >= 1) "${mb.roundToInt()} MB" else "${(bytes / 1024.0).roundToInt()} KB"
 }
