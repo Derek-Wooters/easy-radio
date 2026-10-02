@@ -28,12 +28,22 @@ import kotlinx.coroutines.launch
  * [expandedContent] (mirroring that same switch, not the drag animation), so a caller that needs
  * to hide other bottom-anchored UI (e.g. a nav bar) while the sheet is full-screen can do so in
  * lockstep rather than guessing at animation timing.
+ *
+ * Bump [visibilityRefreshToken] (e.g. from onStart(), every time the app regains focus) to give
+ * the sheet another explicit chance to leave Hidden if [hasContent] is already true. The
+ * hasContent-keyed effect below only fires on an actual false-to-true transition; if the app
+ * gained focus for reasons other than that transition (e.g. the whole Activity's lifecycle cycled
+ * while hasContent had already been true the entire time), that effect never re-runs, and reports
+ * from the field show the sheet can end up stuck invisible despite hasContent/collapsedContent
+ * both being correct. This token is the fix: it treats "the app just gained focus" as its own
+ * reason to re-verify the sheet matches reality, independent of whether hasContent itself changed.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExpandableSheetScaffold(
     hasContent: Boolean,
     expandRequestId: Int,
+    visibilityRefreshToken: Int = 0,
     peekHeight: Dp,
     collapsedContent: @Composable ColumnScope.(onExpand: () -> Unit) -> Unit,
     expandedContent: @Composable (onCollapse: () -> Unit) -> Unit,
@@ -64,6 +74,12 @@ fun ExpandableSheetScaffold(
     // despite the state being otherwise fully correct. Only promote out of Hidden, never out of
     // Expanded/PartiallyExpanded, so this can't fight a drag or an explicit expand in progress.
     LaunchedEffect(hasContent) {
+        if (hasContent && sheetState.currentValue == SheetValue.Hidden) {
+            sheetState.partialExpand()
+        }
+    }
+
+    LaunchedEffect(visibilityRefreshToken) {
         if (hasContent && sheetState.currentValue == SheetValue.Hidden) {
             sheetState.partialExpand()
         }

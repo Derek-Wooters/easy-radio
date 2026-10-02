@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.Dp
 fun MiniPlayerScaffold(
     hasContent: Boolean,
     expandRequestId: Int,
+    visibilityRefreshToken: Int = 0,
     peekHeight: Dp,
     collapsedContent: @Composable ColumnScope.(onExpand: () -> Unit) -> Unit,
     expandedContent: @Composable (onCollapse: () -> Unit) -> Unit,
@@ -42,6 +43,7 @@ fun MiniPlayerScaffold(
             ExpandableSheetScaffold(
                 hasContent = hasContent,
                 expandRequestId = expandRequestId,
+                visibilityRefreshToken = visibilityRefreshToken,
                 peekHeight = peekHeight,
                 onExpandedChange = {
                     sheetExpanded = it

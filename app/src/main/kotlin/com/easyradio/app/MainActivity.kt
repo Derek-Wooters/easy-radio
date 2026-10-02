@@ -200,6 +200,14 @@ class MainActivity : ComponentActivity() {
     // SheetState.expand() directly, so they bump this counter instead; a LaunchedEffect
     // inside the composable (which does have access to the sheet state) reacts to it.
     private var expandRequestId by mutableStateOf(0)
+    // Bumped from onStart() (the app gaining focus) so the mini-player's sheet gets another
+    // explicit chance to leave Hidden if it should already be showing content -- the sheet's own
+    // hasContent-keyed effect only fires on an actual false-to-true transition, which can miss
+    // cases where hasContent was already true for the entire time the app was backgrounded (e.g.
+    // resyncing to a station/episode kept alive by the service the whole time). Reported from a
+    // real device: reopening the app after that could leave the now-playing bar invisible despite
+    // the underlying state being entirely correct.
+    private var visibilityRefreshToken by mutableStateOf(0)
     private var selectedTab by mutableStateOf(AppTab.HOME)
     private var showQueue by mutableStateOf(false)
     private var showSettings by mutableStateOf(false)
@@ -407,6 +415,7 @@ class MainActivity : ComponentActivity() {
                 MiniPlayerScaffold(
                     hasContent = !nothingPlaying,
                     expandRequestId = expandRequestId,
+                    visibilityRefreshToken = visibilityRefreshToken,
                     peekHeight = MINI_PLAYER_HEIGHT,
                     navigationBar = {
                         NavigationBar {
@@ -911,6 +920,7 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         connectToPlaybackService()
+        visibilityRefreshToken++
     }
 
     override fun onStop() {
