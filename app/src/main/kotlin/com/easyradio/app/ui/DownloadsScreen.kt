@@ -10,7 +10,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -55,6 +54,7 @@ import kotlin.math.roundToInt
 fun DownloadsScreen(
     repository: PodcastRepository,
     onBack: () -> Unit,
+    onEpisodeSelected: (Podcast, Episode) -> Unit = { _, _ -> },
 ) {
     val downloaded by remember(repository) { repository.downloadedEpisodes() }.collectAsState(initial = emptyList())
     val podcasts by remember(repository) { repository.subscribedPodcasts() }.collectAsState(initial = emptyList())
@@ -141,16 +141,17 @@ fun DownloadsScreen(
                     )
                 }
                 items(group.episodes, key = { it.id }) { episode ->
-                    val sizeLabel = formatStorageSize(episodeSizes[episode.id] ?: 0L)
-                    ListItem(
-                        headlineContent = { Text(episode.title) },
-                        supportingContent = { Text(sizeLabel) },
-                        trailingContent = {
-                            IconButton(onClick = { scope.launch { repository.deleteDownload(episode) } }) {
-                                Icon(Icons.Filled.Delete, contentDescription = "Remove download")
-                            }
+                    val episodePodcast = group.podcast ?: unknownPodcastPlaceholder(episode)
+                    EpisodeRow(
+                        episode = episode,
+                        podcast = episodePodcast,
+                        onRowClick = {},
+                        onListen = {
+                            replayAwareListen(scope, repository, episode) { onEpisodeSelected(episodePodcast, episode) }
                         },
-                        modifier = Modifier.padding(start = 12.dp),
+                        onQueue = { scope.launch { repository.enqueue(episode) } },
+                        onDownload = { scope.launch { repository.deleteDownload(episode) } },
+                        remainingLabel = ::episodeDownloadRemainingLabel,
                     )
                 }
             }
@@ -193,6 +194,14 @@ private fun PodcastDownloadHeader(
         },
     )
 }
+
+private fun unknownPodcastPlaceholder(episode: Episode) = Podcast(
+    id = episode.podcastId,
+    title = "Unknown podcast",
+    author = "",
+    artworkUrl = null,
+    feedUrl = "https://placeholder.invalid/",
+)
 
 internal fun formatStorageSize(bytes: Long): String {
     val mb = bytes / (1024.0 * 1024.0)

@@ -166,6 +166,7 @@ fun PodcastsScreen(
         PodcastScreenState.DOWNLOADS -> DownloadsScreen(
             repository = repository,
             onBack = { screenState = PodcastScreenState.LIBRARY },
+            onEpisodeSelected = onEpisodeSelected,
         )
     }
 }
@@ -641,7 +642,7 @@ private fun EpisodeListScreen(
 }
 
 @Composable
-private fun EpisodeRow(
+internal fun EpisodeRow(
     episode: Episode,
     podcast: Podcast,
     onRowClick: () -> Unit,
