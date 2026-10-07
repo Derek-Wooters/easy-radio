@@ -2,6 +2,7 @@ package com.easyradio.app
 
 import android.content.Context
 import androidx.room.Room
+import com.easyradio.core.database.ALL_MIGRATIONS
 import com.easyradio.core.database.EasyRadioDatabase
 import com.easyradio.core.database.FavoriteStationRepository
 import com.easyradio.core.database.ListeningStatsRepository
@@ -78,7 +79,11 @@ object EasyRadioGraph {
     private fun database(context: Context): EasyRadioDatabase =
         database ?: synchronized(this) {
             database ?: Room.databaseBuilder(context.applicationContext, EasyRadioDatabase::class.java, "easy-radio.db")
-                .fallbackToDestructiveMigration(dropAllTables = true)
+                .addMigrations(*ALL_MIGRATIONS)
+                // Only for a downgrade (e.g. sideloading an older debug build over a newer
+                // DB) -- a normal upgrade with no matching entry in ALL_MIGRATIONS now throws
+                // instead of silently wiping the user's subscriptions and downloads.
+                .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true)
                 .build()
                 .also { database = it }
         }

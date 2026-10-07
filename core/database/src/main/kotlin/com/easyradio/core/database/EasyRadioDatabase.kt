@@ -13,7 +13,7 @@ import androidx.room.RoomDatabase
         ListeningStatsEntity::class,
     ],
     version = 9,
-    exportSchema = false,
+    exportSchema = true,
 )
 abstract class EasyRadioDatabase : RoomDatabase() {
     abstract fun podcastDao(): PodcastDao

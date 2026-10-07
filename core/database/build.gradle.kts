@@ -24,6 +24,12 @@ android {
     }
 }
 
+ksp {
+    // Committed to git so future migrations can be validated/tested against a known prior
+    // schema via Room's MigrationTestHelper, instead of relying on destructive recreation.
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:network"))
@@ -39,4 +45,5 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.ext.junit)
+    testImplementation(libs.androidx.room.testing)
 }
