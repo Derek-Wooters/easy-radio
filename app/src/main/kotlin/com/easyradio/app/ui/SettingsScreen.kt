@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -49,6 +50,7 @@ fun SettingsScreen(
     onSkipForwardSecondsChange: (Int) -> Unit,
     onSkipSilenceEnabledChange: (Boolean) -> Unit = {},
     onVoiceBoostEnabledChange: (Boolean) -> Unit = {},
+    onManageDownloadsClick: (() -> Unit)? = null,
     listenedTodaySeconds: Long = 0L,
     listenedThisWeekSeconds: Long = 0L,
     listenedAllTimeSeconds: Long = 0L,
@@ -137,6 +139,9 @@ fun SettingsScreen(
             checked = settings.autoDownloadNewEpisodes,
             onCheckedChange = onAutoDownloadNewEpisodesChange,
         )
+        if (onManageDownloadsClick != null) {
+            NavigationRow(label = "Manage downloads", onClick = onManageDownloadsClick)
+        }
 
         SectionTitle("Playback")
         ValueRow(
@@ -190,6 +195,18 @@ private fun SwitchRow(label: String, checked: Boolean, onCheckedChange: (Boolean
     ) {
         Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+/** A label that navigates elsewhere when tapped, e.g. to a dedicated management screen. */
+@Composable
+private fun NavigationRow(label: String, onClick: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 4.dp),
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
     }
 }
 

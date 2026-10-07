@@ -34,12 +34,13 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -74,20 +75,25 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.easyradio.app.ui.theme.LocalEasyRadioColors
 import com.easyradio.core.database.PodcastRepository
 import com.easyradio.core.model.Episode
 import com.easyradio.core.model.Podcast
+import java.io.File
+import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private const val PODCAST_SEARCH_DEBOUNCE_MS = 400L
 
 private enum class PodcastScreenState { LIBRARY, EPISODES, EPISODE_DETAIL, QUEUE, DOWNLOADS }
 private enum class PodcastDetailTab(val label: String) {
-    NOW_PLAYING("Now Playing"),
     EPISODES("Episodes"),
+    DOWNLOADS("Downloads"),
     ABOUT("About"),
 }
 
@@ -95,7 +101,6 @@ private enum class PodcastDetailTab(val label: String) {
 fun PodcastsScreen(
     repository: PodcastRepository,
     onEpisodeSelected: (Podcast, Episode) -> Unit,
-    nowPlayingEpisode: Episode? = null,
     initialPodcast: Podcast? = null,
     onInitialPodcastConsumed: () -> Unit = {},
     onExportOpml: () -> Unit = {},
@@ -132,7 +137,6 @@ fun PodcastsScreen(
                     selectedEpisode = episode
                     screenState = PodcastScreenState.EPISODE_DETAIL
                 },
-                nowPlayingEpisode = nowPlayingEpisode,
             )
         }
         PodcastScreenState.EPISODE_DETAIL -> {
@@ -164,6 +168,7 @@ fun PodcastsScreen(
         PodcastScreenState.DOWNLOADS -> DownloadsScreen(
             repository = repository,
             onBack = { screenState = PodcastScreenState.LIBRARY },
+            onEpisodeSelected = onEpisodeSelected,
         )
     }
 }
@@ -367,7 +372,6 @@ private fun EpisodeListScreen(
     onBack: () -> Unit,
     onEpisodeSelected: (Episode) -> Unit,
     onEpisodeClick: (Episode) -> Unit,
-    nowPlayingEpisode: Episode? = null,
 ) {
     val episodesRaw by remember(podcast.id) { repository.episodesFor(podcast.id) }
         .collectAsState(initial = emptyList())
@@ -375,7 +379,7 @@ private fun EpisodeListScreen(
     var newestFirst by remember { mutableStateOf(true) }
     val episodes = if (newestFirst) episodesRaw else episodesRaw.asReversed()
     val scope = rememberCoroutineScope()
-    var downloadingIds by remember { mutableStateOf(setOf<String>()) }
+    var downloadProgress by remember { mutableStateOf<Map<String, Float>>(emptyMap()) }
     var selectedTab by remember { mutableStateOf(PodcastDetailTab.EPISODES) }
 
     val episodeListState = rememberLazyListState()
@@ -520,14 +524,17 @@ private fun EpisodeListScreen(
                             onDownload = {
                                 if (episode.localFilePath != null) {
                                     scope.launch { repository.deleteDownload(episode) }
-                                } else if (episode.id !in downloadingIds) {
-                                    downloadingIds = downloadingIds + episode.id
+                                } else if (episode.id !in downloadProgress) {
+                                    downloadProgress = downloadProgress + (episode.id to 0f)
                                     scope.launch {
-                                        repository.downloadEpisode(episode)
-                                        downloadingIds = downloadingIds - episode.id
+                                        repository.downloadEpisode(episode) { progress ->
+                                            downloadProgress = downloadProgress + (episode.id to progress)
+                                        }
+                                        downloadProgress = downloadProgress - episode.id
                                     }
                                 }
                             },
+                            downloadProgress = downloadProgress[episode.id],
                         )
                         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
                     }
@@ -543,26 +550,79 @@ private fun EpisodeListScreen(
                     }
                 }
             }
-            PodcastDetailTab.NOW_PLAYING -> {
-                val playingEpisode = nowPlayingEpisode?.takeIf { it.podcastId == podcast.id }
-                if (playingEpisode != null) {
-                    EpisodeRow(
-                        episode = playingEpisode,
-                        podcast = podcast,
-                        onRowClick = { onEpisodeClick(playingEpisode) },
-                        onListen = {
-                            replayAwareListen(scope, repository, playingEpisode) { onEpisodeSelected(playingEpisode) }
+            PodcastDetailTab.DOWNLOADS -> {
+                val downloadedEpisodes = remember(episodesRaw) { episodesRaw.filter { it.localFilePath != null } }
+                var episodeSizes by remember(podcast.id) { mutableStateOf<Map<String, Long>>(emptyMap()) }
+                LaunchedEffect(downloadedEpisodes) {
+                    episodeSizes = withContext(Dispatchers.IO) {
+                        downloadedEpisodes.associate { episode ->
+                            episode.id to (episode.localFilePath?.let { File(it).length() } ?: 0L)
+                        }
+                    }
+                }
+                val totalBytes = remember(episodeSizes) { episodeSizes.values.sum() }
+                var showDeleteAllConfirm by remember { mutableStateOf(false) }
+
+                if (showDeleteAllConfirm) {
+                    AlertDialog(
+                        onDismissRequest = { showDeleteAllConfirm = false },
+                        title = { Text("Delete all downloads?") },
+                        text = {
+                            Text(
+                                "This removes all ${downloadedEpisodes.size} downloaded episodes of " +
+                                    "${podcast.title} (${formatStorageSize(totalBytes)}). You can download them again later.",
+                            )
                         },
-                        onQueue = { scope.launch { repository.enqueue(playingEpisode) } },
-                        onDownload = {},
+                        confirmButton = {
+                            TextButton(onClick = {
+                                scope.launch { downloadedEpisodes.forEach { repository.deleteDownload(it) } }
+                                showDeleteAllConfirm = false
+                            }) { Text("Delete all") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showDeleteAllConfirm = false }) { Text("Cancel") }
+                        },
                     )
-                } else {
+                }
+
+                if (downloadedEpisodes.isEmpty()) {
                     Text(
-                        text = "Nothing from this show is playing right now.",
+                        text = "No downloads yet for this show.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
                     )
+                } else {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 8.dp),
+                    ) {
+                        Text(
+                            text = "${formatStorageSize(totalBytes)} used",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(onClick = { showDeleteAllConfirm = true }) {
+                            Icon(Icons.Filled.DeleteSweep, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Delete all")
+                        }
+                    }
+                    LazyColumn {
+                        items(downloadedEpisodes, key = { it.id }) { episode ->
+                            EpisodeRow(
+                                episode = episode,
+                                podcast = podcast,
+                                onRowClick = { onEpisodeClick(episode) },
+                                onListen = { replayAwareListen(scope, repository, episode) { onEpisodeSelected(episode) } },
+                                onQueue = { scope.launch { repository.enqueue(episode) } },
+                                onDownload = { scope.launch { repository.deleteDownload(episode) } },
+                                remainingLabel = ::episodeDownloadRemainingLabel,
+                            )
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                        }
+                    }
                 }
             }
             PodcastDetailTab.ABOUT -> {
@@ -587,13 +647,15 @@ private fun EpisodeListScreen(
 }
 
 @Composable
-private fun EpisodeRow(
+internal fun EpisodeRow(
     episode: Episode,
     podcast: Podcast,
     onRowClick: () -> Unit,
     onListen: () -> Unit,
     onQueue: () -> Unit,
     onDownload: () -> Unit,
+    remainingLabel: (Episode) -> String? = ::episodeRemainingLabel,
+    downloadProgress: Float? = null,
 ) {
     Column(
         modifier = Modifier
@@ -662,13 +724,28 @@ private fun EpisodeRow(
             IconButton(onClick = onQueue) {
                 Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = "Add to queue")
             }
-            IconButton(onClick = onDownload) {
-                Icon(
-                    if (episode.localFilePath != null) Icons.Filled.DownloadDone else Icons.Filled.Download,
-                    contentDescription = if (episode.localFilePath != null) "Downloaded" else "Download",
-                )
+            if (downloadProgress != null) {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.size(48.dp)) {
+                    CircularProgressIndicator(
+                        progress = { downloadProgress },
+                        modifier = Modifier.size(32.dp),
+                        strokeWidth = 2.dp,
+                    )
+                    Text(
+                        text = "${(downloadProgress * 100).roundToInt()}",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontSize = 9.sp,
+                    )
+                }
+            } else {
+                IconButton(onClick = onDownload) {
+                    Icon(
+                        if (episode.localFilePath != null) Icons.Filled.Delete else Icons.Filled.Download,
+                        contentDescription = if (episode.localFilePath != null) "Remove download" else "Download",
+                    )
+                }
             }
-            episodeRemainingLabel(episode)?.let {
+            remainingLabel(episode)?.let {
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
                     text = it,
@@ -794,8 +871,8 @@ private fun EpisodeDetailScreen(
                 },
             ) {
                 Icon(
-                    if (episode.localFilePath != null) Icons.Filled.DownloadDone else Icons.Filled.Download,
-                    contentDescription = if (episode.localFilePath != null) "Downloaded" else "Download",
+                    if (episode.localFilePath != null) Icons.Filled.Delete else Icons.Filled.Download,
+                    contentDescription = if (episode.localFilePath != null) "Remove download" else "Download",
                 )
             }
         }
@@ -876,6 +953,24 @@ internal fun episodeRemainingLabel(episode: Episode): String? {
     val positionSeconds = (episode.positionMs / 1000L).toInt().coerceIn(0, durationSeconds)
     val remainingSeconds = (durationSeconds - positionSeconds).coerceAtLeast(0)
     return "${formatEpisodeDuration(remainingSeconds)} remaining"
+}
+
+/**
+ * Unlike [episodeRemainingLabel] (silent until an episode is actually in progress), a downloaded
+ * episode always shows how much listening is left -- the whole runtime if untouched, the time left
+ * if partway through, or "Finished" if done -- since deciding whether a download is worth the
+ * storage depends on how much of it is left, not just whether it's been started.
+ */
+internal fun episodeDownloadRemainingLabel(episode: Episode): String? {
+    val durationSeconds = episode.durationSeconds ?: return null
+    return when (episodeListenState(episode)) {
+        EpisodeListenState.REPLAY -> "Finished"
+        EpisodeListenState.RESUME -> {
+            val positionSeconds = (episode.positionMs / 1000L).toInt().coerceIn(0, durationSeconds)
+            "${formatEpisodeDuration((durationSeconds - positionSeconds).coerceAtLeast(0))} left"
+        }
+        EpisodeListenState.LISTEN -> "${formatEpisodeDuration(durationSeconds)} left"
+    }
 }
 
 @Composable

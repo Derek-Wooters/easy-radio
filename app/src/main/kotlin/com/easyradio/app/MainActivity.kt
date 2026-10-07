@@ -28,6 +28,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.unit.dp
+import com.easyradio.app.ui.DownloadsScreen
 import com.easyradio.app.ui.HomeScreen
 import com.easyradio.app.ui.MiniPlayerScaffold
 import com.easyradio.app.ui.NowPlayingBar
@@ -211,6 +212,7 @@ class MainActivity : ComponentActivity() {
     private var selectedTab by mutableStateOf(AppTab.HOME)
     private var showQueue by mutableStateOf(false)
     private var showSettings by mutableStateOf(false)
+    private var showDownloads by mutableStateOf(false)
     private var showSleepTimerPicker by mutableStateOf(false)
     private var searchSelectedPodcast by mutableStateOf<Podcast?>(null)
     private var showOnboarding by mutableStateOf(false)
@@ -324,6 +326,7 @@ class MainActivity : ComponentActivity() {
 
                 BackHandler(enabled = showQueue) { showQueue = false }
                 BackHandler(enabled = showSettings) { showSettings = false }
+                BackHandler(enabled = showDownloads) { showDownloads = false }
 
                 if (showSleepTimerPicker) {
                     AlertDialog(
@@ -374,54 +377,6 @@ class MainActivity : ComponentActivity() {
                             lifecycleScope.launch { settingsRepository.completeOnboarding(onboardingGenres) }
                         },
                     )
-                } else if (showSettings) {
-                    SettingsScreen(
-                        settings = settings,
-                        onThemeModeChange = { lifecycleScope.launch { settingsRepository.setThemeMode(it) } },
-                        onDownloadQualityChange = {
-                            lifecycleScope.launch { settingsRepository.setDownloadQuality(it) }
-                        },
-                        onDownloadOverWifiOnlyChange = {
-                            lifecycleScope.launch { settingsRepository.setDownloadOverWifiOnly(it) }
-                        },
-                        onAutoDownloadNewEpisodesChange = {
-                            lifecycleScope.launch { settingsRepository.setAutoDownloadNewEpisodes(it) }
-                        },
-                        onSleepTimerMinutesChange = {
-                            lifecycleScope.launch { settingsRepository.setSleepTimerMinutes(it) }
-                        },
-                        onSkipBackSecondsChange = {
-                            lifecycleScope.launch { settingsRepository.setSkipBackSeconds(it) }
-                        },
-                        onSkipForwardSecondsChange = {
-                            lifecycleScope.launch { settingsRepository.setSkipForwardSeconds(it) }
-                        },
-                        onSkipSilenceEnabledChange = {
-                            lifecycleScope.launch { settingsRepository.setSkipSilenceEnabled(it) }
-                        },
-                        onVoiceBoostEnabledChange = {
-                            lifecycleScope.launch { settingsRepository.setVoiceBoostEnabled(it) }
-                        },
-                        listenedTodaySeconds = listenedTodaySeconds,
-                        listenedThisWeekSeconds = listenedThisWeekSeconds,
-                        listenedAllTimeSeconds = listenedAllTimeSeconds,
-                        onBack = { showSettings = false },
-                    )
-                } else if (showQueue) {
-                    QueueScreen(
-                        repository = podcastRepository,
-                        onBack = { showQueue = false },
-                        onEpisodeSelected = { episode ->
-                            lifecycleScope.launch {
-                                val podcast = resolvePlayablePodcast(
-                                    episode,
-                                    podcastRepository.subscribedPodcasts().first(),
-                                )
-                                playEpisode(podcast, episode)
-                            }
-                            showQueue = false
-                        },
-                    )
                 } else {
                 val nothingPlaying = !hasNowPlayingContent(
                     uiState = sessionConnection.uiState,
@@ -434,14 +389,16 @@ class MainActivity : ComponentActivity() {
                     visibilityRefreshToken = visibilityRefreshToken,
                     peekHeight = MINI_PLAYER_HEIGHT,
                     navigationBar = {
-                        NavigationBar {
-                            AppTab.entries.forEach { tab ->
-                                NavigationBarItem(
-                                    selected = selectedTab == tab,
-                                    onClick = { selectedTab = tab },
-                                    icon = { Icon(tab.icon, contentDescription = tab.label) },
-                                    label = { Text(tab.label) },
-                                )
+                        if (!showSettings && !showDownloads && !showQueue) {
+                            NavigationBar {
+                                AppTab.entries.forEach { tab ->
+                                    NavigationBarItem(
+                                        selected = selectedTab == tab,
+                                        onClick = { selectedTab = tab },
+                                        icon = { Icon(tab.icon, contentDescription = tab.label) },
+                                        label = { Text(tab.label) },
+                                    )
+                                }
                             }
                         }
                     },
@@ -520,7 +477,7 @@ class MainActivity : ComponentActivity() {
                                 speedLabel = null,
                                 onCollapse = onCollapse,
                                 onPlayPause = { if (playing) sessionConnection.controller?.transportControls?.pause() else playStation(station) },
-                                onQueueClick = { showQueue = true },
+                                onQueueClick = { showQueue = true; onCollapse() },
                                 isFavorite = station.id in favoriteStationIds,
                                 onFavoriteClick = {
                                     lifecycleScope.launch {
@@ -560,7 +517,7 @@ class MainActivity : ComponentActivity() {
                                 skipForwardSeconds = settings.skipForwardSeconds,
                                 onSpeedClick = ::cyclePlaybackSpeed,
                                 onSleepTimerClick = { showSleepTimerPicker = true },
-                                onQueueClick = { showQueue = true },
+                                onQueueClick = { showQueue = true; onCollapse() },
                                 chapters = currentChapters,
                                 onChapterClick = { chapter ->
                                     if (durationMs > 0) seekToFraction(chapter.startTimeMs.toFloat() / durationMs)
@@ -597,51 +554,110 @@ class MainActivity : ComponentActivity() {
                     snackbarHost = { SnackbarHost(snackbarHostState) },
                 ) { innerPadding ->
                     Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-                        when (selectedTab) {
-                            AppTab.HOME -> HomeScreen(
-                                podcastRepository = podcastRepository,
-                                favoriteStationRepository = favoriteStationRepository,
-                                recentlyPlayedRepository = recentlyPlayedRepository,
-                                radioRepository = radioRepository,
-                                favoriteGenres = settings.favoriteGenres,
-                                onStationSelected = ::playStation,
-                                onPodcastSelected = { podcast ->
-                                    searchSelectedPodcast = podcast
-                                    selectedTab = AppTab.PODCASTS
+                        if (showSettings) {
+                            SettingsScreen(
+                                settings = settings,
+                                onThemeModeChange = { lifecycleScope.launch { settingsRepository.setThemeMode(it) } },
+                                onDownloadQualityChange = {
+                                    lifecycleScope.launch { settingsRepository.setDownloadQuality(it) }
                                 },
-                                onRecentlyPlayedSelected = ::playRecentlyPlayed,
-                                onSettingsClick = { showSettings = true },
-                            )
-                            AppTab.SEARCH -> SearchScreen(
-                                radioRepository = radioRepository,
-                                podcastRepository = podcastRepository,
-                                favoriteStationRepository = favoriteStationRepository,
-                                onStationSelected = ::playStation,
-                                onPodcastSelected = { podcast ->
-                                    searchSelectedPodcast = podcast
-                                    selectedTab = AppTab.PODCASTS
+                                onDownloadOverWifiOnlyChange = {
+                                    lifecycleScope.launch { settingsRepository.setDownloadOverWifiOnly(it) }
                                 },
+                                onAutoDownloadNewEpisodesChange = {
+                                    lifecycleScope.launch { settingsRepository.setAutoDownloadNewEpisodes(it) }
+                                },
+                                onSleepTimerMinutesChange = {
+                                    lifecycleScope.launch { settingsRepository.setSleepTimerMinutes(it) }
+                                },
+                                onSkipBackSecondsChange = {
+                                    lifecycleScope.launch { settingsRepository.setSkipBackSeconds(it) }
+                                },
+                                onSkipForwardSecondsChange = {
+                                    lifecycleScope.launch { settingsRepository.setSkipForwardSeconds(it) }
+                                },
+                                onSkipSilenceEnabledChange = {
+                                    lifecycleScope.launch { settingsRepository.setSkipSilenceEnabled(it) }
+                                },
+                                onVoiceBoostEnabledChange = {
+                                    lifecycleScope.launch { settingsRepository.setVoiceBoostEnabled(it) }
+                                },
+                                onManageDownloadsClick = {
+                                    showSettings = false
+                                    showDownloads = true
+                                },
+                                listenedTodaySeconds = listenedTodaySeconds,
+                                listenedThisWeekSeconds = listenedThisWeekSeconds,
+                                listenedAllTimeSeconds = listenedAllTimeSeconds,
+                                onBack = { showSettings = false },
                             )
-                            AppTab.RADIO -> RadioBrowseScreen(
-                                repository = radioRepository,
-                                favoriteStationRepository = favoriteStationRepository,
-                                onStationSelected = ::playStation,
-                            )
-                            AppTab.PODCASTS -> PodcastsScreen(
+                        } else if (showDownloads) {
+                            DownloadsScreen(
                                 repository = podcastRepository,
-                                onEpisodeSelected = { podcast, episode -> playEpisode(podcast, episode) },
-                                nowPlayingEpisode = currentEpisode,
-                                initialPodcast = searchSelectedPodcast,
-                                onInitialPodcastConsumed = { searchSelectedPodcast = null },
-                                onExportOpml = { exportOpmlLauncher.launch("easy-radio-subscriptions.opml") },
-                                onImportOpml = { importOpmlLauncher.launch(arrayOf("*/*")) },
-                            )
-                            AppTab.PLAYLISTS -> PlaylistsScreen(
-                                repository = favoriteStationRepository,
-                                podcastRepository = podcastRepository,
-                                onStationSelected = ::playStation,
+                                onBack = { showDownloads = false },
                                 onEpisodeSelected = { podcast, episode -> playEpisode(podcast, episode) },
                             )
+                        } else if (showQueue) {
+                            QueueScreen(
+                                repository = podcastRepository,
+                                onBack = { showQueue = false },
+                                onEpisodeSelected = { episode ->
+                                    lifecycleScope.launch {
+                                        val podcast = resolvePlayablePodcast(
+                                            episode,
+                                            podcastRepository.subscribedPodcasts().first(),
+                                        )
+                                        playEpisode(podcast, episode)
+                                    }
+                                    showQueue = false
+                                },
+                            )
+                        } else {
+                            when (selectedTab) {
+                                AppTab.HOME -> HomeScreen(
+                                    podcastRepository = podcastRepository,
+                                    favoriteStationRepository = favoriteStationRepository,
+                                    recentlyPlayedRepository = recentlyPlayedRepository,
+                                    radioRepository = radioRepository,
+                                    favoriteGenres = settings.favoriteGenres,
+                                    onStationSelected = ::playStation,
+                                    onPodcastSelected = { podcast ->
+                                        searchSelectedPodcast = podcast
+                                        selectedTab = AppTab.PODCASTS
+                                    },
+                                    onRecentlyPlayedSelected = ::playRecentlyPlayed,
+                                    onSettingsClick = { showSettings = true },
+                                )
+                                AppTab.SEARCH -> SearchScreen(
+                                    radioRepository = radioRepository,
+                                    podcastRepository = podcastRepository,
+                                    favoriteStationRepository = favoriteStationRepository,
+                                    onStationSelected = ::playStation,
+                                    onPodcastSelected = { podcast ->
+                                        searchSelectedPodcast = podcast
+                                        selectedTab = AppTab.PODCASTS
+                                    },
+                                )
+                                AppTab.RADIO -> RadioBrowseScreen(
+                                    repository = radioRepository,
+                                    favoriteStationRepository = favoriteStationRepository,
+                                    onStationSelected = ::playStation,
+                                )
+                                AppTab.PODCASTS -> PodcastsScreen(
+                                    repository = podcastRepository,
+                                    onEpisodeSelected = { podcast, episode -> playEpisode(podcast, episode) },
+                                    initialPodcast = searchSelectedPodcast,
+                                    onInitialPodcastConsumed = { searchSelectedPodcast = null },
+                                    onExportOpml = { exportOpmlLauncher.launch("easy-radio-subscriptions.opml") },
+                                    onImportOpml = { importOpmlLauncher.launch(arrayOf("*/*")) },
+                                )
+                                AppTab.PLAYLISTS -> PlaylistsScreen(
+                                    repository = favoriteStationRepository,
+                                    podcastRepository = podcastRepository,
+                                    onStationSelected = ::playStation,
+                                    onEpisodeSelected = { podcast, episode -> playEpisode(podcast, episode) },
+                                )
+                            }
                         }
                     }
                 }
