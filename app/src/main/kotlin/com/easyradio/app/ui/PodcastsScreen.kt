@@ -56,6 +56,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SecondaryTabRow
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -72,6 +73,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -94,7 +97,7 @@ private enum class PodcastScreenState { LIBRARY, EPISODES, EPISODE_DETAIL, QUEUE
 private enum class PodcastDetailTab(val label: String) {
     EPISODES("Episodes"),
     DOWNLOADS("Downloads"),
-    ABOUT("About"),
+    OPTIONS("Options"),
 }
 
 @Composable
@@ -625,7 +628,7 @@ private fun EpisodeListScreen(
                     }
                 }
             }
-            PodcastDetailTab.ABOUT -> {
+            PodcastDetailTab.OPTIONS -> {
                 Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
                     Text(text = podcast.title, style = MaterialTheme.typography.titleMedium)
                     Text(
@@ -640,6 +643,26 @@ private fun EpisodeListScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 12.dp),
                     )
+
+                    if (isSubscribed) {
+                        PodcastOptionRow(
+                            label = "Notify on new episodes",
+                            checked = subscribedEntry.notifyNewEpisodes,
+                            onCheckedChange = { scope.launch { repository.setNotifyNewEpisodes(podcast.id, it) } },
+                        )
+                        PodcastOptionRow(
+                            label = "Auto-download new episodes",
+                            checked = subscribedEntry.autoDownloadNewEpisodes,
+                            onCheckedChange = { scope.launch { repository.setAutoDownloadNewEpisodes(podcast.id, it) } },
+                        )
+                    } else {
+                        Text(
+                            text = "Follow this podcast to set notification and download options.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 24.dp),
+                        )
+                    }
                 }
             }
         }
@@ -882,6 +905,21 @@ private fun EpisodeDetailScreen(
 @Composable
 private fun podcastTint(podcastId: String) =
     LocalEasyRadioColors.current.avatarTints.let { it[podcastId.hashCode().mod(it.size)] }
+
+@Composable
+private fun PodcastOptionRow(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            modifier = Modifier.semantics { contentDescription = label },
+        )
+    }
+}
 
 private fun episodeMeta(episode: Episode): String? {
     val date = episode.publishedAtEpochMillis?.let {

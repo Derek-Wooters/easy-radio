@@ -70,6 +70,14 @@ class PodcastRepository(
         podcastDao.setPreset(podcastId, isPreset)
     }
 
+    suspend fun setNotifyNewEpisodes(podcastId: String, enabled: Boolean) {
+        podcastDao.setNotifyNewEpisodes(podcastId, enabled)
+    }
+
+    suspend fun setAutoDownloadNewEpisodes(podcastId: String, enabled: Boolean) {
+        podcastDao.setAutoDownloadNewEpisodes(podcastId, enabled)
+    }
+
     suspend fun markPlayed(podcastId: String) {
         podcastDao.updateLastPlayed(podcastId, System.currentTimeMillis())
     }

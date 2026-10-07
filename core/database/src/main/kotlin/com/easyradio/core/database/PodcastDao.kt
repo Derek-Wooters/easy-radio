@@ -23,4 +23,10 @@ interface PodcastDao {
 
     @Query("UPDATE podcasts SET lastPlayedAtEpochMillis = :timestamp WHERE id = :id")
     suspend fun updateLastPlayed(id: String, timestamp: Long)
+
+    @Query("UPDATE podcasts SET notifyNewEpisodes = :enabled WHERE id = :id")
+    suspend fun setNotifyNewEpisodes(id: String, enabled: Boolean)
+
+    @Query("UPDATE podcasts SET autoDownloadNewEpisodes = :enabled WHERE id = :id")
+    suspend fun setAutoDownloadNewEpisodes(id: String, enabled: Boolean)
 }

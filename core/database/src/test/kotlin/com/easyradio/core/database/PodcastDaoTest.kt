@@ -69,4 +69,29 @@ class PodcastDaoTest {
         assertThat(all).hasSize(1)
         assertThat(all.first().title).isEqualTo("New Title")
     }
+
+    @Test
+    fun `a freshly upserted podcast defaults to no new-episode notifications or auto-download`() = runTest {
+        dao.upsert(podcast("p1", "Show One"))
+
+        val stored = dao.observeAll().first().first()
+
+        assertThat(stored.notifyNewEpisodes).isFalse()
+        assertThat(stored.autoDownloadNewEpisodes).isFalse()
+    }
+
+    @Test
+    fun `setNotifyNewEpisodes and setAutoDownloadNewEpisodes update independently`() = runTest {
+        dao.upsert(podcast("p1", "Show One"))
+
+        dao.setNotifyNewEpisodes("p1", true)
+
+        assertThat(dao.observeAll().first().first().notifyNewEpisodes).isTrue()
+        assertThat(dao.observeAll().first().first().autoDownloadNewEpisodes).isFalse()
+
+        dao.setAutoDownloadNewEpisodes("p1", true)
+
+        assertThat(dao.observeAll().first().first().notifyNewEpisodes).isTrue()
+        assertThat(dao.observeAll().first().first().autoDownloadNewEpisodes).isTrue()
+    }
 }

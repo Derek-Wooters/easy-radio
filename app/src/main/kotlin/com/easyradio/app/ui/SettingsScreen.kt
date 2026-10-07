@@ -44,7 +44,6 @@ fun SettingsScreen(
     onThemeModeChange: (ThemeMode) -> Unit,
     onDownloadQualityChange: (DownloadQuality) -> Unit,
     onDownloadOverWifiOnlyChange: (Boolean) -> Unit,
-    onAutoDownloadNewEpisodesChange: (Boolean) -> Unit,
     onSleepTimerMinutesChange: (Int) -> Unit,
     onSkipBackSecondsChange: (Int) -> Unit,
     onSkipForwardSecondsChange: (Int) -> Unit,
@@ -134,14 +133,15 @@ fun SettingsScreen(
             checked = settings.downloadOverWifiOnly,
             onCheckedChange = onDownloadOverWifiOnlyChange,
         )
-        SwitchRow(
-            label = "Auto‑download new episodes",
-            checked = settings.autoDownloadNewEpisodes,
-            onCheckedChange = onAutoDownloadNewEpisodesChange,
-        )
         if (onManageDownloadsClick != null) {
             NavigationRow(label = "Manage downloads", onClick = onManageDownloadsClick)
         }
+        Text(
+            text = "Notifications and auto-download for new episodes are set per podcast, from that show's Options tab.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 8.dp),
+        )
 
         SectionTitle("Playback")
         ValueRow(

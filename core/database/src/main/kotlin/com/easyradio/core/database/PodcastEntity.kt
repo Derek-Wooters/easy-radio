@@ -13,4 +13,6 @@ data class PodcastEntity(
     val subscribedAtEpochMillis: Long,
     val isPreset: Boolean = false,
     val lastPlayedAtEpochMillis: Long? = null,
+    val notifyNewEpisodes: Boolean = false,
+    val autoDownloadNewEpisodes: Boolean = false,
 )

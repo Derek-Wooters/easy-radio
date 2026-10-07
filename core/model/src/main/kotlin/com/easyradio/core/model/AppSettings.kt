@@ -18,15 +18,16 @@ enum class DownloadQuality { LOW, NORMAL, HIGH }
 
 /**
  * User preferences persisted locally (no backend in v1). Defaults are the
- * out-of-the-box behaviour: follow the system theme, no sleep timer, high-
- * quality downloads only on Wi-Fi, and don't auto-download new episodes.
+ * out-of-the-box behaviour: follow the system theme, no sleep timer, and
+ * high-quality downloads only on Wi-Fi. Auto-download and new-episode
+ * notifications are per-podcast (see [com.easyradio.core.model.Podcast]),
+ * not a single global switch.
  */
 data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val sleepTimerMinutes: Int = 0,
     val downloadQuality: DownloadQuality = DownloadQuality.HIGH,
     val downloadOverWifiOnly: Boolean = true,
-    val autoDownloadNewEpisodes: Boolean = false,
     val hasCompletedOnboarding: Boolean = false,
     val favoriteGenres: Set<String> = emptySet(),
     val skipBackSeconds: Int = 15,

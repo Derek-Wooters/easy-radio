@@ -63,15 +63,12 @@ class SettingsRepositoryTest {
     }
 
     @Test
-    fun `setDownloadOverWifiOnly and setAutoDownloadNewEpisodes persist independently`() = runTest {
+    fun `setDownloadOverWifiOnly persists`() = runTest {
         val repository = repository()
 
         repository.setDownloadOverWifiOnly(false)
-        repository.setAutoDownloadNewEpisodes(true)
 
-        val settings = repository.settings.first()
-        assertThat(settings.downloadOverWifiOnly).isFalse()
-        assertThat(settings.autoDownloadNewEpisodes).isTrue()
+        assertThat(repository.settings.first().downloadOverWifiOnly).isFalse()
     }
 
     @Test

@@ -9,6 +9,8 @@ data class Podcast(
     val isPreset: Boolean = false,
     val lastPlayedAtEpochMillis: Long? = null,
     val subscribedAtEpochMillis: Long? = null,
+    val notifyNewEpisodes: Boolean = false,
+    val autoDownloadNewEpisodes: Boolean = false,
 ) {
     init {
         require(id.isNotBlank()) { "Podcast.id must not be blank" }
