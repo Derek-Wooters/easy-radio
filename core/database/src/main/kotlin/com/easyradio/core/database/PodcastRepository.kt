@@ -21,7 +21,7 @@ class PodcastRepository(
     private val fetchFeed: suspend (feedUrl: String) -> String,
     private val podcastDao: PodcastDao,
     private val episodeDao: EpisodeDao,
-    private val downloadFile: suspend (id: String, audioUrl: String) -> String? = { _, _ -> null },
+    private val downloadFile: suspend (id: String, audioUrl: String, onProgress: (Float) -> Unit) -> String? = { _, _, _ -> null },
     private val deleteFile: (String) -> Unit = {},
     private val queueDao: QueueDao = NoOpQueueDao,
 ) {
@@ -230,8 +230,8 @@ class PodcastRepository(
 
     suspend fun lastPosition(episodeId: String): Long = episodeDao.getPosition(episodeId) ?: 0L
 
-    suspend fun downloadEpisode(episode: Episode): Boolean {
-        val path = downloadFile(episode.id, episode.audioUrl) ?: return false
+    suspend fun downloadEpisode(episode: Episode, onProgress: (Float) -> Unit = {}): Boolean {
+        val path = downloadFile(episode.id, episode.audioUrl, onProgress) ?: return false
         episodeDao.updateLocalFilePath(episode.id, path)
         return true
     }

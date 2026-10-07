@@ -625,7 +625,7 @@ class PodcastRepositoryTest {
             fetchFeed = { "" },
             podcastDao = FakePodcastDao(),
             episodeDao = episodeDao,
-            downloadFile = { _, _ -> "/local/path/ep1.audio" },
+            downloadFile = { _, _, _ -> "/local/path/ep1.audio" },
         )
         val episode = episodeDao.state.value.first().toEpisode()
 
@@ -649,7 +649,7 @@ class PodcastRepositoryTest {
             fetchFeed = { "" },
             podcastDao = FakePodcastDao(),
             episodeDao = episodeDao,
-            downloadFile = { _, _ -> null },
+            downloadFile = { _, _, _ -> null },
         )
         val episode = episodeDao.state.value.first().toEpisode()
 
@@ -657,6 +657,34 @@ class PodcastRepositoryTest {
 
         assertThat(result).isFalse()
         assertThat(episodeDao.state.value.first().localFilePath).isNull()
+    }
+
+    @Test
+    fun `downloadEpisode forwards download progress to the caller`() = runTest {
+        val episodeDao = FakeEpisodeDao()
+        episodeDao.state.value = listOf(
+            EpisodeEntity(
+                id = "ep-1", podcastId = "p1", title = "Ep 1", audioUrl = "https://example.com/ep1.mp3",
+                publishedAtEpochMillis = null, durationSeconds = null, description = "",
+            ),
+        )
+        val repository = PodcastRepository(
+            itunesApi = FakeItunesSearchApi(),
+            fetchFeed = { "" },
+            podcastDao = FakePodcastDao(),
+            episodeDao = episodeDao,
+            downloadFile = { _, _, onProgress ->
+                onProgress(0.5f)
+                onProgress(1f)
+                "/local/path/ep1.audio"
+            },
+        )
+        val episode = episodeDao.state.value.first().toEpisode()
+        val reported = mutableListOf<Float>()
+
+        repository.downloadEpisode(episode, onProgress = { reported.add(it) })
+
+        assertThat(reported).containsExactly(0.5f, 1f).inOrder()
     }
 
     @Test

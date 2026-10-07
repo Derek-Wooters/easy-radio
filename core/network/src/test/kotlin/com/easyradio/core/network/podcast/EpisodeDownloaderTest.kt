@@ -57,6 +57,19 @@ class EpisodeDownloaderTest {
     }
 
     @Test
+    fun `reports progress as the download proceeds, ending at 1f`() = runTest {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("fake-audio-bytes"))
+        val url = server.url("/ep-1.mp3").toString()
+        val reported = mutableListOf<Float>()
+
+        downloader.download(id = "ep-1", audioUrl = url, onProgress = { reported.add(it) })
+
+        assertThat(reported).isNotEmpty()
+        assertThat(reported.last()).isEqualTo(1f)
+        assertThat(reported).isEqualTo(reported.sorted())
+    }
+
+    @Test
     fun `delete removes the downloaded file`() = runTest {
         server.enqueue(MockResponse().setResponseCode(200).setBody("fake-audio-bytes"))
         val url = server.url("/ep-1.mp3").toString()
