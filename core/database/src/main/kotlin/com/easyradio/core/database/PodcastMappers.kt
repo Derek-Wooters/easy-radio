@@ -12,6 +12,8 @@ fun Podcast.toEntity(subscribedAtEpochMillis: Long): PodcastEntity = PodcastEnti
     subscribedAtEpochMillis = subscribedAtEpochMillis,
     isPreset = isPreset,
     lastPlayedAtEpochMillis = lastPlayedAtEpochMillis,
+    notifyNewEpisodes = notifyNewEpisodes,
+    autoDownloadNewEpisodes = autoDownloadNewEpisodes,
 )
 
 fun PodcastEntity.toPodcast(): Podcast = Podcast(
@@ -23,6 +25,8 @@ fun PodcastEntity.toPodcast(): Podcast = Podcast(
     isPreset = isPreset,
     lastPlayedAtEpochMillis = lastPlayedAtEpochMillis,
     subscribedAtEpochMillis = subscribedAtEpochMillis,
+    notifyNewEpisodes = notifyNewEpisodes,
+    autoDownloadNewEpisodes = autoDownloadNewEpisodes,
 )
 
 fun Episode.toEntity(): EpisodeEntity = EpisodeEntity(

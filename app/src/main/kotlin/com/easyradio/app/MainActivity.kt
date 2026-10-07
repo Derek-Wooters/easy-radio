@@ -564,9 +564,6 @@ class MainActivity : ComponentActivity() {
                                 onDownloadOverWifiOnlyChange = {
                                     lifecycleScope.launch { settingsRepository.setDownloadOverWifiOnly(it) }
                                 },
-                                onAutoDownloadNewEpisodesChange = {
-                                    lifecycleScope.launch { settingsRepository.setAutoDownloadNewEpisodes(it) }
-                                },
                                 onSleepTimerMinutesChange = {
                                     lifecycleScope.launch { settingsRepository.setSleepTimerMinutes(it) }
                                 },

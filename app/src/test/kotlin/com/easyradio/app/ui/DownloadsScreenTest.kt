@@ -28,6 +28,8 @@ private class DownloadsFakePodcastDao : PodcastDao {
     override suspend fun delete(id: String) {}
     override suspend fun setPreset(id: String, isPreset: Boolean) {}
     override suspend fun updateLastPlayed(id: String, timestamp: Long) {}
+    override suspend fun setNotifyNewEpisodes(id: String, enabled: Boolean) {}
+    override suspend fun setAutoDownloadNewEpisodes(id: String, enabled: Boolean) {}
 }
 
 private class DownloadsFakeEpisodeDao : EpisodeDao {

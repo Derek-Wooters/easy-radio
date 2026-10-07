@@ -12,8 +12,8 @@ import androidx.room.RoomDatabase
         RecentlyPlayedEntity::class,
         ListeningStatsEntity::class,
     ],
-    version = 8,
-    exportSchema = false,
+    version = 9,
+    exportSchema = true,
 )
 abstract class EasyRadioDatabase : RoomDatabase() {
     abstract fun podcastDao(): PodcastDao

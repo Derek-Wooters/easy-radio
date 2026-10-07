@@ -45,6 +45,14 @@ private class FakePodcastDao : PodcastDao {
     override suspend fun updateLastPlayed(id: String, timestamp: Long) {
         state.update { list -> list.map { if (it.id == id) it.copy(lastPlayedAtEpochMillis = timestamp) else it } }
     }
+
+    override suspend fun setNotifyNewEpisodes(id: String, enabled: Boolean) {
+        state.update { list -> list.map { if (it.id == id) it.copy(notifyNewEpisodes = enabled) else it } }
+    }
+
+    override suspend fun setAutoDownloadNewEpisodes(id: String, enabled: Boolean) {
+        state.update { list -> list.map { if (it.id == id) it.copy(autoDownloadNewEpisodes = enabled) else it } }
+    }
 }
 
 private class FakeEpisodeDao : EpisodeDao {
@@ -207,6 +215,32 @@ class PodcastRepositoryTest {
         repository.unsubscribe(testPodcast.id)
 
         assertThat(repository.subscribedPodcasts().first()).isEmpty()
+    }
+
+    @Test
+    fun `a freshly-subscribed podcast defaults to no new-episode notifications or auto-download`() = runTest {
+        val podcastDao = FakePodcastDao()
+        val repository = PodcastRepository(FakeItunesSearchApi(), { feedXml }, podcastDao, FakeEpisodeDao())
+
+        repository.subscribe(testPodcast)
+
+        val subscribed = repository.subscribedPodcasts().first().first()
+        assertThat(subscribed.notifyNewEpisodes).isFalse()
+        assertThat(subscribed.autoDownloadNewEpisodes).isFalse()
+    }
+
+    @Test
+    fun `setNotifyNewEpisodes and setAutoDownloadNewEpisodes persist independently per podcast`() = runTest {
+        val podcastDao = FakePodcastDao()
+        val repository = PodcastRepository(FakeItunesSearchApi(), { feedXml }, podcastDao, FakeEpisodeDao())
+        repository.subscribe(testPodcast)
+
+        repository.setNotifyNewEpisodes(testPodcast.id, true)
+        repository.setAutoDownloadNewEpisodes(testPodcast.id, true)
+
+        val subscribed = repository.subscribedPodcasts().first().first()
+        assertThat(subscribed.notifyNewEpisodes).isTrue()
+        assertThat(subscribed.autoDownloadNewEpisodes).isTrue()
     }
 
     @Test

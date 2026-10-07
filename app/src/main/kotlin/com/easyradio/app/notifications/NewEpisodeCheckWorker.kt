@@ -10,9 +10,9 @@ import kotlinx.coroutines.flow.first
 
 /**
  * Periodically checks every subscribed podcast for episodes published since the last
- * check, posting a notification and (if enabled) auto-downloading them. Registered as
- * unique periodic work from [com.easyradio.app.MainActivity] so it runs even when the
- * app isn't open.
+ * check, notifying and/or auto-downloading per that podcast's own options (both default
+ * off -- see [com.easyradio.core.model.Podcast]). Registered as unique periodic work from
+ * [com.easyradio.app.MainActivity] so it runs even when the app isn't open.
  */
 class NewEpisodeCheckWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
@@ -25,11 +25,13 @@ class NewEpisodeCheckWorker(context: Context, params: WorkerParameters) : Corout
             val newEpisodes = repository.checkForNewEpisodes(podcast)
             if (newEpisodes.isEmpty()) continue
 
-            if (settings.autoDownloadNewEpisodes && (!settings.downloadOverWifiOnly || isOnWifi())) {
+            if (podcast.autoDownloadNewEpisodes && (!settings.downloadOverWifiOnly || isOnWifi())) {
                 newEpisodes.forEach { repository.downloadEpisode(it) }
             }
 
-            NewEpisodeNotifier.notify(applicationContext, podcast, newEpisodes)
+            if (podcast.notifyNewEpisodes) {
+                NewEpisodeNotifier.notify(applicationContext, podcast, newEpisodes)
+            }
         }
 
         return Result.success()

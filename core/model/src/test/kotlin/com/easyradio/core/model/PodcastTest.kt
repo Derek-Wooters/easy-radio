@@ -32,4 +32,18 @@ class PodcastTest {
     fun `non-https feed url is rejected`() {
         Podcast(id = "id", title = "Test", author = "Author", artworkUrl = null, feedUrl = "http://example.com/feed.xml")
     }
+
+    @Test
+    fun `new episode notifications and auto-download both default to opted out`() {
+        val podcast = Podcast(
+            id = "id",
+            title = "Test Show",
+            author = "Author",
+            artworkUrl = null,
+            feedUrl = "https://example.com/feed.xml",
+        )
+
+        assertThat(podcast.notifyNewEpisodes).isFalse()
+        assertThat(podcast.autoDownloadNewEpisodes).isFalse()
+    }
 }

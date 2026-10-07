@@ -1,19 +1,32 @@
 package com.easyradio.app.ui
 
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import com.easyradio.core.database.EpisodeDao
 import com.easyradio.core.database.EpisodeEntity
 import com.easyradio.core.database.EpisodeMetadata
 import com.easyradio.core.database.PodcastDao
+import com.easyradio.core.database.PodcastEntity
 import com.easyradio.core.database.PodcastRepository
+import com.easyradio.core.database.toEntity
 import com.easyradio.core.model.Episode
+import com.easyradio.core.model.Podcast
 import com.easyradio.core.network.podcast.ItunesSearchApi
 import com.easyradio.core.network.podcast.ItunesSearchResponseDto
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
+import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
 private class NoOpItunesSearchApi : ItunesSearchApi {
     override suspend fun searchPodcasts(term: String, media: String, limit: Int) = ItunesSearchResponseDto()
@@ -25,6 +38,38 @@ private class NoOpPodcastDao : PodcastDao {
     override suspend fun delete(id: String) {}
     override suspend fun setPreset(id: String, isPreset: Boolean) {}
     override suspend fun updateLastPlayed(id: String, timestamp: Long) {}
+    override suspend fun setNotifyNewEpisodes(id: String, enabled: Boolean) {}
+    override suspend fun setAutoDownloadNewEpisodes(id: String, enabled: Boolean) {}
+}
+
+/** Unlike [NoOpPodcastDao], actually mutates state -- needed to verify the Options tab's toggles. */
+private class OptionsFakePodcastDao : PodcastDao {
+    val state = MutableStateFlow<List<PodcastEntity>>(emptyList())
+    override fun observeAll() = state
+    override suspend fun upsert(podcast: PodcastEntity) {
+        state.update { list -> list.filterNot { it.id == podcast.id } + podcast }
+    }
+    override suspend fun delete(id: String) {}
+    override suspend fun setPreset(id: String, isPreset: Boolean) {}
+    override suspend fun updateLastPlayed(id: String, timestamp: Long) {}
+    override suspend fun setNotifyNewEpisodes(id: String, enabled: Boolean) {
+        state.update { list -> list.map { if (it.id == id) it.copy(notifyNewEpisodes = enabled) else it } }
+    }
+    override suspend fun setAutoDownloadNewEpisodes(id: String, enabled: Boolean) {
+        state.update { list -> list.map { if (it.id == id) it.copy(autoDownloadNewEpisodes = enabled) else it } }
+    }
+}
+
+private class OptionsFakeEpisodeDao : EpisodeDao {
+    override fun observeByPodcast(podcastId: String) = MutableStateFlow<List<EpisodeEntity>>(emptyList())
+    override suspend fun insertIgnore(episodes: List<EpisodeEntity>) {}
+    override suspend fun updateMetadata(updates: List<EpisodeMetadata>) {}
+    override suspend fun updatePosition(episodeId: String, positionMs: Long) {}
+    override suspend fun getPosition(episodeId: String): Long? = null
+    override suspend fun updateLocalFilePath(episodeId: String, localFilePath: String?) {}
+    override suspend fun getByIds(ids: List<String>): List<EpisodeEntity> = emptyList()
+    override fun observeDownloaded() = MutableStateFlow<List<EpisodeEntity>>(emptyList())
+    override fun observeAll() = MutableStateFlow<List<EpisodeEntity>>(emptyList())
 }
 
 /** Tracks updatePosition calls so replayAwareListen's behavior can be asserted directly. */
@@ -44,7 +89,11 @@ private class RecordingEpisodeDao : EpisodeDao {
     override fun observeAll() = MutableStateFlow<List<EpisodeEntity>>(emptyList())
 }
 
+@RunWith(RobolectricTestRunner::class)
 class PodcastsScreenTest {
+
+    @get:Rule
+    val composeTestRule = createComposeRule()
 
     private fun episode(positionMs: Long, durationSeconds: Int?) = Episode(
         id = "ep-1",
@@ -169,5 +218,37 @@ class PodcastsScreenTest {
 
         assertThat(episodeDao.positionUpdates).isEmpty()
         assertThat(played).isTrue()
+    }
+
+    @Test
+    fun `Options tab defaults new-episode notifications and auto-download to off, and toggling persists`() {
+        val podcastDao = OptionsFakePodcastDao()
+        val podcast = Podcast(
+            id = "p1",
+            title = "Test Show",
+            author = "Author",
+            artworkUrl = null,
+            feedUrl = "https://example.com/feed.xml",
+        )
+        podcastDao.state.value = listOf(podcast.toEntity(subscribedAtEpochMillis = 0L))
+        val repository = PodcastRepository(
+            itunesApi = NoOpItunesSearchApi(),
+            fetchFeed = { "" },
+            podcastDao = podcastDao,
+            episodeDao = OptionsFakeEpisodeDao(),
+        )
+
+        composeTestRule.setContent {
+            PodcastsScreen(repository = repository, onEpisodeSelected = { _, _ -> }, initialPodcast = podcast)
+        }
+        composeTestRule.onNodeWithText("Options").performClick()
+
+        composeTestRule.onNodeWithContentDescription("Notify on new episodes").assertIsOff()
+        composeTestRule.onNodeWithContentDescription("Auto-download new episodes").assertIsOff()
+
+        composeTestRule.onNodeWithContentDescription("Notify on new episodes").performClick()
+
+        assertThat(podcastDao.state.value.first().notifyNewEpisodes).isTrue()
+        assertThat(podcastDao.state.value.first().autoDownloadNewEpisodes).isFalse()
     }
 }

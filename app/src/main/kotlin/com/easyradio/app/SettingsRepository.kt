@@ -32,7 +32,6 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val sleepTimerMinutes = intPreferencesKey("sleep_timer_minutes")
         val downloadQuality = stringPreferencesKey("download_quality")
         val downloadOverWifiOnly = booleanPreferencesKey("download_over_wifi_only")
-        val autoDownloadNewEpisodes = booleanPreferencesKey("auto_download_new_episodes")
         val hasCompletedOnboarding = booleanPreferencesKey("has_completed_onboarding")
         val favoriteGenres = stringSetPreferencesKey("favorite_genres")
         val skipBackSeconds = intPreferencesKey("skip_back_seconds")
@@ -52,7 +51,6 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
                 ?.let { runCatching { DownloadQuality.valueOf(it) }.getOrNull() }
                 ?: defaults.downloadQuality,
             downloadOverWifiOnly = prefs[Keys.downloadOverWifiOnly] ?: defaults.downloadOverWifiOnly,
-            autoDownloadNewEpisodes = prefs[Keys.autoDownloadNewEpisodes] ?: defaults.autoDownloadNewEpisodes,
             hasCompletedOnboarding = prefs[Keys.hasCompletedOnboarding] ?: defaults.hasCompletedOnboarding,
             favoriteGenres = prefs[Keys.favoriteGenres] ?: defaults.favoriteGenres,
             skipBackSeconds = prefs[Keys.skipBackSeconds] ?: defaults.skipBackSeconds,
@@ -76,10 +74,6 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setDownloadOverWifiOnly(value: Boolean) {
         dataStore.edit { it[Keys.downloadOverWifiOnly] = value }
-    }
-
-    suspend fun setAutoDownloadNewEpisodes(value: Boolean) {
-        dataStore.edit { it[Keys.autoDownloadNewEpisodes] = value }
     }
 
     suspend fun setSkipBackSeconds(seconds: Int) {
