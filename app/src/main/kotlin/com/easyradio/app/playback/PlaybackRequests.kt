@@ -48,6 +48,7 @@ object PlaybackRequests {
                 putString(EXTRA_ARTWORK_URL, podcast.artworkUrl)
                 putLong(EXTRA_RESUME_POSITION_MS, resumePositionMs)
                 putString(EXTRA_EPISODE_ID, episode.id)
+                putString(EXTRA_PODCAST_ID, episode.podcastId)
             },
         )
     }
