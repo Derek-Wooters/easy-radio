@@ -175,15 +175,22 @@ class MainActivity : ComponentActivity() {
     private val sessionConnection = com.easyradio.app.playback.SessionConnection(
         onNowPlayingMediaIdChanged = ::syncNowPlayingFromMediaId,
         onSessionDestroyed = {
-            // The service stopping itself out from under an already-foregrounded MainActivity
-            // (no onStop()/onStart() cycle to naturally reconnect through) previously left stale
-            // now-playing info on screen with a Play button that called transportControls on a
-            // dead controller -- clear it so the UI matches reality, then reconnect so playback
-            // (new or resumed) works again without the user needing to background/reopen the app.
-            lastSyncedMediaId = null
-            currentStation = null
-            currentEpisode = null
-            currentPodcast = null
+            // The service stopping itself out from under an already-foregrounded MainActivity (no
+            // onStop()/onStart() cycle to naturally reconnect through) previously left a dead
+            // controller with a Play button that called transportControls on nothing -- reconnect
+            // so playback (new or resumed) works again without the user needing to background/
+            // reopen the app.
+            //
+            // Deliberately does NOT clear currentStation/currentEpisode/currentPodcast/
+            // lastSyncedMediaId here: this fires on the ordinary "paused, then task removed"
+            // path (EasyRadioPlaybackService.onTaskRemoved stops itself whenever nothing's
+            // actively playing), which is not the user abandoning what they were listening to --
+            // it's just the OS reclaiming an idle service. Wiping the app's own memory of what was
+            // playing on every such reclaim was a real regression: reopening after pausing showed
+            // no mini-player and a "Resume" that had reverted to "Listen", even though the saved
+            // position was still perfectly correct. The reconnected session reporting nothing
+            // loaded is already a no-op for this state (see NowPlayingSyncDecision) -- the live
+            // session's lifecycle should never dictate what the app remembers was playing.
             connectToPlaybackService()
         },
     )
