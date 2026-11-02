@@ -60,6 +60,11 @@ class PlaybackSessionController(
     // podcast episodes, which is exactly what a non-null id here means.
     private var currentEpisodeId: String? = null
 
+    // The currently-playing episode's podcast, needed at end-of-episode to look up that show's
+    // other episodes for the next-unplayed fallback (see handleEpisodeEnded). Null exactly when
+    // currentEpisodeId is.
+    private var currentPodcastId: String? = null
+
     // Null whenever a podcast episode (or nothing) is playing -- mutually exclusive with
     // currentEpisodeId. Published as the session's own media id the same way currentEpisodeId is,
     // so MainActivity can resync currentStation if it's recreated while a station keeps playing --
@@ -169,17 +174,28 @@ class PlaybackSessionController(
 
     /**
      * Called exactly once when a podcast episode reaches its natural end. Advances to the next
-     * queued episode (Easy Radio has no other auto-advance path -- finishing an episode with
-     * nothing queued just stops, same as before this existed), unless the "End of episode" sleep
+     * queued episode if there is one, otherwise to the finished episode's own podcast's next
+     * unplayed episode (newest first; see EpisodeEndDecision) -- finishing an episode now only
+     * stops if nothing's queued AND the whole show's been heard, or if the "End of episode" sleep
      * timer was armed for this episode, in which case it's consumed here and playback is left
-     * stopped instead.
+     * stopped regardless.
      */
     private suspend fun handleEpisodeEnded() {
+        val finishedEpisodeId = currentEpisodeId
+        val finishedPodcastId = currentPodcastId
         currentEpisodeId = null
+        currentPodcastId = null
         restartPositionSaving(null)
         val wasArmed = sleepAtEndOfEpisode
         sleepAtEndOfEpisode = false
-        when (val action = EpisodeEndDecision.resolve(wasArmed, repository.queue().first())) {
+        val podcastEpisodes = finishedPodcastId?.let { repository.episodesFor(it).first() } ?: emptyList()
+        val action = EpisodeEndDecision.resolve(
+            sleepAtEndOfEpisode = wasArmed,
+            queue = repository.queue().first(),
+            finishedEpisodeId = finishedEpisodeId,
+            podcastEpisodes = podcastEpisodes,
+        )
+        when (action) {
             is EpisodeEndAction.Advance -> {
                 repository.removeFromQueue(action.next.id)
                 playEpisode(action.next)
@@ -198,6 +214,7 @@ class PlaybackSessionController(
         resumePositionMs: Long,
         episodeId: String? = null,
         stationId: String? = null,
+        podcastId: String? = null,
     ) {
         onPlaybackStarting()
         currentTitle = title
@@ -205,6 +222,7 @@ class PlaybackSessionController(
         currentArtworkUrl = artworkUrl
         currentEpisodeId = episodeId
         currentStationId = stationId
+        currentPodcastId = podcastId
         sleepAtEndOfEpisode = false
         restartPositionSaving(episodeId)
         publishMetadata()
@@ -264,6 +282,7 @@ class PlaybackSessionController(
             artworkUrl = podcast?.artworkUrl,
             resumePositionMs = resumeMs,
             episodeId = episode.id,
+            podcastId = episode.podcastId,
         )
     }
 

@@ -48,6 +48,13 @@ const val EXTRA_RESUME_POSITION_MS = "com.easyradio.app.EXTRA_RESUME_POSITION_MS
 const val EXTRA_EPISODE_ID = "com.easyradio.app.EXTRA_EPISODE_ID"
 
 /**
+ * Extras key identifying which podcast the episode in [EXTRA_EPISODE_ID] belongs to, so
+ * end-of-episode can look up that podcast's other episodes for the next-unplayed fallback
+ * (see EpisodeEndDecision) without a network round trip.
+ */
+const val EXTRA_PODCAST_ID = "com.easyradio.app.EXTRA_PODCAST_ID"
+
+/**
  * Extras key identifying which radio station is being played, published back out via the
  * session's own media id (see PlaybackSessionController.publishMetadata()) so MainActivity can
  * resync currentStation if it's recreated while the service keeps a station playing -- without
@@ -393,6 +400,7 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
                 resumePositionMs = extras?.getLong(EXTRA_RESUME_POSITION_MS) ?: 0L,
                 episodeId = extras?.getString(EXTRA_EPISODE_ID),
                 stationId = extras?.getString(EXTRA_STATION_ID),
+                podcastId = extras?.getString(EXTRA_PODCAST_ID),
             )
         }
 

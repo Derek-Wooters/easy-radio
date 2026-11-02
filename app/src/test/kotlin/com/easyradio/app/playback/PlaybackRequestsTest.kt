@@ -95,10 +95,11 @@ class PlaybackRequestsTest {
     }
 
     @Test
-    fun `forEpisode includes the resume position and episode id`() {
+    fun `forEpisode includes the resume position, episode id, and podcast id`() {
         val request = PlaybackRequests.forEpisode(podcast, episode(), resumePositionMs = 42_000L)
 
         assertThat(request.extras.getLong(EXTRA_RESUME_POSITION_MS)).isEqualTo(42_000L)
         assertThat(request.extras.getString(EXTRA_EPISODE_ID)).isEqualTo("ep1")
+        assertThat(request.extras.getString(EXTRA_PODCAST_ID)).isEqualTo("p1")
     }
 }

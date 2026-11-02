@@ -233,16 +233,57 @@ class PlaybackSessionControllerTest {
     }
 
     @Test
-    fun `an ended episode with nothing queued just stops`() = runTest(dispatcher) {
+    fun `an ended episode with nothing queued and no other unplayed episodes just stops`() = runTest(dispatcher) {
         val player = fakePlayer()
         val sut = controller(player)
-        sut.startPlayback(Uri.parse("https://example.com/ep1.mp3"), "Ep1", "Podcast", null, 0L, episodeId = "ep1")
+        sut.startPlayback(
+            Uri.parse("https://example.com/ep1.mp3"), "Ep1", "Podcast", null, 0L,
+            episodeId = "ep1", podcastId = "p1",
+        )
 
         sut.onPlayerPlaybackStateChanged(Player.STATE_ENDED)
         dispatcher.scheduler.runCurrent()
 
-        // Only the original startPlayback call -- nothing queued to advance to.
+        // Only the original startPlayback call -- nothing queued and no other episode to fall
+        // back to (episodeDao has nothing registered for "p1" at all).
         verify(exactly = 1) { player.setMediaItem(any(), any<Long>()) }
+    }
+
+    @Test
+    fun `an ended episode with nothing queued falls back to its podcast's next unplayed episode`() = runTest(dispatcher) {
+        val podcast = Podcast(id = "p1", title = "The Daily", author = "NYT", artworkUrl = null, feedUrl = "https://example.com/feed")
+        podcastDao.state.value = listOf(podcast.toEntity(subscribedAtEpochMillis = 0))
+        val finished = Episode(
+            id = "ep1",
+            podcastId = "p1",
+            title = "Episode 1",
+            audioUrl = "https://example.com/ep1.mp3",
+            publishedAtEpochMillis = 1_000L,
+            durationSeconds = 600,
+        )
+        val nextUnplayed = Episode(
+            id = "ep2",
+            podcastId = "p1",
+            title = "Episode 2",
+            audioUrl = "https://example.com/ep2.mp3",
+            publishedAtEpochMillis = 2_000L,
+            durationSeconds = 600,
+        )
+        episodeDao.state.value = listOf(finished.toEntity(), nextUnplayed.toEntity())
+
+        val player = fakePlayer()
+        val sut = controller(player)
+        sut.startPlayback(
+            Uri.parse("https://example.com/ep1.mp3"), "Ep1", "Podcast", null, 0L,
+            episodeId = "ep1", podcastId = "p1",
+        )
+
+        sut.onPlayerPlaybackStateChanged(Player.STATE_ENDED)
+        dispatcher.scheduler.runCurrent()
+
+        // startPlayback for ep1, then again for the fallback-selected ep2 -- no queue involved.
+        verify(exactly = 2) { player.setMediaItem(any(), any<Long>()) }
+        sut.release() // ep2's position-save loop is still running; runs forever otherwise
     }
 
     @Test
