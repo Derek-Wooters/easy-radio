@@ -6,6 +6,8 @@ import android.support.v4.media.session.PlaybackStateCompat
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
+import com.easyradio.core.database.AdSegmentDao
+import com.easyradio.core.database.AdSegmentEntity
 import com.easyradio.core.database.EpisodeDao
 import com.easyradio.core.database.EpisodeEntity
 import com.easyradio.core.database.EpisodeMetadata
@@ -56,6 +58,7 @@ private class FakePodcastDao : PodcastDao {
     override suspend fun updateLastPlayed(id: String, timestamp: Long) {}
     override suspend fun setNotifyNewEpisodes(id: String, enabled: Boolean) {}
     override suspend fun setAutoDownloadNewEpisodes(id: String, enabled: Boolean) {}
+    override suspend fun setAdSkipEnabled(id: String, enabled: Boolean) {}
 }
 
 private class FakeEpisodeDao : EpisodeDao {
@@ -69,6 +72,9 @@ private class FakeEpisodeDao : EpisodeDao {
     override suspend fun getPosition(episodeId: String): Long? = state.value.find { it.id == episodeId }?.positionMs
     override suspend fun updateLocalFilePath(episodeId: String, localFilePath: String?) {}
     override suspend fun getByIds(ids: List<String>) = state.value.filter { it.id in ids }
+    override suspend fun getById(episodeId: String): EpisodeEntity? = state.value.find { it.id == episodeId }
+    override suspend fun updateAdDetectionState(episodeId: String, state: String) {}
+    override suspend fun getAdDetectionState(episodeId: String): String? = null
     override fun observeDownloaded() = state.map { list -> list.filter { it.localFilePath != null } }
     override fun observeAll() = state
 }
@@ -88,6 +94,17 @@ private class FakeQueueDao : QueueDao {
     override suspend fun maxPosition(): Int = state.value.maxOfOrNull { it.position } ?: -1
 }
 
+private class FakeAdSegmentDao : AdSegmentDao {
+    val state = MutableStateFlow<List<AdSegmentEntity>>(emptyList())
+    override fun observeForEpisode(episodeId: String) = state.map { list -> list.filter { it.episodeId == episodeId } }
+    override suspend fun insertAll(segments: List<AdSegmentEntity>) {
+        state.update { it + segments }
+    }
+    override suspend fun deleteForEpisode(episodeId: String) {
+        state.update { list -> list.filterNot { it.episodeId == episodeId } }
+    }
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 class PlaybackSessionControllerTest {
@@ -96,6 +113,7 @@ class PlaybackSessionControllerTest {
     private val podcastDao = FakePodcastDao()
     private val episodeDao = FakeEpisodeDao()
     private val queueDao = FakeQueueDao()
+    private val adSegmentDao = FakeAdSegmentDao()
 
     private val repository = PodcastRepository(
         itunesApi = FakeItunesSearchApi(),
@@ -103,6 +121,7 @@ class PlaybackSessionControllerTest {
         podcastDao = podcastDao,
         episodeDao = episodeDao,
         queueDao = queueDao,
+        adSegmentDao = adSegmentDao,
     )
 
     @Before
@@ -394,5 +413,53 @@ class PlaybackSessionControllerTest {
 
         assertThat(episodeDao.state.value.find { it.id == "ep1" }?.positionMs).isEqualTo(0L)
         sut.release() // the save loop runs forever otherwise, hanging runTest's cleanup
+    }
+
+    @Test
+    fun `seeks past a detected ad segment once playback reaches it`() = runTest(dispatcher) {
+        val episode = Episode(
+            id = "ep1",
+            podcastId = "p1",
+            title = "Episode 1",
+            audioUrl = "https://example.com/ep1.mp3",
+            publishedAtEpochMillis = null,
+            durationSeconds = 3_600,
+        )
+        episodeDao.state.value = listOf(episode.toEntity())
+        adSegmentDao.state.value = listOf(AdSegmentEntity(episodeId = "ep1", startMs = 10_000, endMs = 20_000))
+
+        val player = fakePlayer(isPlaying = true, positionMs = 15_000L)
+        val sut = controller(player)
+        sut.startPlayback(Uri.parse("https://example.com/ep1.mp3"), "Ep1", "Podcast", null, 0L, episodeId = "ep1")
+
+        dispatcher.scheduler.advanceTimeBy(AD_SKIP_POLL_INTERVAL_MS + 100)
+        dispatcher.scheduler.runCurrent()
+
+        verify { player.seekTo(20_000L) }
+        sut.release() // the poll loop runs forever otherwise, hanging runTest's cleanup
+    }
+
+    @Test
+    fun `does not seek when playback position is outside any detected ad segment`() = runTest(dispatcher) {
+        val episode = Episode(
+            id = "ep1",
+            podcastId = "p1",
+            title = "Episode 1",
+            audioUrl = "https://example.com/ep1.mp3",
+            publishedAtEpochMillis = null,
+            durationSeconds = 3_600,
+        )
+        episodeDao.state.value = listOf(episode.toEntity())
+        adSegmentDao.state.value = listOf(AdSegmentEntity(episodeId = "ep1", startMs = 10_000, endMs = 20_000))
+
+        val player = fakePlayer(isPlaying = true, positionMs = 42_000L)
+        val sut = controller(player)
+        sut.startPlayback(Uri.parse("https://example.com/ep1.mp3"), "Ep1", "Podcast", null, 0L, episodeId = "ep1")
+
+        dispatcher.scheduler.advanceTimeBy(AD_SKIP_POLL_INTERVAL_MS + 100)
+        dispatcher.scheduler.runCurrent()
+
+        verify(exactly = 0) { player.seekTo(any()) }
+        sut.release() // the poll loop runs forever otherwise, hanging runTest's cleanup
     }
 }

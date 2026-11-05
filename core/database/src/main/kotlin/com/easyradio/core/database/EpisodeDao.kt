@@ -34,6 +34,15 @@ interface EpisodeDao {
     @Query("SELECT * FROM episodes WHERE id IN (:ids)")
     suspend fun getByIds(ids: List<String>): List<EpisodeEntity>
 
+    @Query("SELECT * FROM episodes WHERE id = :episodeId LIMIT 1")
+    suspend fun getById(episodeId: String): EpisodeEntity?
+
+    @Query("UPDATE episodes SET adDetectionState = :state WHERE id = :episodeId")
+    suspend fun updateAdDetectionState(episodeId: String, state: String)
+
+    @Query("SELECT adDetectionState FROM episodes WHERE id = :episodeId")
+    suspend fun getAdDetectionState(episodeId: String): String?
+
     @Query("SELECT * FROM episodes WHERE localFilePath IS NOT NULL ORDER BY publishedAtEpochMillis DESC")
     fun observeDownloaded(): Flow<List<EpisodeEntity>>
 

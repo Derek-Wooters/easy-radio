@@ -28,7 +28,8 @@
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"
-        android:theme="@style/Theme.EasyRadio">
+        android:theme="@style/Theme.EasyRadio"
+        android:largeHeap="true">
 
         <!-- Declares this as an Android Auto / Automotive media app. -->
         <meta-data

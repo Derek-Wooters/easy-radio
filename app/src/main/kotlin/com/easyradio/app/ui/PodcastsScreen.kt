@@ -72,6 +72,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -80,6 +81,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.easyradio.app.ui.theme.LocalEasyRadioColors
+import com.easyradio.app.workers.AdDetectionTrigger
 import com.easyradio.core.database.PodcastRepository
 import com.easyradio.core.model.Episode
 import com.easyradio.core.model.Podcast
@@ -382,6 +384,7 @@ private fun EpisodeListScreen(
     var newestFirst by remember { mutableStateOf(true) }
     val episodes = if (newestFirst) episodesRaw else episodesRaw.asReversed()
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     var downloadProgress by remember { mutableStateOf<Map<String, Float>>(emptyMap()) }
     var selectedTab by remember { mutableStateOf(PodcastDetailTab.EPISODES) }
 
@@ -530,10 +533,13 @@ private fun EpisodeListScreen(
                                 } else if (episode.id !in downloadProgress) {
                                     downloadProgress = downloadProgress + (episode.id to 0f)
                                     scope.launch {
-                                        repository.downloadEpisode(episode) { progress ->
+                                        val succeeded = repository.downloadEpisode(episode) { progress ->
                                             downloadProgress = downloadProgress + (episode.id to progress)
                                         }
                                         downloadProgress = downloadProgress - episode.id
+                                        if (succeeded) {
+                                            AdDetectionTrigger.scheduleIfNeeded(context, subscribedEntry ?: podcast, episode)
+                                        }
                                     }
                                 }
                             },
@@ -654,6 +660,17 @@ private fun EpisodeListScreen(
                             label = "Auto-download new episodes",
                             checked = subscribedEntry.autoDownloadNewEpisodes,
                             onCheckedChange = { scope.launch { repository.setAutoDownloadNewEpisodes(podcast.id, it) } },
+                        )
+                        PodcastOptionRow(
+                            label = "Skip ads automatically",
+                            checked = subscribedEntry.adSkipEnabled,
+                            onCheckedChange = { scope.launch { repository.setAdSkipEnabled(podcast.id, it) } },
+                        )
+                        Text(
+                            text = "Only works for episodes whose show publishes an official transcript.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp),
                         )
                     } else {
                         Text(
@@ -794,7 +811,14 @@ private fun EpisodeDetailScreen(
     onListen: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     var isDownloading by remember(episode.id) { mutableStateOf(false) }
+    // podcast here may be a stale snapshot from whenever this screen was navigated to --
+    // AdDetectionTrigger needs the live adSkipEnabled value, same as the main screen's
+    // subscribedEntry lookup.
+    val subscribed by remember(repository) { repository.subscribedPodcasts() }
+        .collectAsState(initial = emptyList())
+    val livePodcast = subscribed.find { it.id == podcast.id } ?: podcast
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -887,8 +911,11 @@ private fun EpisodeDetailScreen(
                     } else if (!isDownloading) {
                         isDownloading = true
                         scope.launch {
-                            repository.downloadEpisode(episode)
+                            val succeeded = repository.downloadEpisode(episode)
                             isDownloading = false
+                            if (succeeded) {
+                                AdDetectionTrigger.scheduleIfNeeded(context, livePodcast, episode)
+                            }
                         }
                     }
                 },

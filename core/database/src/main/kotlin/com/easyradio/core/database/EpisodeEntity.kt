@@ -1,5 +1,6 @@
 package com.easyradio.core.database
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -17,6 +18,11 @@ data class EpisodeEntity(
     val chaptersUrl: String? = null,
     val transcriptUrl: String? = null,
     val transcriptType: String? = null,
+    // DB-only processing state for ad-skip detection -- deliberately not on the public Episode
+    // model (like localFilePath/positionMs, it's locally-tracked, not feed-sourced) and
+    // deliberately absent from EpisodeMetadata so re-syncing a feed never resets it.
+    // defaultValue must match MIGRATION_9_10's ALTER TABLE exactly -- see Migrations.kt.
+    @ColumnInfo(defaultValue = "'NOT_PROCESSED'") val adDetectionState: String = "NOT_PROCESSED",
 )
 
 /**

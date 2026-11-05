@@ -57,6 +57,13 @@ android {
         compose = true
     }
 
+    androidResources {
+        // The bundled whisper.cpp model asset must stay uncompressed in the APK --
+        // WhisperModelProvider uses AssetManager.openFd() to get a raw file descriptor, which
+        // throws "it is probably compressed" for a gzip-compressed asset (confirmed on-device).
+        noCompress += "bin"
+    }
+
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
@@ -70,6 +77,7 @@ dependencies {
     implementation(project(":core:media"))
     implementation(project(":core:network"))
     implementation(project(":core:database"))
+    implementation(project(":core:transcription"))
     implementation(libs.okhttp)
 
     implementation(libs.androidx.core.ktx)

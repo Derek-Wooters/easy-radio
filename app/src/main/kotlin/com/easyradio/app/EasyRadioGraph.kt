@@ -11,6 +11,10 @@ import com.easyradio.core.database.RecentlyPlayedRepository
 import com.easyradio.core.network.podcast.EpisodeDownloader
 import com.easyradio.core.network.podcast.ItunesSearchApiFactory
 import com.easyradio.core.network.podcast.PodcastFeedFetcher
+import com.easyradio.core.transcription.AdDetectionPipeline
+import com.easyradio.core.transcription.AndroidAudioDecoder
+import com.easyradio.core.transcription.NativeWhisperTranscriber
+import com.easyradio.core.transcription.WhisperModelProvider
 import java.io.File
 
 /**
@@ -39,6 +43,9 @@ object EasyRadioGraph {
 
     @Volatile
     private var listeningStatsRepository: ListeningStatsRepository? = null
+
+    @Volatile
+    private var adDetectionPipeline: AdDetectionPipeline? = null
 
     fun repository(context: Context): PodcastRepository =
         repository ?: synchronized(this) {
@@ -76,6 +83,22 @@ object EasyRadioGraph {
                 }
         }
 
+    fun adDetectionPipeline(context: Context): AdDetectionPipeline =
+        adDetectionPipeline ?: synchronized(this) {
+            adDetectionPipeline ?: buildAdDetectionPipeline(context.applicationContext).also {
+                adDetectionPipeline = it
+            }
+        }
+
+    private fun buildAdDetectionPipeline(appContext: Context): AdDetectionPipeline {
+        val modelPath = WhisperModelProvider.modelFile(appContext).absolutePath
+        val decodeDir = File(appContext.cacheDir, "transcription_wav").apply { mkdirs() }
+        return AdDetectionPipeline(
+            audioDecoder = AndroidAudioDecoder(decodeDir),
+            transcriber = NativeWhisperTranscriber(modelPath),
+        )
+    }
+
     private fun database(context: Context): EasyRadioDatabase =
         database ?: synchronized(this) {
             database ?: Room.databaseBuilder(context.applicationContext, EasyRadioDatabase::class.java, "easy-radio.db")
@@ -101,6 +124,7 @@ object EasyRadioGraph {
             downloadFile = downloader::download,
             deleteFile = downloader::delete,
             queueDao = database.queueDao(),
+            adSegmentDao = database.adSegmentDao(),
         )
     }
 }

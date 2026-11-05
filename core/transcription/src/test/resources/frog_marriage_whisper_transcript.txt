@@ -1,0 +1,859 @@
+read_audio_data: reading audio data from '//data/local/tmp/full_episode.wav' ...
+read_audio_data: trying to decode with miniaudio
+
+[00:00:00.000 --> 00:00:05.020]   With chat GPT you can do more than get answers you can get things done whether
+[00:00:05.020 --> 00:00:09.100]   you're leading a big project planning an elaborate trip or trying to balance
+[00:00:09.100 --> 00:00:13.920]   work and life. Chat GPT can help give it a goal plus things like files notes or
+[00:00:13.920 --> 00:00:18.080]   project plans develop a trip itinerary with daily updates or create a
+[00:00:18.080 --> 00:00:22.000]   prioritized schedule so you can spend less energy sorting out the details and
+[00:00:22.000 --> 00:00:26.760]   more on bringing your biggest ideas to life. Get started at chat GPT.com
+[00:00:30.000 --> 00:00:35.040]   That's out that's the National Squash League. Pro teams the world's best
+[00:00:35.040 --> 00:00:39.640]   players and rallies so fast you'll forget to breathe. Season 4 is in full
+[00:00:39.640 --> 00:00:45.120]   swing and every match streams free on YouTube. Big hits, bigger rivalries and a
+[00:00:45.120 --> 00:00:49.320]   front row seat from wherever you are. Watch every match for free on YouTube.
+[00:00:49.320 --> 00:00:53.640]   Search National Squash League and hit subscribe or follow live updates on
+[00:00:53.640 --> 00:01:02.880]   Instagram at nsl.sport. Hey I'm Nile Rogers this fall I'll be driving across the
+[00:01:02.880 --> 00:01:07.600]   country meeting some of today's coolest and most fascinating artists. We'll
+[00:01:07.600 --> 00:01:13.080]   explore the stories before the moments that changed everything because every
+[00:01:13.080 --> 00:01:18.920]   musician remembers the moment where it all began. Experience before the moment
+[00:01:18.920 --> 00:01:25.400]   A link in original series on the iHeartRadio app YouTube or wherever you get
+[00:01:25.400 --> 00:01:34.280]   your podcasts. Forget whatever plans you have this weekend because you're staying
+[00:01:34.280 --> 00:01:38.160]   at home and playing on spin quests and there's never been a better time to
+[00:01:38.160 --> 00:01:43.960]   sign up than right now. New users get $30 coin packs for just $10 all the
+[00:01:43.960 --> 00:01:48.120]   table games you love with hundreds of slot games and real cash prizes. That's
+[00:01:48.120 --> 00:01:55.320]   it's SpinQuest.com. S-P-I-N-Q-U-S-T.com. SpinQuest is a free-to-play social casino
+[00:01:55.320 --> 00:02:00.240]   Boyd we're prohibited visit spinquest.com for more details.
+[00:02:00.480 --> 00:02:05.920]   Listen up the ratings just came in for last month we are number one we just
+[00:02:05.920 --> 00:02:13.100]   grabbed every key demographic. Super-duper. That's nice. Way to go. Need-o-gaze.
+[00:02:13.100 --> 00:02:21.120]   Boy that was good news. Morning show. We're glad you're here. Oh that's right.
+[00:02:29.460 --> 00:02:31.460]   No believe you.
+[00:02:43.100 --> 00:02:45.100]   And in your stride.
+[00:03:06.220 --> 00:03:12.600]   How was your morning show Friday October 30th 2026. I'm Corey that's Chris that's Paul.
+[00:03:12.600 --> 00:03:15.900]   There's Zachary and there's the gentleman John crazy hope good morning
+[00:03:15.900 --> 00:03:21.020]   fellows. Good morning happy Friday. Hello. It's Friday again. Here we are. Yeah man.
+[00:03:21.020 --> 00:03:27.940]   Here we are. Blank of an eye. It's Friday. Yeah. Halloween Halloween. Yes. Tomorrow.
+[00:03:27.940 --> 00:03:31.980]   Getting ready to have our bash having the old getting my pub delivered to the
+[00:03:31.980 --> 00:03:38.540]   driveway. Got a bartender. Saturday night man. That's perfect. Chloe on the
+[00:03:38.540 --> 00:03:45.500]   way to this is like peak kiddo Halloween time. Perfect. I'm so excited it's going
+[00:03:45.500 --> 00:03:53.060]   to be a vampire. And so on the way to school yesterday the day before she was
+[00:03:53.060 --> 00:03:57.260]   as quiet and all of a sudden out of the blue she goes. I'm so excited for this
+[00:03:57.260 --> 00:04:00.820]   Halloween especially because it's a Saturday she goes I get to stamp really
+[00:04:00.820 --> 00:04:05.320]   late which we always let her stay up late on Halloween you have to yeah you
+[00:04:05.320 --> 00:04:11.700]   have to them's the rules that's the rules so yeah looks like yeah looks like the
+[00:04:11.700 --> 00:04:16.180]   weathers gonna be there's gonna be rain in the morning but we should be good in
+[00:04:16.180 --> 00:04:20.860]   the afternoon which is good we've been screwed on weather lately for Halloween
+[00:04:20.860 --> 00:04:26.380]   yeah yeah besides that it's been great yeah no yeah that's awesome man well you're
+[00:04:26.380 --> 00:04:29.900]   right she's that this is right down the middle and it's I think I'll let
+[00:04:29.900 --> 00:04:34.740]   Brie tennis tell you but I believe it's not until boy come on man who hates
+[00:04:34.740 --> 00:04:41.060]   Brie I think it's not until I don't know the 20 30s or something like that that we
+[00:04:41.060 --> 00:04:46.620]   have a Saturday night in Halloween again mm-hmm I you know again I don't know why
+[00:04:46.620 --> 00:04:52.140]   I'm pretended I'm the expert because I breeze the real expert do you want to
+[00:04:52.140 --> 00:05:03.020]   hear what she has with fire away sure yeah please the rim what that's what
+[00:05:03.020 --> 00:05:07.300]   I'm gonna be at this Halloween here she is
+[00:05:07.300 --> 00:05:11.300]   dang it which one is that hold on I get three of them
+[00:05:11.300 --> 00:05:19.900]   yeah I'm sorry me and I'm using me we'll do this according to folklore stepping on
+[00:05:19.900 --> 00:05:24.260]   a spider will bring rain in India holding a frog marriage will do the same in
+[00:05:24.260 --> 00:05:28.420]   Eastern Europe people leave empty pales outside to bring on the rain drops and
+[00:05:28.420 --> 00:05:32.620]   whether Laura says if bubbles in your coffee have migrated toward the rim not
+[00:05:32.620 --> 00:05:37.540]   the center rain is coming there's no proof any of this is true but with rain
+[00:05:37.540 --> 00:05:42.420]   expected all weekend it's safe to say someone did something I'm pre tennis
+[00:05:42.420 --> 00:05:51.020]   that's not it hold on maybe it's weekend she say a frog marriage it doesn't matter
+[00:05:51.020 --> 00:05:58.660]   right and she also said this the rim ah good poll made this one then I'm Tommy
+[00:05:58.660 --> 00:06:02.100]   what's your thing the thing you're looking most forward to in Las Vegas the
+[00:06:02.100 --> 00:06:08.820]   rim all right according to one poll 57% of kids will sort their candy take on
+[00:06:08.820 --> 00:06:14.580]   Halloween before eating it 43% will have no order and just dive in the sort of
+[00:06:14.580 --> 00:06:18.740]   separate candy by chocolate versus fruity or piles of favorite to least and
+[00:06:18.740 --> 00:06:24.300]   psychology today says either is okay because it's simple human nature a choice
+[00:06:24.300 --> 00:06:30.260]   of chaos versus control but the payoff is still sugar I'm pre tennis what what if
+[00:06:30.260 --> 00:06:38.220]   experts said that's not okay sorting candy or not yeah who cares right I don't think
+[00:06:38.220 --> 00:06:44.060]   that was the one I was looking for maybe it's this one when is the witching
+[00:06:44.060 --> 00:06:49.100]   hour do you guys know well it's usually near the end of the early window on
+[00:06:49.100 --> 00:06:54.620]   football Sunday when wins become losses and losses become wins you are correct
+[00:06:54.620 --> 00:06:57.860]   sir that's in a true sense there isn't which you know or isn't it like
+[00:06:57.860 --> 00:07:02.220]   essentially dusk is that a witching hour or not usually when the bars closed we're
+[00:07:02.220 --> 00:07:05.460]   gonna find out I guess brief tennis is gonna tell me exactly in a second if I'm
+[00:07:05.460 --> 00:07:10.500]   right or wrong you damn right she is that time is called the witching hour
+[00:07:10.500 --> 00:07:14.660]   when spirits are said to be more active with human interactions science and
+[00:07:14.660 --> 00:07:18.420]   psychology say ghost sightings are frequently reported at night but there's
+[00:07:18.420 --> 00:07:23.180]   no scientific proof spirits can tell time and that witching hour it's about the
+[00:07:23.180 --> 00:07:27.460]   time most humans transition between deep and lighter sleep making them more
+[00:07:27.460 --> 00:07:31.820]   prone to vivid dreams and just waking up so that bump in the night or that light
+[00:07:31.820 --> 00:07:38.100]   that flickers is most likely nothing sure I'm pre-tenant three a to four a we got
+[00:07:38.100 --> 00:07:43.460]   up by the way we gotta I gotta make sure I'm not screwing this up because it might
+[00:07:43.460 --> 00:07:49.980]   be the dumbest sentence I've ever heard in my life there's no proof that ghosts
+[00:07:49.980 --> 00:07:54.860]   can tell time that time is called the witching hour when spirits are said to be
+[00:07:54.860 --> 00:07:59.100]   more active with human interactions science and psychology say ghost sightings
+[00:07:59.100 --> 00:08:03.300]   are frequently reported at night but there's no scientific proof spirits can
+[00:08:03.300 --> 00:08:12.660]   tell time in Jesus Christ keep him and also with you there's no scientific
+[00:08:12.660 --> 00:08:20.460]   evidence spirits can tell time yet yet Cheers and also with you you're drinking
+[00:08:20.460 --> 00:08:25.820]   Jack Daniel straight from the body so she did not so Chris 3 played three
+[00:08:25.820 --> 00:08:33.980]   three tennis sound bites new story the first one the first one she listed seven
+[00:08:33.980 --> 00:08:37.060]   things and goes well of course there's no proof of any of this which means the
+[00:08:37.060 --> 00:08:43.100]   whole thing is worthless the second one was basically feel free to sort your candy
+[00:08:43.100 --> 00:08:48.180]   however you'd like right and then number three was there is no scientific proof
+[00:08:48.180 --> 00:08:56.860]   that spirits can tell time she gets paid yeah yeah I love America what a great
+[00:08:56.860 --> 00:08:59.940]   country we love John thank you for supporting this country defending this
+[00:08:59.940 --> 00:09:04.900]   country without you and people like you we couldn't have people do any stories
+[00:09:04.900 --> 00:09:09.340]   like she just did unbelievable you are allowed to believe anything you want in
+[00:09:09.340 --> 00:09:13.180]   this country and she just proved it yeah I love that I finally found something
+[00:09:13.180 --> 00:09:19.420]   there's gonna get you riled up I want that tattooed on my lower back if there's no
+[00:09:19.420 --> 00:09:24.060]   scientific proof that spirits can tell time should get the witchy now we're
+[00:09:24.060 --> 00:09:30.580]   taking us wishy now we're hoping yeah yep the rim it'll say the witching hour in
+[00:09:30.580 --> 00:09:35.940]   the little open sign meaning your rim I remember why I played that what was I
+[00:09:35.940 --> 00:09:40.180]   look for it's probably Halloween lost in the shuffle I don't know which one of
+[00:09:40.180 --> 00:09:42.940]   you know pointed this out but you guys are right lost in the shuffle the we're
+[00:09:42.940 --> 00:09:46.820]   just part about that first sound bite was the way that she said weekend yes she
+[00:09:46.820 --> 00:09:52.460]   put the emphasis on the end part it was strange because wrong syllable she
+[00:09:52.460 --> 00:09:58.980]   probably records these hot cuts at home you think good question you think the
+[00:09:58.980 --> 00:10:02.060]   husband walked up behind her when she was reading the weekend and he checked her
+[00:10:02.060 --> 00:10:06.780]   oil well when the other day when somebody suggested that she's AI but you know
+[00:10:06.780 --> 00:10:11.620]   emphasizing the wrong syllable like that doesn't sell it that she's real guaranteed
+[00:10:11.620 --> 00:10:16.780]   human and I harp it I'm not so sure Brie tennis is real on a spider will
+[00:10:16.780 --> 00:10:21.060]   bring rain in India holding a frog marriage will do the same in Eastern
+[00:10:21.060 --> 00:10:25.060]   Europe people leave empty pales outside to bring on the raindrops and weather
+[00:10:25.060 --> 00:10:29.380]   lore says if bubbles in your coffee have migrated toward the rim not the center
+[00:10:29.380 --> 00:10:34.420]   rain is coming there's no proof any of this is true but with rain expected all
+[00:10:34.420 --> 00:10:42.340]   weekend it's safe to say all weekend if you who is the small things go to the rim
+[00:10:42.340 --> 00:10:48.540]   of your two if your coffee it might rain that's right people are dumb I'd like to
+[00:10:48.540 --> 00:10:53.780]   win invited to him frog marriage you should have one yeah one you love frogs
+[00:10:53.780 --> 00:10:57.820]   that's your favorite animal do that we should do frogs married yeah who I would
+[00:10:57.820 --> 00:11:01.660]   do the ceremony for sure what can you tell us about frog breeding since they're
+[00:11:01.660 --> 00:11:05.920]   your favorite animal yes it hard I mean I think that has to be part of it for
+[00:11:05.920 --> 00:11:13.580]   them to breed marriage no for them to breed I think that our asexual like they
+[00:11:13.580 --> 00:11:17.580]   can get it on not not get it on and still have babies like they can get it on with
+[00:11:17.580 --> 00:11:21.520]   themselves kind of thing I think yeah I don't think so I think that's some
+[00:11:21.520 --> 00:11:31.900]   bizarre sauce it on with them so do frogs legs your favorite animal yes why
+[00:11:31.900 --> 00:11:36.300]   you looking at me you're the frog expert because you know the answer do you think
+[00:11:36.300 --> 00:11:43.900]   they do yeah tadpoles are eggs right you tell me yes
+[00:11:43.900 --> 00:11:53.440]   frog expert perry defrogs legs huh like everybody else don't they yeah but I
+[00:11:53.440 --> 00:11:57.000]   see if you guys want something a monopoly peel I know they peel them out this is
+[00:11:57.000 --> 00:12:01.540]   yeah peel them out yeah peel them out man we need boardwalk we already have
+[00:12:01.540 --> 00:12:06.780]   Park place the rim the rim Corey thank you so much for being you yeah because I
+[00:12:06.780 --> 00:12:10.940]   burst out laughing on the spirits can tell time there's no scientific proof
+[00:12:10.940 --> 00:12:18.380]   the rim is there really the rim I got electric company
+[00:12:18.500 --> 00:12:25.020]   peristo as the peristo has the radio on on his phone oh whoops yeah that's your
+[00:12:25.020 --> 00:12:31.300]   phone that was me that was me I heart oh that was the lady that is really yeah
+[00:12:31.300 --> 00:12:39.060]   which real good ready ready nailed it all right so ready we've had 15 times so
+[00:12:39.060 --> 00:12:42.460]   that's not the winner no so you can toss that one I just need the electric
+[00:12:42.460 --> 00:12:45.900]   company so what do you need the other one waterworks waterworks I know that
+[00:12:45.900 --> 00:12:51.100]   lady got Park place last week yep we just need boardwalk yeah we're almost
+[00:12:51.100 --> 00:12:54.820]   there we're halfway there yeah I'm sure it'll be easy we'll find it but we don't
+[00:12:54.820 --> 00:13:00.540]   always easy yeah we only need one more piece of cake what do you get a million
+[00:13:00.540 --> 00:13:04.340]   all right why don't we just spend the rest of the day looking for it I got a
+[00:13:04.340 --> 00:13:11.140]   code oh good hmm that's free it sounds though you won food yeah you won for yeah
+[00:13:11.140 --> 00:13:17.540]   yeah it's a good start daylight savings time come up this weekend fellers awesome
+[00:13:17.540 --> 00:13:21.260]   I will get a call from my dad today reminding me to set the clocks back that's
+[00:13:21.260 --> 00:13:26.300]   precious that's that's so sweet yeah it's a daylight savings time and Halloween
+[00:13:26.300 --> 00:13:31.340]   clocks will return to their regular time into a am on Sunday November 1st well
+[00:13:31.340 --> 00:13:36.060]   this Halloween falls on a Saturday that won't happen again until 2037 go the
+[00:13:36.060 --> 00:13:41.020]   next time Halloween and daylight saving coincide also won't be until 2037 I'm
+[00:13:41.020 --> 00:13:44.340]   Tammy Trujillo I don't think Tana hates Brie tennis
+[00:13:44.340 --> 00:13:50.060]   can you get his jealousy the rivalry yeah she's like watch me pronounce these
+[00:13:50.060 --> 00:13:55.540]   words perfectly well I think she heard Brie tennis is a new story about spirits
+[00:13:55.540 --> 00:13:59.660]   not being able to tell time so then she's like I'm gonna talk about real time like
+[00:13:59.660 --> 00:14:04.940]   daylight savings time you think she's gonna walk in right do you think that
+[00:14:04.940 --> 00:14:12.020]   Brie tennis takes a beating at that station just like oh yeah she's like the
+[00:14:12.020 --> 00:14:16.340]   laughing stock of the of the iHeart cluster for sure I'm a disc I think she's
+[00:14:16.340 --> 00:14:19.580]   probably the cool winner at least she thinks she is and people just and Tammy
+[00:14:19.580 --> 00:14:23.660]   really hates her in one of these days Tammy's gonna walk in punch her in the
+[00:14:23.660 --> 00:14:34.220]   baby maker yeah do you think you think Tammy Trujillo and Brie tennis have
+[00:14:34.220 --> 00:14:37.220]   ever been on a bowling team and then they have co-workers sign up for two
+[00:14:37.220 --> 00:14:40.900]   weeks and then one of their shoulders our arms gets hurt so they can't do it
+[00:14:40.900 --> 00:14:47.720]   anymore we can enjoy some pie right bit yesterday has messed up yesterday
+[00:14:47.720 --> 00:14:56.060]   common man suggested that Anthony Edwards walk dogs we have yeah
+[00:14:56.060 --> 00:15:03.300]   and chocolate well the dog that Rosie was walking I'd adapted he did yeah yeah
+[00:15:03.300 --> 00:15:08.980]   bear really did you listen for bear sure you know the Portland trailblazers are
+[00:15:08.980 --> 00:15:16.700]   playing real hard what's wrong with real hard they play at 9 30 at night he's
+[00:15:16.700 --> 00:15:23.660]   not watching that great point you don't know what he's doing you don't watch
+[00:15:23.660 --> 00:15:27.900]   your trailblazers when he's there sharing for mica nori maybe he's walking a
+[00:15:27.900 --> 00:15:32.060]   foster dog that's afraid of the sunshine yeah do you think he has any plans this
+[00:15:32.060 --> 00:15:38.660]   weekend I think he's gonna explore something he likes to call the rim
+[00:15:38.660 --> 00:15:47.980]   no parish what time is it it is 543 there is scientific proof that mark and
+[00:15:47.980 --> 00:15:58.060]   tell time I'm alive sauce what time is it 544 the witching hour no it's time for
+[00:15:58.060 --> 00:16:03.020]   gutter helmet gutter helmet mn.com ever clean your gutters again gutter helmet
+[00:16:03.020 --> 00:16:06.900]   time all right John Creason was here mark parishes here Marnie Gelner later
+[00:16:06.900 --> 00:16:11.500]   initials that eight fifteen with a hundred and twenty seven thousand five
+[00:16:11.500 --> 00:16:19.700]   hundred dollars can it just freaking go off and have it be a Halloween miracle
+[00:16:19.700 --> 00:16:23.540]   let's have it happen today maybe maybe it's gonna be you lucky listener who knows
+[00:16:23.540 --> 00:16:28.100]   more the power to a morning show after this on the fit
+[00:16:31.100 --> 00:16:36.700]   that sound that's pro squash some of the fastest rallies in sport played
+[00:16:36.700 --> 00:16:41.260]   inches from the crowd the National Squash League is back in full swing for
+[00:16:41.260 --> 00:16:46.260]   season four the sport is heading to the 2028 Olympics for the first time and you
+[00:16:46.260 --> 00:16:50.900]   can see it up close right now in a city near you watch every match for free on
+[00:16:50.900 --> 00:16:55.540]   YouTube search National Squash League and hit subscribe or follow live updates on
+[00:16:55.540 --> 00:16:59.780]   Instagram at nsl.sport
+[00:16:59.780 --> 00:17:06.220]   hey it's Niall Rogers host of before the moment a Lincoln original series I'm driving
+[00:17:06.220 --> 00:17:10.940]   across the country meeting some of today's most fascinating artists we're
+[00:17:10.940 --> 00:17:16.620]   exploring the stories before the moment that changed everything this week I'm
+[00:17:16.620 --> 00:17:22.020]   joined by rising star Sienna Spire I love the 60s I feel really jealous that I
+[00:17:22.020 --> 00:17:25.980]   wasn't alive for it I'd be interested like knowing what that was like and seeing
+[00:17:25.980 --> 00:17:29.700]   the way culture and art has has progressed today how do you find it wait a
+[00:17:29.700 --> 00:17:36.540]   minute I'm sorry I have so many questions sorry I'm nervous you are I am I feel
+[00:17:36.540 --> 00:17:41.220]   like insecure about my experience I know I shouldn't but you know I'm 20 I
+[00:17:41.220 --> 00:17:44.700]   haven't really lived my life yet and then sitting in front of somebody that has
+[00:17:44.700 --> 00:17:48.820]   lived an enormous life is is intimidating and sometimes I feel like talking
+[00:17:48.820 --> 00:17:51.540]   about myself it's just not as interesting so that's why I feel very
+[00:17:51.540 --> 00:17:56.860]   nervous I'll try and I'll try and ignore it like please do experience before the
+[00:17:56.860 --> 00:18:02.980]   moment a Lincoln original series on the iHeartRadio app YouTube or wherever you
+[00:18:02.980 --> 00:18:09.620]   get your podcast I've had no luck lately wait lady look
+[00:18:09.620 --> 00:18:14.380]   Rusty I got you I've had so much luck on spinquest.com they have all of my
+[00:18:14.380 --> 00:18:20.140]   favorite games slot games live blackjack craps and bubble craps you can even get a
+[00:18:20.140 --> 00:18:26.140]   $30 coin pack for just 10 bucks 10 bucks for 30 I'm at it over to spinquest.com
+[00:18:26.140 --> 00:18:30.280]   right now spinquest is a free to play social casino void where prohibited
+[00:18:30.280 --> 00:18:34.260]   visit spinquest.com for more details
+[00:18:35.280 --> 00:18:40.740]   today we tip our wrench to rock auto customer Jeremy I've been a rock auto
+[00:18:40.740 --> 00:18:44.820]   com customer for over 15 years and now even my kids order their parts there
+[00:18:44.820 --> 00:18:48.580]   prices are always far lower than the local auto parts store selection is
+[00:18:48.580 --> 00:18:52.220]   massive and the site makes it unbelievably easy to find exactly what we
+[00:18:52.220 --> 00:18:56.340]   need every order shows up fast and the quality is always top tier rock auto
+[00:18:56.340 --> 00:19:05.420]   com has earned my trust for life and I highly recommend them work force
+[00:19:05.420 --> 00:19:08.860]   Club all truss Thursday nights comedy show has reached capacity but you can still
+[00:19:08.860 --> 00:19:12.340]   join us Friday morning for a live broadcast and of course the Vegas trip
+[00:19:12.340 --> 00:19:17.220]   in November with the show up for grabs help the details at KfA.com/25
+[00:19:17.220 --> 00:19:20.420]   yeah a couple things we should clean up if people are curious you know the
+[00:19:20.420 --> 00:19:25.140]   Thursday night thing is sold out right right has been since almost day one but
+[00:19:25.140 --> 00:19:31.460]   next Friday morning open to the public completely and don't forget it's a
+[00:19:31.460 --> 00:19:35.060]   major it's an initials major so if you want to potentially be the person that
+[00:19:35.060 --> 00:19:39.460]   gets drawn to take on sauce and perish in Marney and Hawk you got to be there
+[00:19:39.460 --> 00:19:44.060]   pretty much right at this time one week from today because we draw it like what
+[00:19:44.060 --> 00:19:48.300]   605 normally yes sir so you got to be there before six get your name in the
+[00:19:48.300 --> 00:19:51.860]   old bucket or however we're gonna draw we'll figure that out but if you want to
+[00:19:51.860 --> 00:19:56.300]   get drawn and potentially play it 615 715 and 815 you got to be there early
+[00:19:56.300 --> 00:20:01.300]   next Friday a treasure on resort and casino come on down and it's gonna be
+[00:20:01.300 --> 00:20:05.140]   great and don't forget this either somebody that's in the audience random
+[00:20:05.140 --> 00:20:09.220]   draw trip for two to Las Vegas next Friday morning so it also just pays to be
+[00:20:09.220 --> 00:20:14.020]   in the stands watching the show hell yeah it's gonna be awesome parish next
+[00:20:14.020 --> 00:20:17.940]   Thursday night next Friday morning you know who's gonna be there on Thursday
+[00:20:17.940 --> 00:20:24.100]   and Friday hogs daddy I know who's not Patrick Stewart oh well played he's not
+[00:20:24.100 --> 00:20:30.300]   wrong but who are you gonna say well the Yeti hawks only friend oh I hear I can
+[00:20:30.300 --> 00:20:35.780]   help oh he come back soon oh hot machine that was relaxing to steal and
+[00:20:35.780 --> 00:20:40.300]   how can I do go back soon come here oh yeah he's close to that all right so I
+[00:20:40.300 --> 00:20:44.140]   asked this sometimes when people die this is like my version of ode to a dead guy
+[00:20:44.140 --> 00:20:47.700]   but when you think of Patrick Stewart what's the one role that jumps to your
+[00:20:47.700 --> 00:20:53.860]   mind the fastest I mean it's isn't it Star Trek it's John Luke I'm saying for
+[00:20:53.860 --> 00:20:59.260]   you yeah but yeah John Luke Picard I go I go professor X for me I'm X-Men yeah yeah
+[00:20:59.260 --> 00:21:05.100]   I go I go X-Men as well but I know you know he was on the map as John Luke
+[00:21:05.100 --> 00:21:09.460]   Picard in Star Trek I think Star Trek fans definitely go to Star Trek first I
+[00:21:09.460 --> 00:21:14.020]   loved it I never watched it I just knew he was a big deal yep so I go
+[00:21:14.020 --> 00:21:19.420]   professor X yeah they whoa is it Star Trek the new power generation next
+[00:21:19.420 --> 00:21:24.540]   generation yeah yeah I love them it was great yeah that sucks man everybody likes
+[00:21:24.540 --> 00:21:28.960]   Patrick yeah because I know he was so I was still surprised you know I ain't sure
+[00:21:28.960 --> 00:21:38.460]   84 yeah 84 and he was a like he was a great Scrooge mmm yeah I don't know he
+[00:21:38.460 --> 00:21:42.740]   just he he just was like a real actor dude man I like that guy I like that dude
+[00:21:42.740 --> 00:21:51.420]   yeah he seemed like the real dude he also played he was in two long food with
+[00:21:51.420 --> 00:22:01.900]   nothing he was maybe not too long food thanks for everything Julie Neumar he
+[00:22:01.900 --> 00:22:06.500]   was Julie Neumar I don't think so what seems really that sounds wrong okay well
+[00:22:06.500 --> 00:22:11.980]   why did I not know this wasn't it wasn't a snipes and Swayze well sure yes and who
+[00:22:11.980 --> 00:22:18.380]   else that guy John like Wasama was in the Odyssey yeah yeah it's by the way we
+[00:22:18.380 --> 00:22:21.220]   don't need to do this but it's too late my sentence already started so there's
+[00:22:21.220 --> 00:22:27.140]   no turning back now was all right um I obviously freaking loved Nathan
+[00:22:27.140 --> 00:22:31.180]   Fielders you can see everything right yeah it's it's a game changer for
+[00:22:31.180 --> 00:22:37.460]   documentaries it's well it's it's just art it's amazing yes we mentioned now
+[00:22:37.460 --> 00:22:40.720]   that essentially all of us have seen it the idea that it might be up for best
+[00:22:40.720 --> 00:22:45.380]   picture no documentaries been up for best picture right yeah it a billion
+[00:22:45.380 --> 00:22:48.660]   percent should win best documentary I don't even really care if it gets
+[00:22:48.660 --> 00:22:54.620]   nominated for best picture sure sure but put that up against the Odyssey and I'm
+[00:22:54.620 --> 00:22:58.660]   voting for the Odyssey every time in terms of best picture but these are
+[00:22:58.660 --> 00:23:06.220]   movies you know I'm saying yeah the Odyssey is just something else incredible
+[00:23:06.220 --> 00:23:12.580]   yeah so I don't know if we should let movies like that win even though it's a
+[00:23:12.580 --> 00:23:16.780]   masterpiece but it's a different kind of a masterpiece than what Christopher Nolan
+[00:23:16.780 --> 00:23:20.500]   did you know what I'm saying so if I was in the academy and I'm voting I want
+[00:23:20.500 --> 00:23:24.020]   both of them of them to win a billion awards they both deserve all the accolades
+[00:23:24.020 --> 00:23:29.300]   they're getting but I'd vote for the Odyssey thoughts I agree yeah I concur yeah
+[00:23:29.300 --> 00:23:34.260]   I agree because I at the time forgot about the Odyssey that's how weird life is I
+[00:23:34.260 --> 00:23:39.260]   forgot the Odyssey came out right the Odyssey would crush it yeah it's a it's
+[00:23:39.260 --> 00:23:48.860]   yeah it's a better movie yeah in terms of just being a film not a even remotely
+[00:23:48.860 --> 00:23:53.380]   reality show slash documentary slash movie and is what you can see everything
+[00:23:53.380 --> 00:23:57.180]   is and in both of them I didn't really know what was going on half the time and I
+[00:23:57.180 --> 00:24:01.220]   love the Odyssey and I loved it you can see everything they're both 10 out of 10
+[00:24:01.220 --> 00:24:05.900]   yeah they're both fantastic guys remember when I was gonna buy a room on
+[00:24:05.900 --> 00:24:12.660]   that cruise ship yeah gonna sail for the rest of your life yeah around 200
+[00:24:12.660 --> 00:24:16.780]   passengers were given seven hours to pack their bags and leave the boat in
+[00:24:16.780 --> 00:24:25.860]   Cambodia on the via V residences as it's suspended operations the Odyssey left
+[00:24:25.860 --> 00:24:30.260]   Northern Ireland in October 2024 for continuous voyage residents could rent
+[00:24:30.260 --> 00:24:34.020]   cabins for a holiday or buy for life at a cost of four hundred and forty thousand
+[00:24:34.020 --> 00:24:40.300]   dollars but they went out of business no these people just get off the boat get
+[00:24:40.300 --> 00:24:47.980]   out of here yeah and of all places right so then do you just lose your four
+[00:24:47.980 --> 00:24:51.020]   hundred and forty thousand is it just over it sounds like they went out of business
+[00:24:51.020 --> 00:24:54.620]   I guess so yeah what a weird thing like if you buy a house for four and forty
+[00:24:54.620 --> 00:24:58.540]   thousand dollars if you have financial troubles you sell the house yeah you can't
+[00:24:58.540 --> 00:25:03.500]   sell your cabin if the boat just goes nah we're just gonna it's over this lady
+[00:25:03.500 --> 00:25:10.800]   said shut it down screwed this lady says I sold everything I owned oh yeah that's
+[00:25:10.800 --> 00:25:15.940]   talks kind of gal though yeah should have just put it on rad yeah man yeah did this
+[00:25:15.940 --> 00:25:22.780]   does this cruise ship have a casino on that poor lady double zero yep and oh man
+[00:25:22.780 --> 00:25:27.420]   don't submit triple zero never play triple zero don't don't let them win the
+[00:25:27.420 --> 00:25:31.300]   founder of endless crews that dumped its passengers Kim in Cambodia says I'm the
+[00:25:31.300 --> 00:25:36.740]   villain so they dump sipping kid body and then the boat leaves yeah I guess it
+[00:25:36.740 --> 00:25:45.460]   probably it must have no do they have gas oh man well I'm glad I didn't do that I
+[00:25:45.460 --> 00:25:54.340]   guess I didn't last two years no not even did you say 2024 yeah yeah you would
+[00:25:54.340 --> 00:25:59.180]   have disappeared loaded most two years I guess I live in Cambodia yeah sauce you
+[00:25:59.180 --> 00:26:04.160]   remember Cambodia by Limp Bizkit no foresee you remember that song no I just
+[00:26:04.160 --> 00:26:08.000]   spend the rest of the day looking it up it's only like three minutes look up a
+[00:26:08.000 --> 00:26:11.560]   song no I'm saying listen to it for three minutes and then go why didn't I
+[00:26:11.560 --> 00:26:15.180]   listen to this the last 27 years and then just listen to it on repeat it's that
+[00:26:15.180 --> 00:26:20.860]   good no oh is that the good goes like they goes Cambodia when you're nip I'm gonna
+[00:26:20.860 --> 00:26:28.020]   give me that you have heard it that's real good hogs daddy oh thank you I didn't
+[00:26:28.020 --> 00:26:36.780]   write it a little bit good the rim yeah they're having a resurgence man no limb
+[00:26:36.780 --> 00:26:40.860]   biscuit they're selling out everywhere crowds are totally into them Gianna the
+[00:26:40.860 --> 00:26:46.500]   her generation loves limp esque yeah man serious yeah oh yeah my daughter loves
+[00:26:46.500 --> 00:26:52.460]   there you serious car they're by you know are you serious how that's a great
+[00:26:52.460 --> 00:27:00.980]   that's so good hey they spotted Santa are you serious Clark god that's such heavy
+[00:27:00.980 --> 00:27:04.180]   chase the other day pop up on my Instagram algorithm and he's doing some
+[00:27:04.180 --> 00:27:09.140]   Q&A with like two or three of them about Christmas vacation somewhere and they
+[00:27:09.140 --> 00:27:14.020]   were selling tickets to it he is looking more and more like Gary Busey on a
+[00:27:14.020 --> 00:27:19.140]   daily basis he's gotta be real old he is falling apart mean we all are brother
+[00:27:19.140 --> 00:27:23.660]   is he still mean though I think so yeah I've heard interviews recently or read
+[00:27:23.660 --> 00:27:28.220]   transcripts of it where he does acknowledge some of his yeah well there
+[00:27:28.220 --> 00:27:32.380]   was there was like a documentary of knowledging in this one thing changing
+[00:27:32.380 --> 00:27:43.740]   yeah I think he's 83 and he'll be in man Kato in two weeks doing what did I do
+[00:27:43.740 --> 00:27:48.580]   mean this a Q&A yeah we should go down there a couple days after that okay so so
+[00:27:48.580 --> 00:27:55.260]   who's with them on this Q&A tour I mean see here take a start at $60
+[00:27:55.260 --> 00:28:00.500]   live conversation with Chevy Chase about Christmas vacation and it's just him
+[00:28:00.500 --> 00:28:04.220]   looks like okay so he was promoting that account I think it was like but he's
+[00:28:04.220 --> 00:28:07.500]   betterly Daniel is still alive or my imagining that he said okay then she was
+[00:28:07.500 --> 00:28:13.820]   how are those grab your hand out first Chris would I absolutely yeah those he
+[00:28:13.820 --> 00:28:19.420]   got to go to the ATM first night down she always wore I know it I know it she
+[00:28:19.420 --> 00:28:24.820]   just had that filthy girl look to her you know yeah such a classy thing yep such
+[00:28:24.820 --> 00:28:33.980]   a classy thing to look so filthy his wife Janie is wife Janey have a gun doesn't
+[00:28:33.980 --> 00:28:38.960]   say on the card here but it's a song she's probably wanted one if you heard Zach is
+[00:28:38.960 --> 00:28:45.140]   way too young for that song but maybe oh yeah he knows little Aerosmith there we
+[00:28:45.140 --> 00:28:55.420]   go so you've heard it so you can pay $60 to go and and participate in Q&A with
+[00:28:55.420 --> 00:29:00.420]   Chevy Chase I would prefer if he just rough talks the piss audio you probably
+[00:29:00.420 --> 00:29:05.100]   worth it if he's like he would what a stupid question you love that movie love
+[00:29:05.100 --> 00:29:08.940]   it you go down to me and Kato you get one question for Chevy Chase what is it and
+[00:29:08.940 --> 00:29:14.980]   why go oh man I'd have to think about it because I love that movie you have the
+[00:29:14.980 --> 00:29:18.580]   whole drive to think about it yeah well I don't have the whole drive right now all
+[00:29:18.580 --> 00:29:25.540]   right you're gonna have now you're gonna have let's see here you have seven point
+[00:29:25.540 --> 00:29:42.220]   four seven seconds Chevy
+[00:29:42.220 --> 00:29:50.500]   times were you really up on the roof doing lighting I'll sit down and ask my
+[00:29:50.500 --> 00:29:56.260]   question later I don't know I'd have to think about it cuz I will sit down and
+[00:29:56.260 --> 00:30:00.380]   ask your question later I mean what would you ask I'd like to know are you
+[00:30:00.380 --> 00:30:04.760]   really gonna sew cousin Eddie's head to the carpet if he didn't stop talking how
+[00:30:04.760 --> 00:30:09.740]   much of it was ad-libbed yeah that's a good question about this how about this
+[00:30:09.740 --> 00:30:13.700]   now that you're in your 80s you ever want to change your name to Ford let it
+[00:30:13.700 --> 00:30:23.540]   go see that's brilliant he didn't even need the whole right down to man Kato to
+[00:30:23.540 --> 00:30:37.380]   think of that either the way to you were done yeah yeah you guys imagine how
+[00:30:37.380 --> 00:30:41.500]   epic it would be if sauce actually drove down there and it was being recorded
+[00:30:41.500 --> 00:30:46.400]   or live-streamed and he actually said I'll sit down and ask my question later
+[00:30:46.400 --> 00:30:54.700]   I'd be the best I just get up and jump out the window if you're involved in
+[00:30:54.700 --> 00:30:59.700]   having him come on down let us know maybe maybe the power trip can have
+[00:30:59.700 --> 00:31:05.340]   old Chevy on that'd be great he wouldn't come on no he doesn't see no
+[00:31:05.340 --> 00:31:11.500]   excited no anything yeah this this this tour screams my wife wanted me to do it
+[00:31:11.500 --> 00:31:16.460]   yeah yep yep she wanted me out of the house for a while yeah you think Kevin
+[00:31:16.460 --> 00:31:20.780]   Chase wants to be in Mankato in Duluth in November I do he needs that page I do
+[00:31:20.780 --> 00:31:26.700]   I do I do front page for it's his next power trip morning Joe fan
+[00:31:32.060 --> 00:31:36.740]   from the 1-800 ask Gary traffic center this report is sponsored by Farm Bureau
+[00:31:36.740 --> 00:31:41.780]   Financial Services there's overnight construction scheduled on 94 eastbound from
+[00:31:41.780 --> 00:31:47.820]   highway 52 to mounds until 6 a.m. 35 e has construction southbound the entrance
+[00:31:47.820 --> 00:31:51.980]   from Shepherd is closed till later today I'm Maria Arnold and that's your latest
+[00:31:51.980 --> 00:31:59.980]   total traffic with Farm Bureau funny that sound that's pro squash some of the
+[00:31:59.980 --> 00:32:04.620]   fastest rallies in sport played inches from the crowd the National Squash League
+[00:32:04.620 --> 00:32:09.940]   is back in full swing for season 4 the sport is heading to the 2028 Olympics
+[00:32:09.940 --> 00:32:14.700]   for the first time and you can see it up close right now in a city near you watch
+[00:32:14.700 --> 00:32:18.780]   every match for free on YouTube search National Squash League and hit subscribe
+[00:32:18.780 --> 00:32:24.900]   or follow live updates on Instagram at nsl.sport
+[00:32:24.900 --> 00:32:30.840]   hey it's Niall Rogers host of before the moment a Lincoln original series I'm
+[00:32:30.840 --> 00:32:36.100]   driving across the country meeting some of today's most fascinating artists we're
+[00:32:36.100 --> 00:32:41.780]   exploring the stories before the moment that changed everything this week I'm
+[00:32:41.780 --> 00:32:47.860]   joined by rising star Sienna spy I love the 60s I feel really jealous that I wasn't
+[00:32:47.860 --> 00:32:51.460]   alive for it I'd be interested like knowing what that was like and seeing the way
+[00:32:51.460 --> 00:32:55.900]   culture and art has has progressed today how do you find it wait a minute I'm sorry
+[00:32:55.900 --> 00:33:02.100]   I have so many questions sorry you're not nervous you're I am I feel like
+[00:33:02.100 --> 00:33:06.780]   insecure about my experience I know I shouldn't but you know I'm 20 I haven't
+[00:33:06.780 --> 00:33:10.420]   really lived my life yet and then sitting in front of somebody that has lived an
+[00:33:10.420 --> 00:33:14.100]   enormous life is is intimidating and sometimes I feel like talking about
+[00:33:14.100 --> 00:33:18.020]   myself it's just not as interesting so that's why I feel better I'll try and I'll
+[00:33:18.020 --> 00:33:23.180]   try and ignore it like please do experience before the moment a link in
+[00:33:23.180 --> 00:33:29.180]   original series on the iHeartRadio app YouTube or wherever you get your podcast
+[00:33:29.180 --> 00:33:33.500]   happy birthday America it's time to celebrate and play your favorite Las
+[00:33:33.500 --> 00:33:38.740]   Vegas casino games by American owned spinquest.com what's better than fireworks
+[00:33:38.740 --> 00:33:42.660]   an American pie hitting a blackjack in the palm of your hand and you won't
+[00:33:42.660 --> 00:33:46.860]   lose your fingers over a thousand games including slots and live dealers and
+[00:33:46.860 --> 00:33:52.280]   $30 coin packs are on sale for 10 spinquest.com buy American players for
+[00:33:52.280 --> 00:33:56.560]   American players. Spinquest is a free to play social casino
+[00:33:56.560 --> 00:34:02.460]   avoid where prohibited visit spinquest.com for more details today we tip our
+[00:34:02.460 --> 00:34:07.500]   wrench to rock auto customer Jeremy I've been a rock auto.com customer for over
+[00:34:07.500 --> 00:34:11.740]   15 years and now even my kids order their parts there prices are always far
+[00:34:11.740 --> 00:34:15.660]   lower than the local auto parts store selection is massive and the site makes
+[00:34:15.660 --> 00:34:19.640]   it unbelievably easy to find exactly what we need every order shows up fast and
+[00:34:19.640 --> 00:34:23.860]   the quality is always top tier rock auto.com has earned my trust for life and I
+[00:34:23.860 --> 00:34:26.820]   highly recommend them.
+[00:34:30.220 --> 00:34:35.580]   Catchless program password exclusive to KF and KF and interviews and more. Catch
+[00:34:35.580 --> 00:34:38.300]   the moment's reaction say behind the scenes fun you can't get on the radio
+[00:34:38.300 --> 00:34:46.540]   alone watch at KFV.com/watch. It's part of my quantum fiber from AT&T. Thank you Zagot.
+[00:34:46.540 --> 00:34:52.560]   People magazine exists online and and still in your newsstands but I like to
+[00:34:52.560 --> 00:34:55.980]   look at it online because they have interesting stories but they have
+[00:34:55.980 --> 00:35:01.660]   these some summarization summarizations. Is that the word? Sure
+[00:35:01.660 --> 00:35:08.060]   summary. Yeah of the story so they will need to know and there's a story about
+[00:35:08.060 --> 00:35:14.340]   this this guy who was fishing and a great white swam by him. Here's what it says
+[00:35:14.340 --> 00:35:22.940]   need to know. David Slavitch was fishing in Half Moon Bay from his kayak with a
+[00:35:22.940 --> 00:35:28.900]   great white shark swam up beside him. The shark was reported longer than
+[00:35:28.900 --> 00:35:34.580]   Slavitch's 12.5 foot vessel. The final line of the need to know section says the
+[00:35:34.580 --> 00:35:38.940]   following before going out fishing again Slavitch said his wife wants him to get
+[00:35:38.940 --> 00:35:45.260]   a bigger boat. Yes and changes pants. Yeah I was gonna say that's he took a
+[00:35:45.260 --> 00:35:52.060]   picture and there's a great white right by his left leg. Can you imagine that's
+[00:35:52.060 --> 00:35:56.380]   based you're saying you're saying your final goodbyes in your head right oh for
+[00:35:56.380 --> 00:36:01.540]   sure that's this it's well it's over because that that shark is dumb he's not
+[00:36:01.540 --> 00:36:05.020]   sure what that is. He's thinking about eating it. It's so weird there was a
+[00:36:05.020 --> 00:36:10.020]   video the other day I don't know which beach in California and this giant shark
+[00:36:10.020 --> 00:36:14.980]   gets spotted pretty close to the beach and there's two guys on surfboards and the
+[00:36:14.980 --> 00:36:20.020]   one guy doesn't flinch. Yeah like he sees the fin his feet are still hanging off
+[00:36:20.020 --> 00:36:23.100]   the surfboard. He didn't even like oh I gotta get my feet up and I gotta start
+[00:36:23.100 --> 00:36:27.340]   that was just like damn that's a really big shark. He was just staring at it and
+[00:36:27.340 --> 00:36:32.620]   I'm like wow you must man your brain is wired differently than me. That's a really
+[00:36:32.620 --> 00:36:36.220]   strong pot. And they always say that right that every surfer says that like
+[00:36:36.220 --> 00:36:39.700]   you're gonna see shadows like it's just standard it's just part of surfer life
+[00:36:39.700 --> 00:36:44.380]   is that we know they're out there. Yeah well then why are you out there. Yeah
+[00:36:44.380 --> 00:36:50.660]   don't ease stay as far away as possible. Stay here. What are you doing? I can't
+[00:36:50.660 --> 00:36:55.900]   wait to go. We're on KFN.com/watch right now right up for those of you watching for
+[00:36:55.900 --> 00:36:59.940]   those we're not watching I'm holding up a pen. This is a pen normal size of a pen.
+[00:36:59.940 --> 00:37:06.220]   I was walking by my house the other day and a garter snake about that wide came
+[00:37:06.220 --> 00:37:11.940]   out of the grass and I screamed. Sure. Oh what is screaming sound like I like
+[00:37:11.940 --> 00:37:17.820]   freaked me out. Yeah I hate snakes. I didn't mean to do it. I was fine. It was a
+[00:37:17.820 --> 00:37:24.340]   natural human response. Of course you just work for sure. Like snake. Yeah and it's
+[00:37:24.340 --> 00:37:29.620]   not even a threat no but this is a giant great white shark probably 20 feet
+[00:37:29.620 --> 00:37:34.300]   from the surfer and he's like oh man there's the shark. What no paddling no
+[00:37:34.300 --> 00:37:38.540]   panic. Oh here comes not even I can't even think like in Chris you just said you
+[00:37:38.540 --> 00:37:42.620]   jumped and screamed right. I can't even imagine seeing a shark that big and not
+[00:37:42.620 --> 00:37:47.740]   instinctually going I got to get my feet out of the water. Yeah right hanging off
+[00:37:47.740 --> 00:37:55.980]   the board. Instinctly you would still be like I gotta get my legs out of the
+[00:37:55.980 --> 00:38:03.300]   water. These are expensive expensive sharks like somebody I got that one. By the way
+[00:38:03.300 --> 00:38:09.740]   well done friend. Of course being the person that I am. I spent the rest of my
+[00:38:09.740 --> 00:38:17.580]   walk thinking that snakes feeling himself right now. Oh yeah. Yeah went home
+[00:38:17.580 --> 00:38:25.980]   and told his dad. I did it dad scared the car. I'm a big. I'm a lady.
+[00:38:25.980 --> 00:38:31.580]   That's right now for front page sports presented by holiday station stores.
+[00:38:31.580 --> 00:38:35.820]   Holiday station stores join the inner circle with the circle K app. Download
+[00:38:35.820 --> 00:38:39.300]   that circle K app. Join the inner circle. Unlock your savings for example new
+[00:38:39.300 --> 00:38:44.340]   members. Instantly get five offers of twenty five cents off per gallon with our
+[00:38:44.340 --> 00:38:51.360]   friends at holiday. And circle K. That's how they thank you. Thanks. All right.
+[00:38:51.360 --> 00:38:56.820]   Last night the green Bay Packers one twenty seven to nineteen over the
+[00:38:56.820 --> 00:39:02.100]   Carolina Panthers. Jordan love thirty of forty one for two eighty eight three
+[00:39:02.100 --> 00:39:07.980]   touchdowns a pick a one oh six point six K. W. B. Passier a passer rating. Christian
+[00:39:07.980 --> 00:39:13.420]   Watson had an interesting game eight catches 113 yards. Took an ambulance to
+[00:39:13.420 --> 00:39:17.180]   the hospital. They told me to get a what a CT scan or something. And he was like
+[00:39:17.180 --> 00:39:22.980]   if it's clean though. Can I just go back and like well let's see sure enough they
+[00:39:22.980 --> 00:39:28.820]   were happy with the results. He took an ambulance back to the old stadium and came
+[00:39:28.820 --> 00:39:32.180]   out of the tunnel like he was Superman. Yeah. That was kind of a cool moment. It
+[00:39:32.180 --> 00:39:37.540]   was when she walked out of the tunnel and the whole stadium went nuts when it
+[00:39:37.540 --> 00:39:41.540]   played was about to happen. I thought it was pretty funny. And you'd know that
+[00:39:41.540 --> 00:39:46.860]   that being green Bay and as crazy as they are over there. You know that ambulance
+[00:39:46.860 --> 00:39:50.940]   went lights and siren back to the stadium. Oh for sure. A hundred thousand
+[00:39:50.940 --> 00:39:54.420]   person. I think it's about a yard or two to get to the hospital. Well because it
+[00:39:54.420 --> 00:40:00.300]   wasn't they don't have hospitals there. He went to a CVS. Can I ask a question.
+[00:40:00.300 --> 00:40:04.020]   Can't wait. Maybe Hawk you'd know this because you travel with the team in
+[00:40:04.020 --> 00:40:08.020]   Perry you'd know this because you played professional sports. When that happens.
+[00:40:08.020 --> 00:40:12.260]   Did they just walk in with him and they're like he goes to the front of the
+[00:40:12.260 --> 00:40:16.700]   line. Right. Like yeah. Yeah. So there's somebody maybe sitting in the
+[00:40:16.700 --> 00:40:22.580]   waiter and being like my chest hurts. Like you got to wait. It is funny when
+[00:40:22.580 --> 00:40:27.900]   that's happened for me. When you show up in full uniform. Yeah they get on the line.
+[00:40:27.900 --> 00:40:34.940]   So if you're listening that's the bit. Yeah. In full head to toe. What's his
+[00:40:34.940 --> 00:40:41.060]   name. Dave John love. Yeah. You're a forty-nine or we're just Deja. Walk in
+[00:40:41.060 --> 00:40:46.140]   there and you will be front of the line. But let's say let's say you you're driving
+[00:40:46.140 --> 00:40:49.980]   your four wheeler drunk in Green Bay. Three wheelers over there. Three wheeler.
+[00:40:49.980 --> 00:40:54.220]   So you're driving your three wheeler drunk again. Why did I say drunk here in
+[00:40:54.220 --> 00:40:59.180]   Green Bay. It's obvious. Yeah. So you're driving your three wheeler around and
+[00:40:59.180 --> 00:41:04.980]   you've just t-bone curve and go flying and crack your head on the floor. Right.
+[00:41:04.980 --> 00:41:10.420]   Concrete sidewalk and you're dazed and confused. And your other drunk buddies
+[00:41:10.420 --> 00:41:13.980]   who are obviously riding alongside of you are like crap. Let's take Paul to the
+[00:41:13.980 --> 00:41:20.060]   hospital. So you got a pretty significant head injury. And you're sitting in some
+[00:41:20.060 --> 00:41:24.460]   kind of a waiting room. It's a bar. You're sitting in a waiting room at the
+[00:41:24.460 --> 00:41:30.020]   Green Bay CVS. Right. Right. Looking to be seen for your head injury. And you're
+[00:41:30.020 --> 00:41:33.900]   seeing stars, man. And you're it's not because of the alcohol. Birds are chirping
+[00:41:33.900 --> 00:41:40.260]   the whole bit. And in walks Christian Watson in full uniform on a random
+[00:41:40.260 --> 00:41:45.980]   Thursday night. You're like, I have a severe concussion. Because you got to you
+[00:41:45.980 --> 00:41:50.420]   just see I saw Christian Watson go in there in full uniform. Oh man, this guy's
+[00:41:50.420 --> 00:41:54.420]   messed up. Put him to the front of the line. That's got to be on bullet because he
+[00:41:54.420 --> 00:41:58.460]   yeah, he was you you're not kidding, John. He was where he was in absolute full
+[00:41:58.460 --> 00:42:03.340]   uniform. That's got to be super bizarre watching him walk into a hospital.
+[00:42:03.380 --> 00:42:08.460]   Yeah, trippy as hell. I'm sure they took pads in Jersey off. And that's it. And you
+[00:42:08.460 --> 00:42:13.620]   can do the seat. Let's go. Yeah. The I've had mine cut off before. I'm like, all
+[00:42:13.620 --> 00:42:17.580]   the equipment guys are going to be happy about this. Yeah. Just a crotch. Yeah.
+[00:42:17.620 --> 00:42:25.820]   We're in there for them. I've been there for my neck concussion and a broken nose
+[00:42:25.820 --> 00:42:33.660]   that was leading the wrong direction. Oh, it'll do it. Oh, OK. Oh, see. Damn. But the
+[00:42:33.660 --> 00:42:38.620]   other quote controversy from last night was was Josh Jacob scored a couple of
+[00:42:38.620 --> 00:42:43.980]   times. But on his first touchdown, he celebrated by putting his hands behind
+[00:42:43.980 --> 00:42:49.020]   his back. Like he was getting arrested. He claims it's an ode to a gospel song.
+[00:42:49.260 --> 00:42:55.220]   We were talking off air about that. And yeah, Mark was sharing some stories about
+[00:42:55.220 --> 00:43:00.740]   some exceptional PR folks. He's dealt with because I thought, OK, he's either he
+[00:43:00.740 --> 00:43:06.900]   planned, he obviously planned out that celebration. And he must have planned out
+[00:43:06.900 --> 00:43:11.260]   the excuse as well, knowing that that was coming. But then after talking, I was
+[00:43:11.260 --> 00:43:15.260]   like, you know what? Have you experienced anything? You know, not like that. But in
+[00:43:15.260 --> 00:43:19.060]   the same realm and Mark had a handful of stories of PR stepping in and going,
+[00:43:19.620 --> 00:43:23.500]   and that was in the first quarter, too. So they had some PR intern at a time
+[00:43:23.500 --> 00:43:27.220]   AI that find they found a gospel song and they're like, here's what you're going
+[00:43:27.220 --> 00:43:31.060]   to say. And just what an idiot that guy is. Yeah, that's not right.
+[00:43:31.060 --> 00:43:35.820]   Eddie. He said, here's the exact quote, quote, basically last week, we said the
+[00:43:35.820 --> 00:43:38.780]   first celebration when I score, I was going to thank God. That's what I did
+[00:43:38.780 --> 00:43:43.340]   last week. The second one was going to be break every chain. It's a gospel song.
+[00:43:43.780 --> 00:43:46.540]   That was going to be the next celebration. It's just a correlation.
+[00:43:46.540 --> 00:43:49.540]   But like I said, the media is going to run with it. They're going to make it
+[00:43:49.540 --> 00:43:51.940]   something that it wasn't. But it is what it is.
+[00:43:52.340 --> 00:43:56.500]   No, it's in front of you and break. And that even would look like your first,
+[00:43:56.540 --> 00:44:00.820]   although, you know, he likely wasn't handcuffed in front. It's not what they do.
+[00:44:00.820 --> 00:44:05.220]   But just what a knob. Yeah. Yeah.
+[00:44:06.260 --> 00:44:09.740]   It would be awesome if the commissioner was like, I'm putting you back on the
+[00:44:09.740 --> 00:44:11.660]   exact list. You're dumb. What are you doing?
+[00:44:11.660 --> 00:44:15.700]   At least pretend to be sorry. Right. It should be very sorry for what you did.
+[00:44:15.700 --> 00:44:20.620]   But you clearly aren't convicted of battery and given a deferred judgment
+[00:44:20.620 --> 00:44:23.980]   agreement on the destruction of property charge. So the NFL took them off the
+[00:44:23.980 --> 00:44:26.860]   commissioner example list in week seven. But the league has not closed its
+[00:44:26.860 --> 00:44:29.780]   investigation into violations of the personal conduct policy. So
+[00:44:29.780 --> 00:44:32.900]   you better stay away from marijuana. All right.
+[00:44:33.700 --> 00:44:41.060]   So double standard deluxe. You guys, I know a little I you guys have to make
+[00:44:41.060 --> 00:44:44.380]   your parroture parlay picks in a little bit. I did go with Green Bay last night.
+[00:44:44.380 --> 00:44:46.900]   It looked like the Panthers were going to back door cover. I thought I was
+[00:44:46.900 --> 00:44:51.860]   going to get screwed by another big lead gone wrong. So that I am one for one.
+[00:44:51.860 --> 00:44:54.420]   I got to get three more to the finish line. You guys can make your picks
+[00:44:54.420 --> 00:44:58.220]   what 640 or so. What do we have for one of us loses this weekend? 150?
+[00:44:58.220 --> 00:45:02.140]   Is it 200 a piece? I think we're up to now? Yeah. Yeah. I think so.
+[00:45:02.220 --> 00:45:06.300]   Something like that. We'll figure it out. Let's go to high V real quick.
+[00:45:06.300 --> 00:45:08.700]   We'll come back and I want to tell you guys about the latest on grand theft
+[00:45:08.700 --> 00:45:15.580]   auto six. Time now for the Vikings report presented by hi V. Hi V. The
+[00:45:15.580 --> 00:45:20.340]   official grocery partner of the Minnesota Vikings. Left tackle Brian O'Neill
+[00:45:20.340 --> 00:45:25.740]   joins the power trip next presented by hi V. If you're looking for value,
+[00:45:25.780 --> 00:45:30.420]   there's no better place than hi V. Along with low prices, you'll find better
+[00:45:30.420 --> 00:45:35.460]   quality meat, the freshest produce, specialty items and natural and organic
+[00:45:35.460 --> 00:45:39.380]   products because you shouldn't have to choose between quality and.
+[00:45:42.100 --> 00:45:46.820]   That sound. That's the national squash league. Pro teams, the world's best
+[00:45:46.820 --> 00:45:51.740]   players in rally so fast you'll forget to breathe. Season four is in full swing
+[00:45:51.780 --> 00:45:57.100]   and every match streams free on YouTube. Big hits, bigger rivalries and a front
+[00:45:57.100 --> 00:46:01.140]   row seat from wherever you are. Watch every match for free on YouTube.
+[00:46:01.580 --> 00:46:05.340]   Search national squash league and hit subscribe or follow live updates on
+[00:46:05.340 --> 00:46:07.580]   Instagram at nsl.sport.
+[00:46:10.980 --> 00:46:14.740]   Hey, it's Niall Rogers, host of Before the Moment, a Lincoln
+[00:46:14.740 --> 00:46:19.780]   original series. I'm driving across the country meeting some of today's most
+[00:46:19.780 --> 00:46:24.980]   fascinating artists. We're exploring the stories before the moment that
+[00:46:24.980 --> 00:46:30.180]   changed everything. This week, I'm joined by my friend, John Ledge.
+[00:46:30.260 --> 00:46:36.340]   How does music actually enter your mind? I'm not sure why or how the music
+[00:46:36.340 --> 00:46:41.460]   comes to me, but I think people who love music and write music, our brains
+[00:46:41.460 --> 00:46:46.460]   are just filled with music. Like we have listened to so much music. We've
+[00:46:46.460 --> 00:46:50.300]   been a part of so much music. I think of the story that I want to tell, the
+[00:46:50.300 --> 00:46:53.620]   mood that I want to create with the music. Start playing chords, see where
+[00:46:53.620 --> 00:46:59.700]   they lead me. Sometimes I'm just not even thinking about music, right? And I
+[00:46:59.700 --> 00:47:05.500]   hear this little thing and I go, Oh, that could be this. You know, you just
+[00:47:05.500 --> 00:47:09.500]   have to be ready for when the inspiration head comes. Yeah, experience
+[00:47:09.500 --> 00:47:14.940]   before the moment, a Lincoln original series on the iHeartRadio app, YouTube,
+[00:47:14.980 --> 00:47:17.540]   or wherever you get your podcast.
+[00:47:17.860 --> 00:47:21.340]   Happy birthday, America. It's time to celebrate and play your favorite
+[00:47:21.340 --> 00:47:26.300]   Las Vegas casino games by American owned spinquest.com. What's better than
+[00:47:26.300 --> 00:47:30.340]   fireworks than American pie? Getting a blackjack in the palm of your hand, and
+[00:47:30.340 --> 00:47:34.380]   you won't lose your fingers. Over 1000 games, including slots and live
+[00:47:34.380 --> 00:47:39.540]   dealers and $30 coin packs are on sale for 10 spinquest.com. Buy American
+[00:47:39.540 --> 00:47:41.260]   players for American players.
+[00:47:42.340 --> 00:47:45.540]   Spin Quest is a free to play social casino. Wait, we're prohibited.
+[00:47:45.580 --> 00:47:47.700]   Visit spinquest.com for more details.
+[00:47:48.540 --> 00:47:52.580]   Today, we tip our wrench to rock auto customer Noah. My first car was a
+[00:47:52.580 --> 00:47:57.500]   2001 Dodge Neon with a blue wing, and it happened to match my high school
+[00:47:57.500 --> 00:48:02.500]   sweetheart, who's now my wife, her black 2005. So my uncle has been in the
+[00:48:02.500 --> 00:48:06.740]   industry for well over 25 years. He recommended rock auto immediately to buy
+[00:48:06.740 --> 00:48:10.140]   my first set of breaks. I would recommend rock auto just because it's
+[00:48:10.140 --> 00:48:13.020]   simple. It's easy to find the parts you're looking for. It's all at a good
+[00:48:13.020 --> 00:48:13.460]   price.
+[00:48:18.540 --> 00:48:21.460]   So what's happening with your favorite KF and program, you make your voice
+[00:48:21.460 --> 00:48:24.540]   heard in the Bradshaw and Brian text line. Let us know what you have to say
+[00:48:24.540 --> 00:48:30.420]   by texting your message to 64686. That is 64686 standard message and data
+[00:48:30.420 --> 00:48:31.540]   rates apply.
+[00:48:32.660 --> 00:48:36.060]   Thanks, Echo. Mr Z is on the phone to tell us what's going on at the movies
+[00:48:36.060 --> 00:48:38.540]   this weekend. But we can't tell you who he is or I have to kill you. Hi,
+[00:48:38.540 --> 00:48:43.660]   Mr Z. Hey, everybody, what's up? What is going on in theaters this weekend?
+[00:48:44.860 --> 00:48:50.660]   Not mucho, because I think we mentioned this Halloween falling on a
+[00:48:50.660 --> 00:48:57.500]   Saturday that has a big effect on, you know, Saturday night attendance.
+[00:48:57.500 --> 00:49:01.700]   And so I think everyone just kind of ran away. The only thing being released
+[00:49:01.700 --> 00:49:12.180]   that is called Christmas with the cringles, not from a major. And it's not,
+[00:49:12.180 --> 00:49:16.260]   it's being released. They're kind of trying to pitch it since it's a Christmas
+[00:49:16.260 --> 00:49:19.300]   horn will be that they're going to get it up there for Halloween. But what they're
+[00:49:19.300 --> 00:49:24.020]   really doing is avoiding avoiding violent night two, which comes out in
+[00:49:24.020 --> 00:49:28.660]   December, which is actually a really good series. I love violent night. The last
+[00:49:28.660 --> 00:49:31.820]   one Christmas with cringles, not so much as far as good goes.
+[00:49:33.260 --> 00:49:37.980]   What about the only living pickpocket in New York with a John Tatero?
+[00:49:38.780 --> 00:49:43.900]   Yeah, really going to play really well in the Alamo draft houses of the world.
+[00:49:43.900 --> 00:49:47.980]   It's an art it's an art house film being released relatively limited. But but
+[00:49:47.980 --> 00:49:54.300]   yeah, it's it's a very good movie. But it's not for and then what's where to
+[00:49:54.300 --> 00:49:56.500]   look for it's not for national consumption.
+[00:49:56.940 --> 00:49:58.540]   I'm going to see it today. I can't wait.
+[00:49:59.420 --> 00:50:00.580]   Yeah, yeah, Tatero's great.
+[00:50:00.900 --> 00:50:02.060]   Yeah, he's outstanding.
+[00:50:02.340 --> 00:50:07.660]   97% on Mr Z's favorite website rotten tomatoes, 97% for that movie.
+[00:50:07.780 --> 00:50:13.020]   Sure. Mr Z for people looking to watch something Saturday night after the kids
+[00:50:13.020 --> 00:50:15.740]   are gone to bed and they want to watch something scary. What's your favorite
+[00:50:15.740 --> 00:50:19.260]   scary move of all time that maybe people in their twenties or early thirties
+[00:50:19.260 --> 00:50:19.900]   never saw?
+[00:50:22.100 --> 00:50:27.780]   Well, I mean, most people it's a let me go back. Well, the one stock answer I
+[00:50:27.780 --> 00:50:30.820]   have and especially for young people because they think Freddy Krueger is
+[00:50:30.820 --> 00:50:34.900]   kind of a joke like the cartoon character, the original nightmare on Elm
+[00:50:34.900 --> 00:50:38.500]   Street. I was I one of my favorite horror movies of all time.
+[00:50:38.980 --> 00:50:42.700]   I know everyone knows that, but it's kind of like the Rocky series where the
+[00:50:42.700 --> 00:50:45.740]   first Rocky like we talked about with I play Rocky coming out. The first
+[00:50:45.740 --> 00:50:48.940]   Rocky was a great movie and then it kind of ended up getting kind of
+[00:50:48.940 --> 00:50:53.620]   ridiculous into a campiness later and a neighbor on Elm Street is the same way
+[00:50:53.620 --> 00:50:59.180]   that if you sit and watch that original movie, as far as scary, you
+[00:50:59.180 --> 00:51:03.340]   know, obsession from last year, everyone in the world knows obsession.
+[00:51:03.420 --> 00:51:08.060]   I'm still kind of amazed that that movie was as good as it was and that she
+[00:51:08.060 --> 00:51:11.620]   specifically should have been nominated for best actors for that film that
+[00:51:11.620 --> 00:51:15.180]   Curry Barker films. Sure. In fact, he has one coming out next May that I can't
+[00:51:15.180 --> 00:51:21.220]   wait to see called some ghost something about ghosts. But yeah, I don't
+[00:51:21.220 --> 00:51:24.300]   have I don't have anything really cool in my back pocket. But Nightmare on
+[00:51:24.300 --> 00:51:25.660]   Elm Street was a great movie.
+[00:51:26.180 --> 00:51:29.300]   Well, since he just kind of asked you about younger people looking at older,
+[00:51:29.300 --> 00:51:32.980]   scary movies, I know you had mentioned over text that you had some kind of a
+[00:51:32.980 --> 00:51:36.580]   note about how studios are catering specifically to younger people now in
+[00:51:36.580 --> 00:51:38.420]   2026. How are they doing this?
+[00:51:38.740 --> 00:51:42.580]   I hope they will in the studios, everything takes forever in the in the in
+[00:51:42.580 --> 00:51:47.780]   the conglomerate world. And what I what I what I what I what I was referencing
+[00:51:47.780 --> 00:51:52.220]   was specifically obsession. I got a chance to listen to Curry Barker talk about
+[00:51:52.220 --> 00:51:55.140]   it in the lead. And he was talking about how he made obsession. He made
+[00:51:55.140 --> 00:51:59.980]   obsession with no notes, no anything. And Jason Bloom was there kind of that
+[00:51:59.980 --> 00:52:04.660]   that helped him that he he spent years he's only 27 now making YouTube
+[00:52:04.660 --> 00:52:08.140]   content and getting immediate reaction from people like that sucked. That was
+[00:52:08.140 --> 00:52:12.300]   funny. That was good. I liked that. So that when it when he made obsession,
+[00:52:12.300 --> 00:52:19.100]   which ended up doing over 300 million dollars worldwide, that the studios
+[00:52:19.100 --> 00:52:22.340]   finally got their hands up. It wasn't one of the big studios. It was focus
+[00:52:22.820 --> 00:52:26.540]   that bought it at Toronto Film Festival. And then they started doing some
+[00:52:26.540 --> 00:52:30.300]   testing with audiences like studios do. And he kept saying, Oh, they would say,
+[00:52:30.300 --> 00:52:33.500]   we want this. And like, no, you don't. You think that's what you wanted a movie,
+[00:52:33.500 --> 00:52:36.980]   but that's not what you want. And he stuck to it. And he released obsession
+[00:52:36.980 --> 00:52:40.980]   that actually was in tune with what young people wanted. Hence, it became
+[00:52:40.980 --> 00:52:48.060]   huge, similar to a 24 being the only studio to to do back rooms. Iron
+[00:52:48.060 --> 00:52:52.620]   long having to my markiplier having to independently distribute iron long
+[00:52:52.780 --> 00:52:57.660]   because no studios were wanting to you know, the leader who's markiplier.
+[00:52:57.980 --> 00:53:02.740]   And so we're fine. And even even recently with Wild Woods or or you can see
+[00:53:02.740 --> 00:53:06.740]   everything where we're those big studios that are starting to force to actually
+[00:53:06.740 --> 00:53:11.700]   make movies that people want to see rather than important movies or and all
+[00:53:11.700 --> 00:53:14.620]   that stuff. So although all of those movies are mentioned are all independent
+[00:53:14.620 --> 00:53:21.460]   released by non major theatricals. And so we're hoping that that there's some
+[00:53:21.460 --> 00:53:24.580]   people that are actually saying, well, what do people really want to go see?
+[00:53:25.100 --> 00:53:29.980]   And and and we lay in Curry Barker being one of them. A great example of
+[00:53:30.020 --> 00:53:33.300]   somebody who actually knew what young people want to see rather than forcing
+[00:53:33.540 --> 00:53:35.140]   garbage that they don't want to see.
+[00:53:38.060 --> 00:53:41.020]   By the way, one last thing, because obviously we've been talking in the last
+[00:53:41.060 --> 00:53:44.340]   couple of weeks about the documentary, you can see everything. But another
+[00:53:44.380 --> 00:53:47.860]   documentary comes out today called Everest, the other side.
+[00:53:49.060 --> 00:53:52.180]   And this is in theaters, right? This is the one about trying to ski down one
+[00:53:52.180 --> 00:53:53.180]   side of Everest.
+[00:53:53.900 --> 00:53:56.860]   Yeah, very, I got to see, I didn't see the whole thing, but I got to see a
+[00:53:56.860 --> 00:54:02.740]   bunch of it. It truly is. It's a really cool movie, but it's also beautiful.
+[00:54:02.740 --> 00:54:06.140]   It's shot. It isn't shot for IMAX, but it's going to be playing in a lot of
+[00:54:06.140 --> 00:54:10.860]   IMAX theaters. So it's, you know, gorgeous scenery from, you know, from the top of
+[00:54:10.860 --> 00:54:16.820]   Everest. And then this couple that it's really interesting that they, one of the
+[00:54:16.820 --> 00:54:19.540]   points of the movie is when they're climbing Everest, trying to get to the
+[00:54:19.540 --> 00:54:22.820]   top and the guy kind of looks at the camera and says, you know, once, you
+[00:54:22.820 --> 00:54:26.220]   know, it's hard to get there. And once we get there, we're going to try to ski
+[00:54:26.220 --> 00:54:31.300]   back down. And so it's, it's, it's, it's, it's a nice, low entertaining movie.
+[00:54:31.820 --> 00:54:33.980]   Not for everybody, but really beautiful.
+[00:54:34.780 --> 00:54:36.820]   All right. Thanks, mr. Z. Appreciate it.
+[00:54:37.380 --> 00:54:38.980]   All right, guys, back to you later back.
+[00:54:40.020 --> 00:54:42.580]   All the way. Oh, Chris, you'll like this. I just looked up the rotten tomato
+[00:54:42.580 --> 00:54:47.380]   score for Christmas at the cringles. Yeah, the horror comedy movie that he
+[00:54:47.380 --> 00:54:51.500]   was just talking about. 17 reviews. Yeah, let me hit this.
+[00:54:52.380 --> 00:54:55.860]   17 reviews. What percent is it after 17 reviews?
+[00:54:56.140 --> 00:54:58.500]   Percent, by the way, for Dan Orlofsky is out of 100.
+[00:54:58.660 --> 00:55:00.220]   Eight. Four.
+[00:55:01.340 --> 00:55:04.220]   Eleven. Twelve. Nine.
+[00:55:04.740 --> 00:55:08.140]   You guys are all single digits are barely into the double digits.
+[00:55:08.140 --> 00:55:10.100]   Nobody has faith in this movie. No. Nope.
+[00:55:12.580 --> 00:55:18.620]   Zero. Zero. Oh, yeah. I hit it when they do that zero.
+[00:55:18.620 --> 00:55:22.740]   I don't want to see scary Christmas movies on the exact opposite side.
+[00:55:22.740 --> 00:55:27.300]   The original Nightmare on Elm Street. 93%.
+[00:55:27.300 --> 00:55:29.460]   It completely holds up. Wow. It completely does.
+[00:55:29.460 --> 00:55:31.580]   I didn't know that. It's real good.
+[00:55:31.580 --> 00:55:34.300]   You can watch that one. It's not too scary.
+[00:55:34.300 --> 00:55:35.380]   Yeah. Watch it with Lou Dog.
+[00:55:35.380 --> 00:55:36.380]   You just won't sleep again.
+[00:55:36.380 --> 00:55:37.780]   Yeah, ever, ever.
+[00:55:37.780 --> 00:56:05.260]   Got a rewatch. The greatest opening of all time and I say it every year at this time is the opening scene to Friday. The 13 part six is so bad. This is the lightning bit. The lightning bit. It's so freaking good. Before the game last week, we had a bunch of people over for the Vikings game. I was like, just pause. We're going to fire this up on the big screen. Everyone was diamond hard. I love it. And I was, I was convinced that the Vikings were going to go out. I mean, we're going to get to it, right. We're going to get to it.
+[00:56:05.260 --> 00:56:11.540]   And I was I was convinced that the Vikings were going to smash.
+[00:56:11.540 --> 00:56:15.620]   They did not want, though. They did. They sure didn't. I'll take it. But matters, right?
+[00:56:15.620 --> 00:56:33.220]   All right. What really matters is brought you by Ovo Lasek and Len's Dr. Mark Lovenov and Dr. David Whiting. Go get Lasek and Ovo Lasek and Len's game changer over. Thank you. All right. We got to get through the sports quickly because I want to hear about GTA six. Yeah, this will be what really matters for you.
+[00:56:33.220 --> 00:56:35.220]   All right. Let's combine these two stories. Parrish.
+[00:56:35.220 --> 00:56:42.580]   Yes. So the Islanders won last night, four, three over the wild and overtime Matthew Schafer, the number one pick last year scores and overtime.
+[00:56:42.580 --> 00:56:54.660]   Everyone says he's the real deal is special. The wild head goals by Eric Sinek, Hughes and Baldi. They are at Washington to 30 on Sunday. OK, that's the actual on ice stuff. Yes.
+[00:56:54.660 --> 00:57:04.980]   Maybe the bigger picture, of course, is Quinn Hughes has yet to sign an extension. But a lot of people think he's waiting for Dylan Larkin in the Dylan Larkin situation got crazy yesterday.
+[00:57:04.980 --> 00:57:20.100]   The first story came out that they were going to hold him out that they were holding him out for, quote, trade related reasons and then a handful of hours later, they said, F that were suspending him without pay because Dylan Larkin said, I'm not playing for you guys anymore.
+[00:57:20.100 --> 00:57:32.820]   So he made that clear to Detroit. Detroit says you are suspended without pay $41,000 a day during this suspension. So it's just flat out over over in Detroit for Dylan Larkin.
+[00:57:32.820 --> 00:57:45.540]   Yeah. And if they're going to, well, let's just say this, especially without pay, isn't surprising that a team has some money. But yeah, the other side too is that you don't want him to get hurt.
+[00:57:45.540 --> 00:57:54.020]   Right. He doesn't want to get hurt. They don't need him to get hurt because then they're stuck in a total soap opera with an injured guy that doesn't want to be there.
+[00:57:54.020 --> 00:57:59.860]   But usually if they're holding you out or if they pull you off the ice, that means something's close.
+[00:57:59.860 --> 00:58:08.340]   Well, it was his agent that communicated to the Red Wings that he's not going to be playing.
+[00:58:08.340 --> 00:58:14.860]   Oh, so he's forcing their hand. He's trying to force them. He's done. It's all him. He told them that they're not playing.
+[00:58:14.860 --> 00:58:20.180]   Then he's yeah, exactly. He's sick of it. He doesn't want to be around the soap opera. Either he wants this to end.
+[00:58:20.180 --> 00:58:34.100]   He said that they've given them ample time to do something and he's not going to play until until they train him, which is why they're doing the why they suspended them, why they're not paying him and why this.
+[00:58:34.100 --> 00:58:42.980]   Yeah, as Corey said, the situation is getting getting pretty messy over there. And I would have to hopefully think it's imminent, maybe even towards us.
+[00:58:42.980 --> 00:59:03.260]   But how about this? How about this, Parrish? I want you to respond to this. So their interim GM in Detroit said, I've got to give Dylan a lot of credit. He went out and played hard for us. Dylan's been here for 12 years. But in terms of how long he's sitting out, I can't put a timeline on it with the teams on his list. A trade is difficult.
+[00:59:03.260 --> 00:59:11.300]   End quote. I mean, I mean, I think he's, he's still just trying to keep it to where he wants to get the best deal possible public leverage by saying it's hard.
+[00:59:11.300 --> 00:59:26.500]   Just by saying that because when something like this happens, all the teams on that list are going, OK, maybe we can start, you know, lowball on him a little better. Hopefully get a better deal for us. So, so, yeah, he's just trying to leverage that right now to say it's tough.
+[00:59:26.500 --> 00:59:36.980]   It's might be just because they're asking prices so high is probably why it's so tough or who they're asking for from these teams is players that obviously those teams aren't willing to give up.
+[00:59:36.980 --> 00:59:44.140]   So, so, yeah, he's, that's, that's just playing his hand. That's that's, yeah, exactly. I was still, by the way, looking to that all that way.
+[00:59:44.140 --> 00:59:50.740]   What a steal Dylan Larkin in the fourth year of an eight year deal. Eight years. He gets paid 8.7 million a year. What a steal.
+[00:59:50.740 --> 01:00:04.380]   Absolutely. Yeah. Absolutely. For number one, sentiment, that's an incredible paycheck. But what really matters is GTA six edge magazine, who published a comprehensive interview with developers from rockstar games.
+[01:00:04.380 --> 01:00:33.380]   Officially revealing the true scale of the open world of the upcoming Grand Theft Auto six. Oh, my God, I can't wait to keep talking about this from the production team confirmed that the land area of the fictional state of Leonidas is almost equal to the combined size of the game zones in Grand Theft Auto four.
+[01:00:33.380 --> 01:00:48.100]   Grand Theft Auto five and Red Dead. Come on. Are you kidding me? That's insane. That's insane. And Parrish would know how big that is because he used to ride the horse from one corner to the other because he didn't know that fast travel was a thing.
+[01:00:48.100 --> 01:01:03.020]   I can't wait to see how long it takes me to get from one driver to see Arthur riding a horse again. Damn right. Hey, you guys know in the past, you guys that have played GTA. You guys have known in the past, you know, you can, you can wreak havoc. You can get multiple stars at police or after you.
+[01:01:03.020 --> 01:01:17.020]   But if you can get the stars to go away, you move on with your life, right? Somebody posted a couple of days ago and I don't know if this is new news or maybe just the first time I saw it, but now police like, no, which car you were driving, what clothes you were wearing.
+[01:01:17.020 --> 01:01:29.020]   So like you, if you get a truly ditch it, you might have to switch cars, switch clothes. Like the detail on these freaking games is so like, it's just, it's mind blown.
+[01:01:29.020 --> 01:01:38.020]   You don't wonder it takes 15 years. They thought of everything because like, can't wait. It's like you said in the older games, if you put the code in, you could be surrounded by the SWAT team.
+[01:01:38.020 --> 01:01:49.020]   You put the tanks. They just turned on a go on with their life. There was always something that made me laugh about that. The you, it would be a warehouse district just filled with tanks and helicopters.
+[01:01:49.020 --> 01:02:06.020]   And if you got the stars to go away, the tanks would just slowly drive away. Right. Nothing to see here. I'll go back to the shop. False alarm. Sorry. We took tanks to the city. The new code says here, you just tell him you're listening to a gospel song.
+[01:02:06.020 --> 01:02:34.020]   There you go. Oh, oh, okay. Now, never mind. Man, there's a, um, if you go to, uh, Ian. Game and GPU.com Jesus, I know. E and G P U.com. They show the actual size of Grand Theft Auto six compared to the other three games I named, including the size of the island of, you know, red dead redemption to it's like Cuba and the United States.
+[01:02:34.020 --> 01:02:52.020]   So those of us that have played essentially the entire series, I remember, you know, vice city was small enough where you could, you could know the entire map almost by memory. It's like, all right, I take a left here. I go take it right here. But this will be the pizza place. You kind of knew the map in your head.
+[01:02:52.020 --> 01:03:09.020]   A map this big. It's going to be so overwhelming. The, the urge to just freaking waste hours exploring versus actually start doing the missions and the actual storyline. It's going to be so hard not to spend the first two weeks just bleeping around.
+[01:03:09.020 --> 01:03:17.020]   Just throwing bricks through windows, correct, stabbing prostitutes, killing Gators. It's going to be the best play the game at all.
+[01:03:17.020 --> 01:03:28.020]   It's going to be like Feb six and I'm going to go, I should probably do the opening mission. Yeah, correct. I should get off this three months. I should get off this hooker.
+[01:03:28.020 --> 01:03:46.020]   Man, I can't wait. What do we, what is it? Is it 19th Zacho 18th 18th and we are so freaking close when it comes to doing it. But those commercials during football last week made me have a little bit of an urge to buy the game console.
+[01:03:46.020 --> 01:04:09.020]   Just to be able to play this. You have to. I don't have the time. Honestly, I don't. You do. We're all busy. Some of us have stuff to do after 901. I promise you. You think how many hours you put in a red dead too, right? Don't. I didn't have a child. Yeah. Don't bring up right. Yeah. I let the boy walk. My wife wants to play. Yeah.
+[01:04:09.020 --> 01:04:20.020]   Oh, let's turn her and I will be playing. I would give up six months of Grand Theft Auto six if they would do red dead redemption three. Yes. Same. Yes. Yeah.
+[01:04:20.020 --> 01:04:29.020]   Yeah. As long as they don't bring back that son of a bitch, Mike, I would kill all that guy. He go not getting to kill that man was so frustrating.
+[01:04:29.020 --> 01:04:36.020]   You guys are forgetting that the same team put together this storyline and the storyline for Grand Theft five was awesome. Yeah.
+[01:04:36.020 --> 01:04:37.820]   Bright Trevor Phillips was awesome.
+[01:04:37.820 --> 01:04:40.260]   You can't get a Sudsy HJ in the new one.
+[01:04:40.260 --> 01:04:41.420]   You don't know that.
+[01:04:41.420 --> 01:04:42.220]   Well played.
+[01:04:42.220 --> 01:04:43.940]   They've thought of everything.
+[01:04:43.940 --> 01:04:43.940]   Arthur's great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great, great,
+[01:04:43.940 --> 01:05:02.900]   Maybe Arthur's great, great, great, great, great, great, great, great good.
+[01:05:02.900 --> 01:05:19.220]   Good Morning, on 494 Southbound from the Fish Lake Interchange to Highway 212, it's 13 minutes.
+[01:05:19.220 --> 01:05:45.940]   494 Westbound from 94, 694 to Highway 212, it's 24 minutes.
+[01:05:45.940 --> 01:05:51.100]   Free match for free on YouTube, search National Squash League, and hit subscribe or follow live
+[01:05:51.100 --> 01:05:53.900]   updates on Instagram at nsl.sport.
+[01:05:53.900 --> 01:06:02.540]   Hey, it's Niall Rogers, host of Before the Moment, a Lincoln Original Series.
+[01:06:02.540 --> 01:06:07.900]   I'm driving across the country meeting some of today's most fascinating artists.
+[01:06:07.900 --> 01:06:13.220]   We're exploring the stories before the moment that changed everything.
+[01:06:13.220 --> 01:06:19.380]   This week, I'm joined by my friend, John Ledge, so you're helping me write books.
+[01:06:19.380 --> 01:06:24.140]   What made ordinary people become the one song from those soundchecks you knew you had to
+[01:06:24.140 --> 01:06:25.140]   make your own?
+[01:06:25.140 --> 01:06:26.740]   I was just writing for the Black IPs.
+[01:06:26.740 --> 01:06:30.300]   I wasn't expecting to write something for myself in that session, but I wrote the hook
+[01:06:30.300 --> 01:06:35.180]   for ordinary people and I record a demo and I'm like, I would rather keep ordinary people
+[01:06:35.180 --> 01:06:36.180]   for myself.
+[01:06:36.180 --> 01:06:40.620]   This station in Chicago, WGCI, they start playing it before we're promoting it.
+[01:06:40.620 --> 01:06:45.020]   The song spoke for itself, it became the defining song from my first album.
+[01:06:45.020 --> 01:06:49.220]   I knew it was special, but you never know how special it's going to be and how much impact
+[01:06:49.220 --> 01:06:52.860]   it's going to have in people's lives, and you never believe that you're going to actually
+[01:06:52.860 --> 01:06:55.220]   change people's lives with a song.
+[01:06:55.220 --> 01:07:01.820]   Experience Before the Moment, a Lincoln Original Series on the iHeartRadio app, YouTube, or wherever
+[01:07:01.820 --> 01:07:04.660]   you get your podcast.
+[01:07:04.660 --> 01:07:10.300]   Hanging out at the pool is great, relaxing and playing Vegas style games on my phone at
+[01:07:10.300 --> 01:07:12.020]   the same time.
+[01:07:12.020 --> 01:07:15.060]   Drinking one hand and a blackjack in the other.
+[01:07:15.060 --> 01:07:16.940]   It's all at SpinQuest.
+[01:07:16.940 --> 01:07:20.340]   Over a thousand games, including your favorite slots and table games.
+[01:07:20.340 --> 01:07:22.740]   Be cool with this summer special.
+[01:07:22.740 --> 01:07:27.500]   New players get $30 point packs for 10 at SpinQuest.com.
+[01:07:27.500 --> 01:07:29.780]   SpinQuest is free to play social casino.
+[01:07:29.780 --> 01:07:34.580]   Avoid where prohibited, visit spinquest.com for more details.
+[01:07:34.580 --> 01:07:37.660]   Today we tip our wrench to rock auto customer Noah.
+[01:07:37.660 --> 01:07:43.100]   My first car was a 2001 Dodge Neon with a blue wing and it happened to match my high
+[01:07:43.100 --> 01:07:46.820]   school sweetheart who's now my wife, her black 2005.
+[01:07:46.820 --> 01:07:50.260]   So my uncle has been in the industry for well over 25 years.
+[01:07:50.260 --> 01:07:53.860]   He recommended rock auto immediately to buy my first set of brakes.
+[01:07:53.860 --> 01:07:56.580]   I would recommend rock auto just because it's simple.
+[01:07:56.580 --> 01:08:01.820]   It's easy to find the parts you're looking for, it's all at a good price.
+[01:08:01.820 --> 01:08:27.380]   It's easy to find the parts you're looking for, it's easy to find the parts you're looking
+[01:08:27.380 --> 01:08:28.380]   for.
+[01:08:28.380 --> 01:08:32.980]   It's easy to find the parts you need, it's easy to find the parts you need, it's easy
+[01:08:32.980 --> 01:08:39.020]   to find the parts you need, it's easy to find the parts you need, it's easy to find the
+[01:08:39.020 --> 01:08:45.780]   parts you need, it's easy to find the parts you need, it's easy to find the parts you need,
+[01:08:45.780 --> 01:08:50.060]   it's easy to find the parts you need, it's easy to find the parts you need, it's easy
+[01:08:50.060 --> 01:08:55.260]   to find the parts you need, it's easy to find the parts you need, it's easy to find the parts
+[01:08:55.260 --> 01:08:57.700]   you need, it's easy to find the parts you need, it's easy to find the parts you need, it's
+[01:08:57.700 --> 01:09:24.700]   No. Yep. Sometimes I could bite you in the ass. Sometimes it could benefit you. I never know. Correct. You lock it in early. By the way, moving forward. I thought about this when I was making the rest of my picks. Should we be allowed to pick the Thursday game, submit the Thursday game, but then still wait till Friday morning to make the other three picks? Sure. I don't care. Yeah, there's no reason. I mean, it's not really an advantage. Just the only difference, I guess, is like, if you make the Thursday pick and you get it wrong.
+[01:09:25.700 --> 01:09:42.700]   And your other three picks are absolutely worthless. But it's part of the fun is to then see your record at the end of the year. I know. Sure. I guess that's the only thing is, I guess you still want to see how many you would have had. Yeah, you could lock in the next morning, I guess. But you still need to turn in your pick. Okay. Yeah.
+[01:09:42.700 --> 01:09:54.700]   Because I was like, Do I want to wait until tomorrow? I don't know if I can do that. So I just made the other three picks last night. All right. All right. Who's ready? Johnny Cape? Yes, sir. All right. Mine are bills laying three against the rest.
+[01:09:54.700 --> 01:10:11.700]   Three against the Ravens. Raiders getting a point in a half at New York Jets. Twisting at Lance getting two and a half again at Tampa. And then Rams laying six and a half against the garbage chargers.
+[01:10:11.700 --> 01:10:22.700]   Nobody believes the chargers are going to figure it out. But the Rams haven't at this point, the Rams aren't a great team, but they are so talented that they have to be better than they.
+[01:10:22.700 --> 01:10:51.700]   Haven't laid power trip parlet. You almost had it. Was it last week? You went three. Oh, and one. That push. Yeah. The push cost you. We said you have to go four for four. You can't have any pushes. And you went three. Oh, and one last week did not get the money. Very, very close sauce. Me. I have like John. I have the Raiders plus one and a half at the Jets. I also have the Falcons plus two and a half at Tampa. I have the Broncos plus one and a half at home versus Kansas City.
+[01:10:51.700 --> 01:11:09.700]   And I have Jacksonville minus 10 over the Colts who will likely hold out Jonathan Taylor on Sunday. Three dogs in a huge favor. You are correct sir. I'm trying some new here. I like it. I think they're covering. That's a big, juicy spread. But I still like them. Chris.
+[01:11:09.700 --> 01:11:29.700]   I as well took Vegas plus a point. Half of the Jets. All three of you on Vegas. Well, I got to cheer for the Jets. I also took Atlanta plus two and a half at the Tampa Bay Buccaneers. But here's where I get crazy. Oh, it's a hard week, man. There weren't a lot of games that seemed fun to me. True. Tennessee plus 12 and a half. It's Cincinnati.
+[01:11:29.700 --> 01:11:47.700]   That's such a lot of points, man. Yeah, it is. And I took the Colts plus 10 at Jacksonville. I know it's cray cray, but I'm good at that stuff. You do love big spreads, man. You have four dogs. That's right. Yeah. That's right. Gracie.
+[01:11:47.700 --> 01:11:56.700]   I like what the big spreads are. Those are a coin flip. They are. That's right. Thank you. All right.
+[01:11:56.700 --> 01:12:25.700]   The Chicago Bears traded for all pro defensive tackle. Jeffrey Simmons. I gave up too much. They gave up a first in twenty seven, a first in twenty eight and a fourth in twenty seven. They also get back a fifth in twenty. But I did not know this. And I all this is one of those. Like, I'm like, are we sure this is right? But this is what ESPN said. Did you see that in the common draft era? So since 1967 he is the first ever defensive tackle to be traded
+[01:12:25.700 --> 01:12:46.700]   for multiple first round picks. Isn't that nuts? Yeah, that is insane. Yeah, I saw that yesterday when it first defensive tackle in NFL history, common draft era to be traded for multiple first round picks. Is he the second guy in like the last 10 years that the Bears have traded to first round picks for defensive player?
+[01:12:46.700 --> 01:13:07.700]   Because did they trade to him pick for Khalil Mack, but Mike is technically a linebacker and he's you're saying a defensive line tackle. Specifically defensive tackle. I'm sure there's been as rush. Oh, yes, rush or multiple first rounders, but specifically a tackle. But, you know, he is what Simmons is twenty nine years old.
+[01:13:07.700 --> 01:13:27.700]   I stepped in touch that call. He should have been out of the game years ago, but he can't stay home because he hates his wife. The bears offense is extremely good. Their defense suspect. That was a pretentance. I was trying to. I was trying to emphasize the wrong syllable.
+[01:13:27.700 --> 01:13:41.700]   The way they are damn close. This makes them a lot better. So I love them making the move once. I just shout out to whoever wrote that line. He should have been out of the game years ago.
+[01:13:41.700 --> 01:13:59.700]   He can't stay home because he hates his wife. He should have been out of the game years ago, but he can't stay home because he hates his wife. Nobody can deliver that line. You're laughing so hard. They're about to piss. That's so good.
+[01:13:59.700 --> 01:14:10.700]   But he can't stay home because he hates his wife. And this is the law game. This, you know, of course, this isn't this football. He's talking about being a lawyer. Yeah.
+[01:14:10.700 --> 01:14:33.700]   Yeah. Should have been out of the game years ago. I think this is great. Love that. Also shows how people around the league do not believe the Vikings are for real. And they wouldn't make if the Vikings were a unbelievable force. They might be hesitant to give up those picks, but they think they can track the Vikings down and they can make a deep run.
+[01:14:33.700 --> 01:14:43.700]   With an offense like that, you can beat anybody. But the Vikings, they have a cheap quarterback. What people are forgetting, and I know it's got a real negative even around here lately.
+[01:14:43.700 --> 01:14:51.700]   With a defense as powerful as the Vikings have, and aggressive as the Vikings have, they can beat anybody also.
+[01:14:51.700 --> 01:14:57.700]   Yeah. Which is why they need to make a move. I think they went on something. I do too. Same. I do too.
+[01:14:57.700 --> 01:15:07.700]   I'd take a money line if we were in Vegas. I think my defense is hot garbage. Hot garbage to the ball. We were biting the ball. And they have that going for them, which is nice.
+[01:15:07.700 --> 01:15:20.700]   Well, here's how garbage they are. Ooh, the Vikings give up the fewest points in the NFL at 12.3 a game. How many points a game do you believe the Lions give up?
+[01:15:20.700 --> 01:15:29.700]   I mean, 28, 27, 25, 25, 23. Oh, that guy is a guest too.
+[01:15:29.700 --> 01:15:33.700]   So, Chris, so you said 28 pairs. You said 27. Correct.
+[01:15:33.700 --> 01:15:39.700]   You guys are both wrong. 27 and a half. Right. We're away in the middle.
+[01:15:39.700 --> 01:15:45.700]   But that is 26th in the NFL. Pass yards are last. I believe you're second to the last.
+[01:15:45.700 --> 01:15:59.700]   However, here's the flip side. Yes. The Lions offense puts up the second most yards a game behind only the Rams and only by two yards. They put up three 97.3 a game, just two yards fewer than the Los Angeles Rams of Anaheim.
+[01:15:59.700 --> 01:16:05.700]   So they are going to put up a ton of yards. Maybe put up a ton of points. We'll see. But the Vikings is obviously outstanding.
+[01:16:05.700 --> 01:16:18.700]   Jared Gough, 14 touchdowns, no interceptions, a 1 12.5 passer rating. That is the highest among the quarterbacks who have played all games this season, right? Like the Drew locks of the world or whatever are higher.
+[01:16:18.700 --> 01:16:27.700]   But the top three for the players that have played all season long. Gough number one, borough number two, perty number three. But Gough has been almost perfect.
+[01:16:27.700 --> 01:16:41.700]   And that's a mere Gibbs guys. Pretty very good. It's not like the Vikings defense has faced, you know, the Tom Brady studs, but there has not been a quarterback. The Vikings have faced this year that has not looked confused.
+[01:16:41.700 --> 01:16:56.700]   Most of the game. And so this is truly one of those games where it is strength against weakness, weakness against strength with a struggling offense against a terrible defense and a freaking on the offensive side.
+[01:16:56.700 --> 01:17:07.700]   The offensive side of the ball for the lions. Everyone just assumes they're going to score mid twenties because they're extremely good, but they have not faced a defense like Minnesota.
+[01:17:07.700 --> 01:17:20.700]   So it's our defense versus their offense, but this is this is why this is the perfect analogy and sauce you can help us with this one in a fight between an unstoppable force and an immovable object who wins and why gravity.
+[01:17:20.700 --> 01:17:30.700]   But what really matters is this. Listen to this review, gentlemen, as you're looking for something to watch this weekend. It has taken a while.
+[01:17:30.700 --> 01:17:41.700]   But I think the torch may finally have been passed from Anthony Hopkins as the screen's most profoundly unsettling and instantly absorbed by the cultural imagination serial killer.
+[01:17:41.700 --> 01:17:59.700]   From Hannibal's hither to unfailing hands. It has been thrown to Stephen Graham. Great actor who plays multiple murder, jerk Walter, in the new 10 part psychological thriller, knock turn, N O C T U R N E on Apple TV.
+[01:17:59.700 --> 01:18:09.700]   Four and a half out of five stars from the Guardian. So if you're like, who the hell is Stephen Graham? He was the lead in adolescence. And he also was the guy that looks like charge and boardwalk empire.
+[01:18:09.700 --> 01:18:18.700]   Is it all component? Yeah. Yeah, I'll component in boardwalk empire. You'll be great actor. Great actor. Yeah, apparently.
+[01:18:18.700 --> 01:18:26.700]   And I believe leave Schreiber is in this as well. You are correct. And he plays a serial killer for 10 episodes and people are loving it.
+[01:18:26.700 --> 01:18:38.700]   Loving it. It's a knock turn. Watch it this weekend. Scary pants off yourself. Man, the last 10 minutes of that adolescent or maybe the hardest I've cried in my entire life.
+[01:18:38.700 --> 01:18:53.700]   Yeah, that's crazy. It's time to penis in the door. That is also that. Yeah. You did. I watched it happen. You did it on purpose. You were there. I have a ring camera and a REM camera. Wow. Good for you. Thank you.
+[01:18:53.700 --> 01:19:00.700]   The wolves host the Clippers tonight at seven o'clock. The wolves are three and two. The Clippers are terrible. They're one and three.
+[01:19:00.700 --> 01:19:07.700]   We'll see if Rudy can score a field goal tonight. The rim. He's kicking at the rim. Yeah, he is.
+[01:19:07.700 --> 01:19:15.700]   No, he gets a lot of rebounds. And then he dribbles and spins and spins and dribbles.
+[01:19:15.700 --> 01:19:25.700]   And then looks like a baby giraffe. Very slow. See the Como Zoo to put their giraffe down. Jeez. That's got to take a long time.
+[01:19:25.700 --> 01:19:33.700]   Yeah. But you know what helped it fall. Gravity. Gravity.
+[01:19:33.700 --> 01:19:40.700]   Yeah, something like 17 years old or something. Remember the opening scene of the hangover three? Not really.
+[01:19:40.700 --> 01:19:56.700]   He's driving along with the giraffe and the trailer behind him. Oh, yeah. Skeeter. Skeeter. Yep. Skeeter. The 16 or 17 year old giraffe euthanized following months of declining health at the Como Park Zoo.
+[01:19:56.700 --> 01:20:09.700]   Did it attack somebody? Buddy. Have you ever watched giraffe fight? Yeah. It's insect. The noise is unsettling. Yes.
+[01:20:09.700 --> 01:20:16.700]   Yes. Thank you. Yeah. And also with you. What do they do with him now? Eat him.
+[01:20:16.700 --> 01:20:26.700]   Don't they? Cremeate. They eat him. Don't. But how? Hello. Hello with your mouth. Do they have made the freedom of the lions?
+[01:20:26.700 --> 01:20:35.700]   Oh, wouldn't that be something? Yeah, probably. Why wouldn't? Let him just go down. Yeah. You can pay an extra to watch. Yeah.
+[01:20:35.700 --> 01:20:45.700]   Yeah. I know it's more. But I'm genuinely curious. Like what are they? Yeah. I'm not good. Yeah, it makes sense. I know they'll be at KF and dot com booth at KF and dot.
+[01:20:45.700 --> 01:20:52.700]   That'd be pretty surprise if the people that watched after Skeeter for 16 years are like, caught him up. Yeah.
+[01:20:52.700 --> 01:21:00.700]   Wait till two of 59. No, thanksgiving sister on the corner. The lines are on. We're going to do it when you're done.
+[01:21:00.700 --> 01:21:11.700]   We're going to do with him because he looks sick. One of the zookeepers said, quote, "He was our tallest animal, our largest by weight."
+[01:21:11.700 --> 01:21:20.700]   And I would argue our most charismatic, he inspired countless children with his soulful eyes and the excited way he took snacks.
+[01:21:20.700 --> 01:21:27.700]   Whoa. Let's call him down a little bit. Yeah. With his soulful eyes. I like him. I thought he was good. Yeah.
+[01:21:27.700 --> 01:21:32.700]   It's great. But let's call him down a little bit. I do think that they should feed him to the lions.
+[01:21:32.700 --> 01:21:39.700]   I agree. I feel like it's a waste. They don't. Yeah. Correct. In fact, you know what? You can feed me to the lions when I'm dead.
+[01:21:39.700 --> 01:21:47.700]   Yeah. Wow. That's one way. By the way, he came from the Jacksonville Zoo in 2010 when he was one year old and his full name is Sergeant Skeeter Spalding.
+[01:21:47.700 --> 01:21:53.700]   That's pretty good. Well, did you die as a staff sergeant or was he just turn him into a basketball?
+[01:21:53.700 --> 01:22:03.700]   How long have you been doing? He walked here from Nashville? It's a long Jacksonville. Whatever.
+[01:22:03.700 --> 01:22:10.700]   Yep. Just walking along, walking along. They couldn't get him on the plane. You run by a neck. Man.
+[01:22:10.700 --> 01:22:13.700]   Well, R.I.P. to Skeeter. Sorry, buddy.
+[01:22:13.700 --> 01:22:20.700]   That was going to be your lead in your new segment next time. We just boiled it up. Skeeter giraffes are bad ass.
+[01:22:20.700 --> 01:22:27.700]   They are, man. They are. They are. Also very tall. Pretty crazy. Isn't that how they? Yeah, man.
+[01:22:27.700 --> 01:22:34.700]   What do you call it? They. Over time. Evolved. Yes. Thank you. Right. And how they're like born.
+[01:22:34.700 --> 01:22:37.700]   Yeah, they just all out of there. Yeah. Geez.
+[01:22:37.700 --> 01:22:49.700]   I wasn't like grandma. I have a nature thirteenth child. Oh, wait. I read. Honey, I love you. But you just fell out of there.
+[01:22:49.700 --> 01:22:54.700]   Like a t-shirt. Another one. No pressure. Nothing just skied it out of there.
+[01:22:54.700 --> 01:22:57.700]   Oh, my God.
+[01:22:57.700 --> 01:23:02.700]   The news is next one. More segment with John Creason Parrish is here.
+[01:23:02.700 --> 01:23:09.700]   Marnia will be here in like 20 minutes and then initials at 815. 127,500. That's right.
+[01:23:09.700 --> 01:23:13.700]   That's what the St. Paul Federal Credit Union initials jackpot is up to.
+[01:23:13.700 --> 01:23:17.700]   One of you gets a crack at that a little over an hour from now right here on the fan.
+[01:23:17.700 --> 01:23:23.700]   From the 1 800 ask Gary traffic center. This report is sponsored by Verizon Business.
+[01:23:23.700 --> 01:23:28.700]   Good morning. There's an accident on highway 10 eastbound at Proctor Avenue Northwest
+[01:23:28.700 --> 01:23:36.700]   and an accident on 169 southbound before us 10 94 or slow westbound from highway 61 to mounds.
+[01:23:36.700 --> 01:23:39.700]   I'm a real Arnold and that's your latest total traffic.
+[01:23:39.700 --> 01:23:42.700]   Small business owners are always looking for an edge.
+[01:23:45.700 --> 01:23:51.700]   That sound that's pro squash. Some of the fastest rallies in sport played inches from the crowd.
+[01:23:51.700 --> 01:23:55.700]   The National Squash League is back in full swing for season four.
+[01:23:55.700 --> 01:24:00.700]   The sport is heading to the 2028 Olympics for the first time and you can see it up close
+[01:24:00.700 --> 01:24:05.700]   right now in a city near you. Watch every match for free on YouTube.
+[01:24:05.700 --> 01:24:12.700]   Search National Squash League and hit subscribe or follow live updates on Instagram at nsl.sport.
+[01:24:25.700 --> 01:24:30.700]   And you won't lose your fingers. Over a thousand games including slots and live dealers
+[01:24:30.700 --> 01:24:33.700]   and $30 coin packs are on sale for 10. SpinQuest.com.
+[01:24:33.700 --> 01:24:36.700]   Buy American players for American players.
+[01:24:37.700 --> 01:24:40.700]   SpinQuest is a free to play social casino.
+[01:24:40.700 --> 01:24:43.700]   Avoid where prohibited visit spinquest.com for more details.
+[01:24:43.700 --> 01:24:45.700]   Honestly, honestly.
+[01:24:45.700 --> 01:24:49.700]   Honestly, no one wants to think about HIV but there are things that everyone can do to help prevent it.
+[01:24:49.700 --> 01:24:54.700]   Things like prep, prep stands for pre-expose or prophylaxis and it means routinely taking
+[01:24:54.700 --> 01:24:58.700]   prescription medicine before you're exposed to HIV to help reduce your chances of getting it.
+[01:24:58.700 --> 01:25:01.700]   Prep can be about 99% effective when taken as prescribed.
+[01:25:01.700 --> 01:25:06.700]   It doesn't protect against other STIs though, so be sure to use condoms and other healthy sex practices.
+[01:25:06.700 --> 01:25:12.700]   Ask a healthcare provider about all your prevention options and visit findoutaboutprep.com to learn more.
+[01:25:12.700 --> 01:25:13.700]   Sponsored by Gilead.
+   31m26.63s real   124m52.99s user     5m20.34s system

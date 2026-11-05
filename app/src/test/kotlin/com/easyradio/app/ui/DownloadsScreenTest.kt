@@ -30,6 +30,7 @@ private class DownloadsFakePodcastDao : PodcastDao {
     override suspend fun updateLastPlayed(id: String, timestamp: Long) {}
     override suspend fun setNotifyNewEpisodes(id: String, enabled: Boolean) {}
     override suspend fun setAutoDownloadNewEpisodes(id: String, enabled: Boolean) {}
+    override suspend fun setAdSkipEnabled(id: String, enabled: Boolean) {}
 }
 
 private class DownloadsFakeEpisodeDao : EpisodeDao {
@@ -43,6 +44,9 @@ private class DownloadsFakeEpisodeDao : EpisodeDao {
         state.update { list -> list.map { if (it.id == episodeId) it.copy(localFilePath = localFilePath) else it } }
     }
     override suspend fun getByIds(ids: List<String>): List<EpisodeEntity> = state.value.filter { it.id in ids }
+    override suspend fun getById(episodeId: String): EpisodeEntity? = state.value.find { it.id == episodeId }
+    override suspend fun updateAdDetectionState(episodeId: String, state: String) {}
+    override suspend fun getAdDetectionState(episodeId: String): String? = null
     override fun observeDownloaded() = state.map { list -> list.filter { it.localFilePath != null } }
     override fun observeAll() = state
 }

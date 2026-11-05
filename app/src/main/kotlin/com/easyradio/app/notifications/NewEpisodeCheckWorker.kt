@@ -6,6 +6,7 @@ import android.net.NetworkCapabilities
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.easyradio.app.EasyRadioGraph
+import com.easyradio.app.workers.AdDetectionTrigger
 import kotlinx.coroutines.flow.first
 
 /**
@@ -26,7 +27,11 @@ class NewEpisodeCheckWorker(context: Context, params: WorkerParameters) : Corout
             if (newEpisodes.isEmpty()) continue
 
             if (podcast.autoDownloadNewEpisodes && (!settings.downloadOverWifiOnly || isOnWifi())) {
-                newEpisodes.forEach { repository.downloadEpisode(it) }
+                newEpisodes.forEach { episode ->
+                    if (repository.downloadEpisode(episode)) {
+                        AdDetectionTrigger.scheduleIfNeeded(applicationContext, podcast, episode)
+                    }
+                }
             }
 
             if (podcast.notifyNewEpisodes) {

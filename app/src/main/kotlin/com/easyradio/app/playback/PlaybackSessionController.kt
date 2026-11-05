@@ -3,15 +3,18 @@ package com.easyradio.app.playback
 import android.net.Uri
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.PlaybackStateCompat
+import android.util.Log
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import com.easyradio.core.database.PodcastRepository
+import com.easyradio.core.media.AdSkipDecision
 import com.easyradio.core.media.BrowseNode
 import com.easyradio.core.media.EpisodeEndAction
 import com.easyradio.core.media.EpisodeEndDecision
 import com.easyradio.core.media.MediaBrowseTree
+import com.easyradio.core.model.AdSegment
 import com.easyradio.core.model.CuratedRadioStations
 import com.easyradio.core.model.Episode
 import kotlinx.coroutines.CoroutineScope
@@ -26,6 +29,7 @@ import kotlinx.coroutines.launch
 import java.io.File
 
 internal const val POSITION_SAVE_INTERVAL_MS = 5_000L
+internal const val AD_SKIP_POLL_INTERVAL_MS = 500L
 
 /**
  * Owns the playback/session-state orchestration [EasyRadioPlaybackService] used to do entirely
@@ -79,6 +83,13 @@ class PlaybackSessionController(
 
     private var positionSaveJob: Job? = null
 
+    // Loaded fresh on every startPlayback (one-shot, not an ongoing subscription -- ad detection
+    // runs at download time, well before playback, so segments are normally already settled by
+    // the time this reads them). Empty whenever radio/nothing or an episode with no detected ads
+    // is playing, which is also what keeps adSkipJob from starting at all in that common case.
+    private var currentAdSegments: List<AdSegment> = emptyList()
+    private var adSkipJob: Job? = null
+
     fun release() {
         scope.cancel()
     }
@@ -102,6 +113,32 @@ class PlaybackSessionController(
                 delay(POSITION_SAVE_INTERVAL_MS)
                 if (player.isPlaying) {
                     repository.savePosition(episodeId, player.currentPosition)
+                }
+            }
+        }
+    }
+
+    /**
+     * Sibling to [restartPositionSaving], not a repurposing of it -- ad-skip checking needs a
+     * much tighter cadence (segments are only a handful of seconds wide) than position saving
+     * does, so they're two independent poll loops. Loads this episode's detected segments once,
+     * then only bothers polling at all if there are any to check for -- the common case (no ads
+     * detected, or no transcript to diff against in the first place) should cost nothing.
+     */
+    private fun restartAdSkipPolling(episodeId: String?) {
+        adSkipJob?.cancel()
+        currentAdSegments = emptyList()
+        if (episodeId == null) return
+        adSkipJob = scope.launch {
+            currentAdSegments = repository.adSegmentsFor(episodeId).first()
+            if (currentAdSegments.isEmpty()) return@launch
+            while (isActive) {
+                delay(AD_SKIP_POLL_INTERVAL_MS)
+                if (player.isPlaying) {
+                    AdSkipDecision.resolve(player.currentPosition, currentAdSegments)?.let { skipToMs ->
+                        Log.d("AdSkip", "skipping ad: ${player.currentPosition}ms -> ${skipToMs}ms")
+                        player.seekTo(skipToMs)
+                    }
                 }
             }
         }
@@ -186,6 +223,7 @@ class PlaybackSessionController(
         currentEpisodeId = null
         currentPodcastId = null
         restartPositionSaving(null)
+        restartAdSkipPolling(null)
         val wasArmed = sleepAtEndOfEpisode
         sleepAtEndOfEpisode = false
         val podcastEpisodes = finishedPodcastId?.let { repository.episodesFor(it).first() } ?: emptyList()
@@ -225,6 +263,7 @@ class PlaybackSessionController(
         currentPodcastId = podcastId
         sleepAtEndOfEpisode = false
         restartPositionSaving(episodeId)
+        restartAdSkipPolling(episodeId)
         publishMetadata()
         val mediaItem = MediaItem.Builder()
             .setUri(uri)

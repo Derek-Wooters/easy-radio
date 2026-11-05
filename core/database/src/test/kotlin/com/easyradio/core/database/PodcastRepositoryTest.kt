@@ -53,6 +53,10 @@ private class FakePodcastDao : PodcastDao {
     override suspend fun setAutoDownloadNewEpisodes(id: String, enabled: Boolean) {
         state.update { list -> list.map { if (it.id == id) it.copy(autoDownloadNewEpisodes = enabled) else it } }
     }
+
+    override suspend fun setAdSkipEnabled(id: String, enabled: Boolean) {
+        state.update { list -> list.map { if (it.id == id) it.copy(adSkipEnabled = enabled) else it } }
+    }
 }
 
 private class FakeEpisodeDao : EpisodeDao {
@@ -103,6 +107,15 @@ private class FakeEpisodeDao : EpisodeDao {
 
     override suspend fun getByIds(ids: List<String>): List<EpisodeEntity> =
         state.value.filter { it.id in ids }
+
+    override suspend fun getById(episodeId: String): EpisodeEntity? = state.value.find { it.id == episodeId }
+
+    override suspend fun updateAdDetectionState(episodeId: String, state: String) {
+        this.state.update { list -> list.map { if (it.id == episodeId) it.copy(adDetectionState = state) else it } }
+    }
+
+    override suspend fun getAdDetectionState(episodeId: String): String? =
+        state.value.find { it.id == episodeId }?.adDetectionState
 
     override fun observeDownloaded() = state.map { list -> list.filter { it.localFilePath != null } }
 

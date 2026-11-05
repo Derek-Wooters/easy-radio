@@ -40,6 +40,7 @@ private class NoOpPodcastDao : PodcastDao {
     override suspend fun updateLastPlayed(id: String, timestamp: Long) {}
     override suspend fun setNotifyNewEpisodes(id: String, enabled: Boolean) {}
     override suspend fun setAutoDownloadNewEpisodes(id: String, enabled: Boolean) {}
+    override suspend fun setAdSkipEnabled(id: String, enabled: Boolean) {}
 }
 
 /** Unlike [NoOpPodcastDao], actually mutates state -- needed to verify the Options tab's toggles. */
@@ -58,6 +59,9 @@ private class OptionsFakePodcastDao : PodcastDao {
     override suspend fun setAutoDownloadNewEpisodes(id: String, enabled: Boolean) {
         state.update { list -> list.map { if (it.id == id) it.copy(autoDownloadNewEpisodes = enabled) else it } }
     }
+    override suspend fun setAdSkipEnabled(id: String, enabled: Boolean) {
+        state.update { list -> list.map { if (it.id == id) it.copy(adSkipEnabled = enabled) else it } }
+    }
 }
 
 private class OptionsFakeEpisodeDao : EpisodeDao {
@@ -68,6 +72,9 @@ private class OptionsFakeEpisodeDao : EpisodeDao {
     override suspend fun getPosition(episodeId: String): Long? = null
     override suspend fun updateLocalFilePath(episodeId: String, localFilePath: String?) {}
     override suspend fun getByIds(ids: List<String>): List<EpisodeEntity> = emptyList()
+    override suspend fun getById(episodeId: String): EpisodeEntity? = null
+    override suspend fun updateAdDetectionState(episodeId: String, state: String) {}
+    override suspend fun getAdDetectionState(episodeId: String): String? = null
     override fun observeDownloaded() = MutableStateFlow<List<EpisodeEntity>>(emptyList())
     override fun observeAll() = MutableStateFlow<List<EpisodeEntity>>(emptyList())
 }
@@ -85,6 +92,9 @@ private class RecordingEpisodeDao : EpisodeDao {
     override suspend fun getPosition(episodeId: String): Long? = null
     override suspend fun updateLocalFilePath(episodeId: String, localFilePath: String?) {}
     override suspend fun getByIds(ids: List<String>): List<EpisodeEntity> = emptyList()
+    override suspend fun getById(episodeId: String): EpisodeEntity? = null
+    override suspend fun updateAdDetectionState(episodeId: String, state: String) {}
+    override suspend fun getAdDetectionState(episodeId: String): String? = null
     override fun observeDownloaded() = MutableStateFlow<List<EpisodeEntity>>(emptyList())
     override fun observeAll() = MutableStateFlow<List<EpisodeEntity>>(emptyList())
 }
@@ -221,7 +231,7 @@ class PodcastsScreenTest {
     }
 
     @Test
-    fun `Options tab defaults new-episode notifications and auto-download to off, and toggling persists`() {
+    fun `Options tab defaults all options to off, and toggling persists`() {
         val podcastDao = OptionsFakePodcastDao()
         val podcast = Podcast(
             id = "p1",
@@ -245,10 +255,13 @@ class PodcastsScreenTest {
 
         composeTestRule.onNodeWithContentDescription("Notify on new episodes").assertIsOff()
         composeTestRule.onNodeWithContentDescription("Auto-download new episodes").assertIsOff()
+        composeTestRule.onNodeWithContentDescription("Skip ads automatically").assertIsOff()
 
         composeTestRule.onNodeWithContentDescription("Notify on new episodes").performClick()
+        composeTestRule.onNodeWithContentDescription("Skip ads automatically").performClick()
 
         assertThat(podcastDao.state.value.first().notifyNewEpisodes).isTrue()
         assertThat(podcastDao.state.value.first().autoDownloadNewEpisodes).isFalse()
+        assertThat(podcastDao.state.value.first().adSkipEnabled).isTrue()
     }
 }

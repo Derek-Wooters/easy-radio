@@ -1,5 +1,6 @@
 package com.easyradio.core.database
 
+import com.easyradio.core.model.AdSegment
 import com.easyradio.core.model.Episode
 import com.easyradio.core.model.Podcast
 import com.easyradio.core.model.Chapter
@@ -24,6 +25,7 @@ class PodcastRepository(
     private val downloadFile: suspend (id: String, audioUrl: String, onProgress: (Float) -> Unit) -> String? = { _, _, _ -> null },
     private val deleteFile: (String) -> Unit = {},
     private val queueDao: QueueDao = NoOpQueueDao,
+    private val adSegmentDao: AdSegmentDao = NoOpAdSegmentDao,
 ) {
     companion object {
         const val EPISODE_PAGE_SIZE = 50
@@ -76,6 +78,10 @@ class PodcastRepository(
 
     suspend fun setAutoDownloadNewEpisodes(podcastId: String, enabled: Boolean) {
         podcastDao.setAutoDownloadNewEpisodes(podcastId, enabled)
+    }
+
+    suspend fun setAdSkipEnabled(podcastId: String, enabled: Boolean) {
+        podcastDao.setAdSkipEnabled(podcastId, enabled)
     }
 
     suspend fun markPlayed(podcastId: String) {
@@ -249,6 +255,19 @@ class PodcastRepository(
         episodeDao.updateLocalFilePath(episode.id, null)
     }
 
+    suspend fun episodeById(episodeId: String): Episode? = episodeDao.getById(episodeId)?.toEpisode()
+
+    fun adSegmentsFor(episodeId: String): Flow<List<AdSegment>> =
+        adSegmentDao.observeForEpisode(episodeId).map { list -> list.map { AdSegment(it.startMs, it.endMs) } }
+
+    suspend fun recordAdSegments(episodeId: String, segments: List<AdSegment>) {
+        adSegmentDao.deleteForEpisode(episodeId)
+        adSegmentDao.insertAll(segments.map { AdSegmentEntity(episodeId, it.startMs, it.endMs) })
+        episodeDao.updateAdDetectionState(episodeId, "DONE")
+    }
+
+    suspend fun adDetectionState(episodeId: String): String? = episodeDao.getAdDetectionState(episodeId)
+
     suspend fun enqueue(episode: Episode) {
         val nextPosition = queueDao.maxPosition() + 1
         queueDao.upsert(QueueItemEntity(episodeId = episode.id, position = nextPosition))
@@ -275,4 +294,11 @@ private val NoOpQueueDao = object : QueueDao {
     override suspend fun upsertAll(items: List<QueueItemEntity>) {}
     override suspend fun remove(episodeId: String) {}
     override suspend fun maxPosition(): Int = -1
+}
+
+private val NoOpAdSegmentDao = object : AdSegmentDao {
+    override fun observeForEpisode(episodeId: String): Flow<List<AdSegmentEntity>> =
+        kotlinx.coroutines.flow.flowOf(emptyList())
+    override suspend fun insertAll(segments: List<AdSegmentEntity>) {}
+    override suspend fun deleteForEpisode(episodeId: String) {}
 }
