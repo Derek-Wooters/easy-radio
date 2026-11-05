@@ -91,13 +91,8 @@ class AndroidAudioDecoder(private val outputDir: File) : AudioDecoder {
         val bufferInfo = MediaCodec.BufferInfo()
         var sawInputEOS = false
         var sawOutputEOS = false
-        var iterations = 0
 
         while (!sawOutputEOS) {
-            iterations++
-            if (iterations % 2000 == 0) {
-                Log.d(TAG, "decodeLoop: iter=$iterations sawInputEOS=$sawInputEOS sampleTime=${extractor.sampleTime}")
-            }
             if (!sawInputEOS) {
                 val inputIndex = codec.dequeueInputBuffer(TIMEOUT_US)
                 if (inputIndex >= 0) {
@@ -128,7 +123,6 @@ class AndroidAudioDecoder(private val outputDir: File) : AudioDecoder {
                 }
             }
         }
-        Log.d(TAG, "decodeLoop: finished after $iterations iterations")
     }
 
     private fun downmixToMono(pcm: ShortArray, channels: Int): ShortArray {
