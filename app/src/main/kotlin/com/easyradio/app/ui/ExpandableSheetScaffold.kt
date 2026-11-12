@@ -43,6 +43,7 @@ import kotlinx.coroutines.launch
 fun ExpandableSheetScaffold(
     hasContent: Boolean,
     expandRequestId: Int,
+    collapseRequestId: Int = 0,
     visibilityRefreshToken: Int = 0,
     peekHeight: Dp,
     collapsedContent: @Composable ColumnScope.(onExpand: () -> Unit) -> Unit,
@@ -62,6 +63,13 @@ fun ExpandableSheetScaffold(
 
     LaunchedEffect(expandRequestId) {
         if (expandRequestId > 0) sheetState.expand()
+    }
+
+    // Symmetric to expandRequestId: callers outside composition (e.g. a nav bar tap in
+    // MainActivity, now visible and tappable even while Now Playing is expanded) can't call the
+    // suspend SheetState.partialExpand() directly either, so they bump this counter instead.
+    LaunchedEffect(collapseRequestId) {
+        if (collapseRequestId > 0) sheetState.partialExpand()
     }
 
     // hasContent flipping true is the only other way the sheet should ever leave Hidden --

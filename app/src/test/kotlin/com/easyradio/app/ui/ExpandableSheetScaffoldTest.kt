@@ -104,6 +104,35 @@ class ExpandableSheetScaffoldTest {
     }
 
     @Test
+    fun `bumping collapseRequestId switches from expanded to collapsed`() {
+        var expandRequestId by mutableStateOf(0)
+        var collapseRequestId by mutableStateOf(0)
+
+        composeTestRule.setContent {
+            ExpandableSheetScaffold(
+                hasContent = true,
+                expandRequestId = expandRequestId,
+                collapseRequestId = collapseRequestId,
+                peekHeight = 80.dp,
+                collapsedContent = { Text("Collapsed") },
+                expandedContent = { Text("Expanded") },
+            ) {
+                Text("TabContent")
+            }
+        }
+
+        expandRequestId++
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Expanded").assertExists()
+
+        collapseRequestId++
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Collapsed").assertExists()
+        composeTestRule.onNodeWithText("Expanded").assertDoesNotExist()
+    }
+
+    @Test
     fun `invoking the expanded content's onCollapse callback switches back to collapsed`() {
         var expandRequestId by mutableStateOf(0)
 
