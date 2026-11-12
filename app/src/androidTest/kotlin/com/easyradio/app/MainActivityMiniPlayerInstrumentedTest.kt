@@ -13,9 +13,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Real, end-to-end coverage for the regression MiniPlayerScaffold was extracted to fix (nav bar
- * hiding once Now Playing is expanded), run against the actual MainActivity rather than an
- * isolated MiniPlayerScaffold harness.
+ * Real, end-to-end coverage for MiniPlayerScaffold's nav-bar behavior, run against the actual
+ * MainActivity rather than an isolated MiniPlayerScaffold harness.
  *
  * A standalone instrumented test of MiniPlayerScaffold alone (bare ComponentActivity, no theme,
  * no edge-to-edge) was tried first and found that ExpandableSheetScaffold's sheet never reaches
@@ -44,7 +43,7 @@ class MainActivityMiniPlayerInstrumentedTest {
     val composeTestRule = createAndroidComposeRule<MainActivity>()
 
     @Test
-    fun playingAStationExpandsNowPlayingAndHidesTheNavBar() {
+    fun playingAStationExpandsNowPlayingButKeepsTheNavBarVisible() {
         // The system splash screen, the onboarding-vs-main-UI decision (an async DataStore read
         // in MainActivity), and whichever one a fresh app install actually lands on all delay --
         // or replace -- the nav bar's first appearance past what Compose's own idling sync
@@ -66,13 +65,45 @@ class MainActivityMiniPlayerInstrumentedTest {
 
         composeTestRule.onAllNodes(hasContentDescription("Play", substring = true))[0].performClick()
 
-        // expandRequestId++ (inside MainActivity.playStation()) should drive the sheet to
-        // Expanded, which hides the nav bar -- this is the actual regression being verified.
+        // expandRequestId++ (inside MainActivity.playStation()) drives the sheet to Expanded.
         composeTestRule.waitUntil(timeoutMillis = 10_000) {
-            composeTestRule.onAllNodesWithText("Radio").fetchSemanticsNodes().isEmpty()
+            composeTestRule.onAllNodesWithText("LIVE").fetchSemanticsNodes().isNotEmpty()
         }
 
+        // The actual behavior being verified: the nav bar (and its tabs) stay visible and
+        // tappable even while Now Playing is expanded, instead of Now Playing covering them.
+        composeTestRule.onNodeWithText("Radio").assertExists()
         composeTestRule.onNodeWithText("LIVE").assertExists()
+    }
+
+    @Test
+    fun tappingANavTabWhileNowPlayingIsExpandedCollapsesItBackToTheMiniPlayer() {
+        composeTestRule.waitUntil(timeoutMillis = 10_000) {
+            composeTestRule.onAllNodesWithText("Radio").fetchSemanticsNodes().isNotEmpty() ||
+                composeTestRule.onAllNodesWithText("Skip").fetchSemanticsNodes().isNotEmpty()
+        }
+        if (composeTestRule.onAllNodesWithText("Skip").fetchSemanticsNodes().isNotEmpty()) {
+            composeTestRule.onNodeWithText("Skip").performClick()
+            composeTestRule.waitUntil(timeoutMillis = 10_000) {
+                composeTestRule.onAllNodesWithText("Radio").fetchSemanticsNodes().isNotEmpty()
+            }
+        }
+
+        composeTestRule.onNodeWithText("Radio").performClick()
+        composeTestRule.onAllNodes(hasContentDescription("Play", substring = true))[0].performClick()
+
+        composeTestRule.waitUntil(timeoutMillis = 10_000) {
+            composeTestRule.onAllNodesWithText("LIVE").fetchSemanticsNodes().isNotEmpty()
+        }
+
+        // collapseRequestId++ (inside the nav tab's onClick) should drive the sheet back down to
+        // the mini-player as the newly-selected tab becomes visible, rather than leaving the
+        // full-screen Now Playing content stuck on top of it.
+        composeTestRule.onNodeWithText("Podcasts").performClick()
+
+        composeTestRule.waitUntil(timeoutMillis = 10_000) {
+            composeTestRule.onAllNodesWithText("LIVE").fetchSemanticsNodes().isEmpty()
+        }
     }
 
     @Test

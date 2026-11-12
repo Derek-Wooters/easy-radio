@@ -18,18 +18,19 @@ import org.robolectric.RobolectricTestRunner
  * mini-player's peeking sheet fill the vacated strip at the true bottom of the screen --
  * underneath the tabs, clipped, and able to swallow a tap meant for a tab.
  *
- * A third scenario -- the nav bar hiding once Now Playing is expanded -- isn't covered here.
- * Driving ExpandableSheetScaffold's sheet to Expanded (either starting there or bumping
- * expandRequestId mid-test) never actually reaches that state once nested inside this composable's
- * own Box(Modifier.weight(1f)), whether under Robolectric OR in a real instrumented test of
- * MiniPlayerScaffold alone (confirmed both ways -- an earlier version of this comment attributed
- * it to a Robolectric-only timing quirk, which turned out to be wrong). The real, full app does
- * expand correctly, confirmed both manually on a device and by
- * MainActivityMiniPlayerInstrumentedTest, which drives the actual MainActivity end-to-end rather
- * than this composable in isolation -- something about the app's full composition (EasyRadioTheme,
- * enableEdgeToEdge(), the real Scaffold nesting) makes the difference, and a synthetic harness
- * good enough for the first two scenarios above isn't sufficient to also reproduce this one
- * faithfully. Flagged here rather than landing a misleading assertion against that harness.
+ * navigationBar() is now called unconditionally (no sheet-expanded branch to gate it on), so
+ * both tests below already demonstrate it stays mounted regardless of sheet state. Whether the
+ * *expanded* Now Playing content itself stays correctly confined above the nav bar (rather than
+ * covering it) isn't covered here: driving ExpandableSheetScaffold's sheet to Expanded never
+ * actually reaches that state once nested inside this composable's own Box(Modifier.weight(1f)),
+ * whether under Robolectric OR in a real instrumented test of MiniPlayerScaffold alone (confirmed
+ * both ways). The real, full app does expand correctly, confirmed both manually on a device and
+ * by MainActivityMiniPlayerInstrumentedTest, which drives the actual MainActivity end-to-end
+ * rather than this composable in isolation -- something about the app's full composition
+ * (EasyRadioTheme, enableEdgeToEdge(), the real Scaffold nesting) makes the difference, and a
+ * synthetic harness good enough for the two scenarios below isn't sufficient to also reproduce
+ * this one faithfully. Flagged here rather than landing a misleading assertion against that
+ * harness.
  */
 @RunWith(RobolectricTestRunner::class)
 class MiniPlayerScaffoldTest {

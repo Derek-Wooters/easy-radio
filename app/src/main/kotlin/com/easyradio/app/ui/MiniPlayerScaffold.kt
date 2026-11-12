@@ -5,17 +5,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 
 /**
  * Wraps [ExpandableSheetScaffold] so the mini-player sits above [navigationBar] when collapsed,
- * and hides [navigationBar] entirely while Now Playing is expanded (so the full player still
- * covers the whole screen, tabs included).
+ * and [navigationBar] stays visible and tappable above the expanded Now Playing content too --
+ * the sheet's expanded content is confined to the space above the nav bar rather than covering
+ * the whole screen, so tabs remain reachable without backing out of Now Playing first. A tab tap
+ * while expanded is expected to bump [collapseRequestId] (see [ExpandableSheetScaffold]) so the
+ * sheet collapses back down to the mini-player as the new tab becomes visible.
  *
  * Extracted after a real regression: the mini-player and the app's bottom nav bar were both
  * rendered inside the same inner Scaffold, with the mini-player's peek height applied as bottom
@@ -28,6 +27,7 @@ import androidx.compose.ui.unit.Dp
 fun MiniPlayerScaffold(
     hasContent: Boolean,
     expandRequestId: Int,
+    collapseRequestId: Int = 0,
     visibilityRefreshToken: Int = 0,
     peekHeight: Dp,
     collapsedContent: @Composable ColumnScope.(onExpand: () -> Unit) -> Unit,
@@ -36,26 +36,20 @@ fun MiniPlayerScaffold(
     onExpandedChange: (Boolean) -> Unit = {},
     content: @Composable () -> Unit,
 ) {
-    var sheetExpanded by remember { mutableStateOf(false) }
-
     Column(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.weight(1f)) {
             ExpandableSheetScaffold(
                 hasContent = hasContent,
                 expandRequestId = expandRequestId,
+                collapseRequestId = collapseRequestId,
                 visibilityRefreshToken = visibilityRefreshToken,
                 peekHeight = peekHeight,
-                onExpandedChange = {
-                    sheetExpanded = it
-                    onExpandedChange(it)
-                },
+                onExpandedChange = onExpandedChange,
                 collapsedContent = collapsedContent,
                 expandedContent = expandedContent,
                 content = content,
             )
         }
-        if (!sheetExpanded) {
-            navigationBar()
-        }
+        navigationBar()
     }
 }

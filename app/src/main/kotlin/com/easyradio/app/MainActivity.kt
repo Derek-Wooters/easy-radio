@@ -208,6 +208,10 @@ class MainActivity : ComponentActivity() {
     // SheetState.expand() directly, so they bump this counter instead; a LaunchedEffect
     // inside the composable (which does have access to the sheet state) reacts to it.
     private var expandRequestId by mutableStateOf(0)
+    // Symmetric to expandRequestId: the nav bar stays visible and tappable even while Now
+    // Playing is expanded, so tapping a tab bumps this to collapse the sheet back down to the
+    // mini-player as the tapped tab becomes visible, rather than leaving Now Playing covering it.
+    private var collapseRequestId by mutableStateOf(0)
     // Bumped from onStart() (the app gaining focus) so the mini-player's sheet gets another
     // explicit chance to leave Hidden if it should already be showing content -- the sheet's own
     // hasContent-keyed effect only fires on an actual false-to-true transition, which can miss
@@ -393,6 +397,7 @@ class MainActivity : ComponentActivity() {
                 MiniPlayerScaffold(
                     hasContent = !nothingPlaying,
                     expandRequestId = expandRequestId,
+                    collapseRequestId = collapseRequestId,
                     visibilityRefreshToken = visibilityRefreshToken,
                     peekHeight = MINI_PLAYER_HEIGHT,
                     navigationBar = {
@@ -401,7 +406,10 @@ class MainActivity : ComponentActivity() {
                                 AppTab.entries.forEach { tab ->
                                     NavigationBarItem(
                                         selected = selectedTab == tab,
-                                        onClick = { selectedTab = tab },
+                                        onClick = {
+                                            selectedTab = tab
+                                            collapseRequestId++
+                                        },
                                         icon = { Icon(tab.icon, contentDescription = tab.label) },
                                         label = { Text(tab.label) },
                                     )
