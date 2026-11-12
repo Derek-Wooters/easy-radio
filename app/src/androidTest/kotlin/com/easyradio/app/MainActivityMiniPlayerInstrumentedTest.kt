@@ -101,8 +101,13 @@ class MainActivityMiniPlayerInstrumentedTest {
         // full-screen Now Playing content stuck on top of it.
         composeTestRule.onNodeWithText("Podcasts").performClick()
 
+        // "LIVE RADIO" is the full-screen Now Playing header, shown only while expanded -- unlike
+        // the plain "LIVE" badge, which the collapsed mini-player keeps showing too, so waiting on
+        // that would never succeed. Confirmed on a real device: tapping a different tab while
+        // expanded correctly collapses to the mini-player and navigates, but the mini-player's own
+        // "LIVE" badge means "LIVE" text never actually disappears from the screen.
         composeTestRule.waitUntil(timeoutMillis = 10_000) {
-            composeTestRule.onAllNodesWithText("LIVE").fetchSemanticsNodes().isEmpty()
+            composeTestRule.onAllNodesWithText("LIVE RADIO").fetchSemanticsNodes().isEmpty()
         }
     }
 
