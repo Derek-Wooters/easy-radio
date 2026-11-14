@@ -3,6 +3,7 @@ package com.easyradio.app.playback
 import android.net.Uri
 import android.os.Bundle
 import com.easyradio.core.media.IntroOutroSkip
+import com.easyradio.core.media.SmartResume
 import com.easyradio.core.model.Episode
 import com.easyradio.core.model.Podcast
 import com.easyradio.core.model.RadioStation
@@ -33,6 +34,7 @@ object PlaybackRequests {
         podcast: Podcast,
         episode: Episode,
         resumePositionMs: Long,
+        smartResumeEnabled: Boolean = false,
         localFileExists: (String) -> Boolean = { File(it).exists() },
     ): PlaybackRequest {
         val localPath = episode.localFilePath
@@ -41,7 +43,15 @@ object PlaybackRequests {
         } else {
             Uri.parse(episode.audioUrl)
         }
-        val startPositionMs = IntroOutroSkip.resolveStartPositionMs(resumePositionMs, podcast.skipFirstSeconds)
+        // These two apply to opposite cases of resumePositionMs (<=0 vs. >0) and must each see the
+        // real, original value -- chaining one's output into the other would feed skip-first's
+        // now-positive result (e.g. 30s) into Smart resume, which would then wrongly treat a fresh,
+        // intro-skipped play as an actual resume and rewind it.
+        val startPositionMs = if (resumePositionMs <= 0L) {
+            IntroOutroSkip.resolveStartPositionMs(resumePositionMs, podcast.skipFirstSeconds)
+        } else {
+            SmartResume.resolveStartPositionMs(resumePositionMs, smartResumeEnabled)
+        }
         return PlaybackRequest(
             uri = uri,
             extras = Bundle().apply {
