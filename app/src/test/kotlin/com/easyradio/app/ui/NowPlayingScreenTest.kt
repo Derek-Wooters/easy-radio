@@ -2,6 +2,7 @@ package com.easyradio.app.ui
 
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
@@ -164,6 +165,42 @@ class NowPlayingScreenTest {
         composeTestRule.waitForIdle()
 
         assert(collapsed) { "Expected the collapse chevron click to fire onCollapse" }
+    }
+
+    @Test
+    fun `podcast progress slider shows disabled at 0 percent while duration isn't known yet`() {
+        // Regression test: ExoPlayer doesn't report a duration (so progress stays null) until it's
+        // buffered enough of the stream, and this block used to be skipped entirely until then --
+        // confirmed as the cause of a reported glitch where the transport-control row visibly
+        // jumped upward the instant the real progress bar first appeared.
+        composeTestRule.setContent {
+            NowPlayingScreen(
+                topLabel = "Planet Money",
+                title = "Episode One",
+                subtitle = "Planet Money",
+                imageUrl = null,
+                tintSeed = "p1",
+                isLive = false,
+                isPlaying = true,
+                progress = null,
+                positionLabel = null,
+                durationLabel = null,
+                onSeek = {},
+                speedLabel = "1.0x",
+                onCollapse = {},
+                onPlayPause = {},
+            )
+        }
+
+        val slider = composeTestRule.onNode(
+            SemanticsMatcher.keyIsDefined(androidx.compose.ui.semantics.SemanticsProperties.ProgressBarRangeInfo),
+        )
+        slider.assertExists()
+        slider.assert(
+            SemanticsMatcher("is disabled") { node ->
+                node.config.contains(androidx.compose.ui.semantics.SemanticsProperties.Disabled)
+            },
+        )
     }
 
     @Test

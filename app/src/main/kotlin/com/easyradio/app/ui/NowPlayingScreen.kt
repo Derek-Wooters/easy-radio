@@ -188,13 +188,21 @@ fun NowPlayingScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            if (progress != null) {
+            if (!isLive) {
+                // Reserve this block's space from the first frame rather than only once progress
+                // is non-null: ExoPlayer doesn't know an episode's duration (so progress stays
+                // null) until it's buffered enough of the stream to report one, and omitting the
+                // whole scrubber/time-label section until then made the transport-control row
+                // visibly jump upward the moment it appeared, confirmed as the cause of a reported
+                // "buttons move" glitch right after tapping play. Showing it disabled at 0% instead
+                // keeps every other element's position stable across that transition.
                 var dragProgress by remember { mutableStateOf<Float?>(null) }
-                val displayProgress = dragProgress ?: progress.coerceIn(0f, 1f)
+                val displayProgress = dragProgress ?: progress?.coerceIn(0f, 1f) ?: 0f
 
                 if (onSeek != null) {
                     Slider(
                         value = displayProgress,
+                        enabled = progress != null,
                         onValueChange = { dragProgress = it },
                         onValueChangeFinished = {
                             dragProgress?.let(onSeek)
@@ -239,7 +247,7 @@ fun NowPlayingScreen(
                         }
                     }
                 }
-            } else if (isLive) {
+            } else {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         contentAlignment = Alignment.Center,
