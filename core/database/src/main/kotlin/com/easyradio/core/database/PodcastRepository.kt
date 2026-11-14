@@ -4,6 +4,8 @@ import com.easyradio.core.model.Bookmark
 import com.easyradio.core.model.Episode
 import com.easyradio.core.model.Podcast
 import com.easyradio.core.model.Chapter
+import com.easyradio.core.model.SmartPlaylist
+import com.easyradio.core.model.SmartPlaylistStatus
 import com.easyradio.core.network.podcast.ChaptersParser
 import com.easyradio.core.network.podcast.ItunesSearchApi
 import com.easyradio.core.network.podcast.OpmlSupport
@@ -26,6 +28,7 @@ class PodcastRepository(
     private val deleteFile: (String) -> Unit = {},
     private val queueDao: QueueDao = NoOpQueueDao,
     private val bookmarkDao: BookmarkDao = NoOpBookmarkDao,
+    private val smartPlaylistDao: SmartPlaylistDao = NoOpSmartPlaylistDao,
 ) {
     companion object {
         const val EPISODE_PAGE_SIZE = 50
@@ -279,6 +282,33 @@ class PodcastRepository(
         bookmarkDao.delete(id)
     }
 
+    suspend fun createSmartPlaylist(
+        name: String,
+        podcastIds: Set<String> = emptySet(),
+        status: SmartPlaylistStatus = SmartPlaylistStatus.ANY,
+        downloadedOnly: Boolean = false,
+        starredOnly: Boolean = false,
+    ) {
+        smartPlaylistDao.upsert(
+            SmartPlaylist(
+                id = java.util.UUID.randomUUID().toString(),
+                name = name,
+                podcastIds = podcastIds,
+                status = status,
+                downloadedOnly = downloadedOnly,
+                starredOnly = starredOnly,
+                createdAtEpochMillis = System.currentTimeMillis(),
+            ).toEntity(),
+        )
+    }
+
+    fun smartPlaylists(): Flow<List<SmartPlaylist>> =
+        smartPlaylistDao.observeAll().map { list -> list.map { it.toSmartPlaylist() } }
+
+    suspend fun deleteSmartPlaylist(id: String) {
+        smartPlaylistDao.delete(id)
+    }
+
     suspend fun downloadEpisode(episode: Episode, onProgress: (Float) -> Unit = {}): Boolean {
         val path = downloadFile(episode.id, episode.audioUrl, onProgress) ?: return false
         episodeDao.updateLocalFilePath(episode.id, path)
@@ -321,5 +351,11 @@ private val NoOpQueueDao = object : QueueDao {
 private val NoOpBookmarkDao = object : BookmarkDao {
     override suspend fun insert(bookmark: BookmarkEntity) {}
     override fun observeForEpisode(episodeId: String): Flow<List<BookmarkEntity>> = kotlinx.coroutines.flow.flowOf(emptyList())
+    override suspend fun delete(id: String) {}
+}
+
+private val NoOpSmartPlaylistDao = object : SmartPlaylistDao {
+    override suspend fun upsert(playlist: SmartPlaylistEntity) {}
+    override fun observeAll(): Flow<List<SmartPlaylistEntity>> = kotlinx.coroutines.flow.flowOf(emptyList())
     override suspend fun delete(id: String) {}
 }

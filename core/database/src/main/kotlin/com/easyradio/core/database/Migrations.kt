@@ -63,5 +63,28 @@ val MIGRATION_11_12: Migration = object : Migration(11, 12) {
     }
 }
 
+/**
+ * Adds the `smart_playlists` table backing user-defined custom smart playlists (see
+ * [com.easyradio.core.model.SmartPlaylist]) -- a new table only, no existing columns touched.
+ */
+val MIGRATION_12_13: Migration = object : Migration(12, 13) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS smart_playlists (
+                id TEXT NOT NULL PRIMARY KEY,
+                name TEXT NOT NULL,
+                podcastIds TEXT NOT NULL,
+                status TEXT NOT NULL,
+                downloadedOnly INTEGER NOT NULL,
+                starredOnly INTEGER NOT NULL,
+                createdAtEpochMillis INTEGER NOT NULL
+            )
+            """.trimIndent(),
+        )
+    }
+}
+
 /** Every migration the app knows how to run, in order; pass to `Room.databaseBuilder(...).addMigrations(*ALL_MIGRATIONS)`. */
-val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
+val ALL_MIGRATIONS: Array<Migration> =
+    arrayOf(MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)

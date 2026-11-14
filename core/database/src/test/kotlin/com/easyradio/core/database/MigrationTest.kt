@@ -226,4 +226,25 @@ class MigrationTest {
         }
         db.close()
     }
+
+    @Test
+    fun `MIGRATION_12_13 creates a usable smart_playlists table`() {
+        val helper = openHelper("migration-test-${System.nanoTime()}.db")
+        val db = helper.writableDatabase
+
+        // This migration only creates a new table -- no pre-existing schema needed.
+        MIGRATION_12_13.migrate(db)
+
+        db.execSQL(
+            "INSERT INTO smart_playlists (id, name, podcastIds, status, downloadedOnly, starredOnly, createdAtEpochMillis) " +
+                "VALUES ('sp1', 'Downloaded Favorites', 'p1,p2', 'IN_PROGRESS', 1, 1, 5000)",
+        )
+        db.query("SELECT * FROM smart_playlists WHERE id = 'sp1'").use { cursor ->
+            assertThat(cursor.moveToFirst()).isTrue()
+            assertThat(cursor.getString(cursor.getColumnIndexOrThrow("name"))).isEqualTo("Downloaded Favorites")
+            assertThat(cursor.getString(cursor.getColumnIndexOrThrow("podcastIds"))).isEqualTo("p1,p2")
+            assertThat(cursor.getInt(cursor.getColumnIndexOrThrow("downloadedOnly"))).isEqualTo(1)
+        }
+        db.close()
+    }
 }
