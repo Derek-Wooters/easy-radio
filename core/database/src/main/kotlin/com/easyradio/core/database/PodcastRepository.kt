@@ -78,6 +78,14 @@ class PodcastRepository(
         podcastDao.setAutoDownloadNewEpisodes(podcastId, enabled)
     }
 
+    suspend fun setSkipFirstSeconds(podcastId: String, seconds: Int) {
+        podcastDao.setSkipFirstSeconds(podcastId, seconds)
+    }
+
+    suspend fun setSkipLastSeconds(podcastId: String, seconds: Int) {
+        podcastDao.setSkipLastSeconds(podcastId, seconds)
+    }
+
     suspend fun markPlayed(podcastId: String) {
         podcastDao.updateLastPlayed(podcastId, System.currentTimeMillis())
     }

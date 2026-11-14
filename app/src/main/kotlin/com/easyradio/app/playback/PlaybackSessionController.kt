@@ -11,6 +11,7 @@ import com.easyradio.core.database.PodcastRepository
 import com.easyradio.core.media.BrowseNode
 import com.easyradio.core.media.EpisodeEndAction
 import com.easyradio.core.media.EpisodeEndDecision
+import com.easyradio.core.media.IntroOutroSkip
 import com.easyradio.core.media.MediaBrowseTree
 import com.easyradio.core.model.CuratedRadioStations
 import com.easyradio.core.model.Episode
@@ -77,6 +78,12 @@ class PlaybackSessionController(
     // whatever plays next.
     private var sleepAtEndOfEpisode: Boolean = false
 
+    // The currently-playing episode's podcast's "skip last" seconds (Options tab), checked by
+    // restartPositionSaving's loop so playback ends at the configured outro instead of the
+    // episode's true end. Reset to 0 whenever any new item starts playing, same as
+    // sleepAtEndOfEpisode, so it never leaks onto whatever plays next.
+    private var currentSkipLastSeconds: Int = 0
+
     private var positionSaveJob: Job? = null
 
     fun release() {
@@ -102,6 +109,19 @@ class PlaybackSessionController(
                 delay(POSITION_SAVE_INTERVAL_MS)
                 if (player.isPlaying) {
                     repository.savePosition(episodeId, player.currentPosition)
+                    // "Skip last" (Options tab): treat reaching the configured outro exactly like
+                    // the player reaching its real end, via the same handleEpisodeEnded() the
+                    // STATE_ENDED listener uses. Launched as a separate coroutine (matching that
+                    // listener) rather than called inline: handleEpisodeEnded() cancels this very
+                    // positionSaveJob via restartPositionSaving(null), and cancelling a job from
+                    // inside its own running coroutine aborts the rest of that coroutine's body at
+                    // its next suspension point -- confirmed as the cause of a real bug here, where
+                    // calling it inline silently dropped everything handleEpisodeEnded() does after
+                    // that cancellation (i.e. the actual advance to the next episode).
+                    if (IntroOutroSkip.shouldEndEarly(player.currentPosition, player.duration, currentSkipLastSeconds)) {
+                        scope.launch { handleEpisodeEnded() }
+                        return@launch
+                    }
                 }
             }
         }
@@ -215,6 +235,7 @@ class PlaybackSessionController(
         episodeId: String? = null,
         stationId: String? = null,
         podcastId: String? = null,
+        skipLastSeconds: Int = 0,
     ) {
         onPlaybackStarting()
         currentTitle = title
@@ -224,6 +245,7 @@ class PlaybackSessionController(
         currentStationId = stationId
         currentPodcastId = podcastId
         sleepAtEndOfEpisode = false
+        currentSkipLastSeconds = skipLastSeconds
         restartPositionSaving(episodeId)
         publishMetadata()
         val mediaItem = MediaItem.Builder()
@@ -275,14 +297,16 @@ class PlaybackSessionController(
         val podcast = repository.subscribedPodcasts().first().firstOrNull { it.id == episode.podcastId }
         val uri = episode.localFilePath?.let { Uri.fromFile(File(it)) } ?: Uri.parse(episode.audioUrl)
         val resumeMs = repository.lastPosition(episode.id)
+        val startMs = IntroOutroSkip.resolveStartPositionMs(resumeMs, podcast?.skipFirstSeconds ?: 0)
         startPlayback(
             uri = uri,
             title = episode.title,
             artist = podcast?.author?.ifBlank { podcast.title },
             artworkUrl = podcast?.artworkUrl,
-            resumePositionMs = resumeMs,
+            resumePositionMs = startMs,
             episodeId = episode.id,
             podcastId = episode.podcastId,
+            skipLastSeconds = podcast?.skipLastSeconds ?: 0,
         )
     }
 
