@@ -35,4 +35,5 @@ data class AppSettings(
     val skipSilenceEnabled: Boolean = false,
     val voiceBoostEnabled: Boolean = false,
     val smartResumeEnabled: Boolean = false,
+    val warnBeforeCellularDownloads: Boolean = false,
 )

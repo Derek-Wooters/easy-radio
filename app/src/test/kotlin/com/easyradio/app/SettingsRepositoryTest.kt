@@ -105,6 +105,15 @@ class SettingsRepositoryTest {
     }
 
     @Test
+    fun `setWarnBeforeCellularDownloads persists`() = runTest {
+        val repository = repository()
+
+        repository.setWarnBeforeCellularDownloads(true)
+
+        assertThat(repository.settings.first().warnBeforeCellularDownloads).isTrue()
+    }
+
+    @Test
     fun `completeOnboarding persists the completed flag and the chosen genres`() = runTest {
         val repository = repository()
 

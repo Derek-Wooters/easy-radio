@@ -39,6 +39,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val skipSilenceEnabled = booleanPreferencesKey("skip_silence_enabled")
         val voiceBoostEnabled = booleanPreferencesKey("voice_boost_enabled")
         val smartResumeEnabled = booleanPreferencesKey("smart_resume_enabled")
+        val warnBeforeCellularDownloads = booleanPreferencesKey("warn_before_cellular_downloads")
     }
 
     val settings: Flow<AppSettings> = dataStore.data.map { prefs ->
@@ -59,6 +60,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             skipSilenceEnabled = prefs[Keys.skipSilenceEnabled] ?: defaults.skipSilenceEnabled,
             voiceBoostEnabled = prefs[Keys.voiceBoostEnabled] ?: defaults.voiceBoostEnabled,
             smartResumeEnabled = prefs[Keys.smartResumeEnabled] ?: defaults.smartResumeEnabled,
+            warnBeforeCellularDownloads = prefs[Keys.warnBeforeCellularDownloads] ?: defaults.warnBeforeCellularDownloads,
         )
     }
 
@@ -96,6 +98,10 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setSmartResumeEnabled(value: Boolean) {
         dataStore.edit { it[Keys.smartResumeEnabled] = value }
+    }
+
+    suspend fun setWarnBeforeCellularDownloads(value: Boolean) {
+        dataStore.edit { it[Keys.warnBeforeCellularDownloads] = value }
     }
 
     suspend fun completeOnboarding(favoriteGenres: Set<String>) {

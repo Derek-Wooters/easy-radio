@@ -587,6 +587,9 @@ class MainActivity : ComponentActivity() {
                                 onDownloadOverWifiOnlyChange = {
                                     lifecycleScope.launch { settingsRepository.setDownloadOverWifiOnly(it) }
                                 },
+                                onWarnBeforeCellularDownloadsChange = {
+                                    lifecycleScope.launch { settingsRepository.setWarnBeforeCellularDownloads(it) }
+                                },
                                 onSleepTimerMinutesChange = {
                                     lifecycleScope.launch { settingsRepository.setSleepTimerMinutes(it) }
                                 },
@@ -673,6 +676,8 @@ class MainActivity : ComponentActivity() {
                                     onInitialPodcastConsumed = { searchSelectedPodcast = null },
                                     onExportOpml = { exportOpmlLauncher.launch("easy-radio-subscriptions.opml") },
                                     onImportOpml = { importOpmlLauncher.launch(arrayOf("*/*")) },
+                                    warnBeforeCellularDownloads = settings.warnBeforeCellularDownloads,
+                                    isOnWifi = { com.easyradio.app.NetworkUtils.isOnWifi(this@MainActivity) },
                                 )
                                 AppTab.PLAYLISTS -> PlaylistsScreen(
                                     repository = favoriteStationRepository,

@@ -109,6 +109,8 @@ fun PodcastsScreen(
     onInitialPodcastConsumed: () -> Unit = {},
     onExportOpml: () -> Unit = {},
     onImportOpml: () -> Unit = {},
+    warnBeforeCellularDownloads: Boolean = false,
+    isOnWifi: () -> Boolean = { true },
 ) {
     var screenState by remember { mutableStateOf(PodcastScreenState.LIBRARY) }
     var selectedPodcast by remember { mutableStateOf<Podcast?>(null) }
@@ -151,6 +153,8 @@ fun PodcastsScreen(
                     selectedEpisode = episode
                     screenState = PodcastScreenState.EPISODE_DETAIL
                 },
+                warnBeforeCellularDownloads = warnBeforeCellularDownloads,
+                isOnWifi = isOnWifi,
             )
         }
         PodcastScreenState.EPISODE_DETAIL -> {
@@ -159,6 +163,8 @@ fun PodcastsScreen(
             if (podcast != null && episode != null) {
                 EpisodeDetailScreen(
                     repository = repository,
+                    warnBeforeCellularDownloads = warnBeforeCellularDownloads,
+                    isOnWifi = isOnWifi,
                     podcast = podcast,
                     episode = episode,
                     onBack = { screenState = PodcastScreenState.EPISODES },
@@ -386,6 +392,8 @@ private fun EpisodeListScreen(
     onBack: () -> Unit,
     onEpisodeSelected: (Episode) -> Unit,
     onEpisodeClick: (Episode) -> Unit,
+    warnBeforeCellularDownloads: Boolean = false,
+    isOnWifi: () -> Boolean = { true },
 ) {
     val episodesRaw by remember(podcast.id) { repository.episodesFor(podcast.id) }
         .collectAsState(initial = emptyList())
@@ -394,6 +402,7 @@ private fun EpisodeListScreen(
     val episodes = if (newestFirst) episodesRaw else episodesRaw.asReversed()
     val scope = rememberCoroutineScope()
     var downloadProgress by remember { mutableStateOf<Map<String, Float>>(emptyMap()) }
+    var pendingCellularDownload by remember { mutableStateOf<(() -> Unit)?>(null) }
     var selectedTab by remember { mutableStateOf(PodcastDetailTab.EPISODES) }
 
     val episodeListState = rememberLazyListState()
@@ -539,12 +548,20 @@ private fun EpisodeListScreen(
                                 if (episode.localFilePath != null) {
                                     scope.launch { repository.deleteDownload(episode) }
                                 } else if (episode.id !in downloadProgress) {
-                                    downloadProgress = downloadProgress + (episode.id to 0f)
-                                    scope.launch {
-                                        repository.downloadEpisode(episode) { progress ->
-                                            downloadProgress = downloadProgress + (episode.id to progress)
+                                    val startDownload = {
+                                        downloadProgress = downloadProgress + (episode.id to 0f)
+                                        scope.launch {
+                                            repository.downloadEpisode(episode) { progress ->
+                                                downloadProgress = downloadProgress + (episode.id to progress)
+                                            }
+                                            downloadProgress = downloadProgress - episode.id
                                         }
-                                        downloadProgress = downloadProgress - episode.id
+                                        Unit
+                                    }
+                                    if (warnBeforeCellularDownloads && !isOnWifi()) {
+                                        pendingCellularDownload = startDownload
+                                    } else {
+                                        startDownload()
                                     }
                                 }
                             },
@@ -688,6 +705,25 @@ private fun EpisodeListScreen(
             }
         }
     }
+
+    if (pendingCellularDownload != null) {
+        CellularDownloadWarningDialog(
+            onConfirm = { pendingCellularDownload?.invoke(); pendingCellularDownload = null },
+            onDismiss = { pendingCellularDownload = null },
+        )
+    }
+}
+
+/** Shown before a manual download (Settings > Downloads > "Warn on cellular downloads") when not on Wi‑Fi. */
+@Composable
+private fun CellularDownloadWarningDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Download over mobile data?") },
+        text = { Text("You're not connected to Wi‑Fi. This episode will count against your mobile data.") },
+        confirmButton = { TextButton(onClick = onConfirm) { Text("Download") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable
@@ -813,9 +849,12 @@ private fun EpisodeDetailScreen(
     episode: Episode,
     onBack: () -> Unit,
     onListen: () -> Unit,
+    warnBeforeCellularDownloads: Boolean = false,
+    isOnWifi: () -> Boolean = { true },
 ) {
     val scope = rememberCoroutineScope()
     var isDownloading by remember(episode.id) { mutableStateOf(false) }
+    var pendingCellularDownload by remember { mutableStateOf<(() -> Unit)?>(null) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -906,10 +945,18 @@ private fun EpisodeDetailScreen(
                     if (episode.localFilePath != null) {
                         scope.launch { repository.deleteDownload(episode) }
                     } else if (!isDownloading) {
-                        isDownloading = true
-                        scope.launch {
-                            repository.downloadEpisode(episode)
-                            isDownloading = false
+                        val startDownload = {
+                            isDownloading = true
+                            scope.launch {
+                                repository.downloadEpisode(episode)
+                                isDownloading = false
+                            }
+                            Unit
+                        }
+                        if (warnBeforeCellularDownloads && !isOnWifi()) {
+                            pendingCellularDownload = startDownload
+                        } else {
+                            startDownload()
                         }
                     }
                 },
@@ -920,6 +967,13 @@ private fun EpisodeDetailScreen(
                 )
             }
         }
+    }
+
+    if (pendingCellularDownload != null) {
+        CellularDownloadWarningDialog(
+            onConfirm = { pendingCellularDownload?.invoke(); pendingCellularDownload = null },
+            onDismiss = { pendingCellularDownload = null },
+        )
     }
 }
 
