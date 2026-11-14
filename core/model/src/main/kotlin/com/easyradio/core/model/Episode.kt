@@ -14,6 +14,7 @@ data class Episode(
     val transcriptUrl: String? = null,
     val transcriptType: String? = null,
     val isStarred: Boolean = false,
+    val season: Int? = null,
 ) {
     init {
         require(id.isNotBlank()) { "Episode.id must not be blank" }

@@ -37,6 +37,7 @@ class EpisodeDaoTest {
         publishedAt: Long? = 100L,
         positionMs: Long = 0,
         title: String = "Episode $id",
+        season: Int? = null,
     ) = EpisodeEntity(
         id = id,
         podcastId = podcastId,
@@ -46,6 +47,7 @@ class EpisodeDaoTest {
         durationSeconds = 1800,
         description = "",
         positionMs = positionMs,
+        season = season,
     )
 
     private fun metadata(entity: EpisodeEntity) = EpisodeMetadata(
@@ -59,6 +61,7 @@ class EpisodeDaoTest {
         chaptersUrl = entity.chaptersUrl,
         transcriptUrl = entity.transcriptUrl,
         transcriptType = entity.transcriptType,
+        season = entity.season,
     )
 
     @Test
@@ -136,6 +139,16 @@ class EpisodeDaoTest {
         dao.setStarred("e1", false)
 
         assertThat(dao.observeStarred().first()).isEmpty()
+    }
+
+    @Test
+    fun `updateMetadata refreshes season, since it is feed-sourced like title and duration`() = runTest {
+        dao.insertIgnore(listOf(episode("e1", "p1")))
+
+        dao.updateMetadata(listOf(metadata(episode("e1", "p1", season = 3))))
+
+        val stored = dao.observeByPodcast("p1").first().single()
+        assertThat(stored.season).isEqualTo(3)
     }
 
     @Test

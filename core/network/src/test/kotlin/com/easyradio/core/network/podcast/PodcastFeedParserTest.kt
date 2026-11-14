@@ -218,6 +218,45 @@ class PodcastFeedParserTest {
     }
 
     @Test
+    fun `parses the itunes-season number when present`() {
+        val xml = """
+            <rss xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0">
+              <channel>
+                <item>
+                  <title>Seasoned Episode</title>
+                  <guid>guid-season</guid>
+                  <enclosure url="https://example.com/ep.mp3"/>
+                  <itunes:season>3</itunes:season>
+                </item>
+              </channel>
+            </rss>
+        """.trimIndent()
+
+        val episode = PodcastFeedParser.parse(xml, podcastId = "podcast-1").first()
+
+        assertThat(episode.season).isEqualTo(3)
+    }
+
+    @Test
+    fun `season is null when no itunes-season tag is present`() {
+        val xml = """
+            <rss xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" version="2.0">
+              <channel>
+                <item>
+                  <title>Unseasoned Episode</title>
+                  <guid>guid-no-season</guid>
+                  <enclosure url="https://example.com/ep.mp3"/>
+                </item>
+              </channel>
+            </rss>
+        """.trimIndent()
+
+        val episode = PodcastFeedParser.parse(xml, podcastId = "podcast-1").first()
+
+        assertThat(episode.season).isNull()
+    }
+
+    @Test
     fun `malformed xml returns an empty list instead of throwing`() {
         val episodes = PodcastFeedParser.parse("not valid xml <<<", podcastId = "podcast-1")
 

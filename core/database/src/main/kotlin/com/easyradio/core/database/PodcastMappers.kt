@@ -52,6 +52,7 @@ fun Episode.toEntity(): EpisodeEntity = EpisodeEntity(
     transcriptUrl = transcriptUrl,
     transcriptType = transcriptType,
     isStarred = isStarred,
+    season = season,
 )
 
 fun EpisodeEntity.toEpisode(): Episode = Episode(
@@ -68,6 +69,7 @@ fun EpisodeEntity.toEpisode(): Episode = Episode(
     transcriptUrl = transcriptUrl,
     transcriptType = transcriptType,
     isStarred = isStarred,
+    season = season,
 )
 
 fun BookmarkEntity.toBookmark(): Bookmark = Bookmark(
@@ -113,4 +115,5 @@ fun Episode.toMetadata(): EpisodeMetadata = EpisodeMetadata(
     chaptersUrl = chaptersUrl,
     transcriptUrl = transcriptUrl,
     transcriptType = transcriptType,
+    season = season,
 )

@@ -106,6 +106,23 @@ private class SingleEpisodeFakeEpisodeDao(initial: EpisodeEntity) : EpisodeDao {
     override fun observeStarred() = state.map { if (it.isStarred) listOf(it) else emptyList() }
 }
 
+/** Serves a fixed list of episodes for its podcast -- enough to render a multi-episode list. */
+private class MultiEpisodeFakeEpisodeDao(initial: List<EpisodeEntity>) : EpisodeDao {
+    val state = MutableStateFlow(initial)
+    override fun observeByPodcast(podcastId: String) =
+        state.map { list -> list.filter { it.podcastId == podcastId }.sortedByDescending { it.publishedAtEpochMillis ?: 0L } }
+    override suspend fun insertIgnore(episodes: List<EpisodeEntity>) {}
+    override suspend fun updateMetadata(updates: List<EpisodeMetadata>) {}
+    override suspend fun updatePosition(episodeId: String, positionMs: Long) {}
+    override suspend fun getPosition(episodeId: String): Long? = null
+    override suspend fun updateLocalFilePath(episodeId: String, localFilePath: String?) {}
+    override suspend fun getByIds(ids: List<String>): List<EpisodeEntity> = emptyList()
+    override fun observeDownloaded() = MutableStateFlow<List<EpisodeEntity>>(emptyList())
+    override fun observeAll() = state
+    override suspend fun setStarred(episodeId: String, starred: Boolean) {}
+    override fun observeStarred() = MutableStateFlow<List<EpisodeEntity>>(emptyList())
+}
+
 /** Tracks updatePosition calls so replayAwareListen's behavior can be asserted directly. */
 private class RecordingEpisodeDao : EpisodeDao {
     val positionUpdates = mutableListOf<Pair<String, Long>>()
@@ -215,6 +232,26 @@ class PodcastsScreenTest {
         assertThat(formatEpisodeDuration(45 * 60)).isEqualTo("45 min")
         assertThat(formatEpisodeDuration(2 * 3600)).isEqualTo("2 hr")
         assertThat(formatEpisodeDuration(2 * 3600 + 15 * 60)).isEqualTo("2 hr 15 min")
+    }
+
+    @Test
+    fun `episodeGroupKey groups by season when the feed published one`() {
+        assertThat(episodeGroupKey(episode(positionMs = 0, durationSeconds = 1_800).copy(season = 3)))
+            .isEqualTo("Season 3")
+    }
+
+    @Test
+    fun `episodeGroupKey falls back to publish year when no season is present`() {
+        val publishedIn2019 = episode(positionMs = 0, durationSeconds = 1_800).copy(
+            publishedAtEpochMillis = java.time.Instant.parse("2019-06-15T00:00:00Z").toEpochMilli(),
+        )
+
+        assertThat(episodeGroupKey(publishedIn2019)).isEqualTo("2019")
+    }
+
+    @Test
+    fun `episodeGroupKey is Unknown when there is neither a season nor a publish date`() {
+        assertThat(episodeGroupKey(episode(positionMs = 0, durationSeconds = 1_800))).isEqualTo("Unknown")
     }
 
     private fun repository(episodeDao: EpisodeDao) =
@@ -497,5 +534,84 @@ class PodcastsScreenTest {
         composeTestRule.waitForIdle()
 
         assertThat(episodeDao.state.value.isStarred).isFalse()
+    }
+
+    @Test
+    fun `episodes spanning multiple seasons are shown under season headers`() {
+        val podcast = Podcast(
+            id = "p1",
+            title = "Test Show",
+            author = "Author",
+            artworkUrl = null,
+            feedUrl = "https://example.com/feed.xml",
+        )
+        val episodeDao = MultiEpisodeFakeEpisodeDao(
+            listOf(
+                Episode(
+                    id = "ep-s1", podcastId = "p1", title = "Season One Episode",
+                    audioUrl = "https://example.com/ep-s1.mp3", publishedAtEpochMillis = 100L,
+                    durationSeconds = 600, season = 1,
+                ).toEntity(),
+                Episode(
+                    id = "ep-s2", podcastId = "p1", title = "Season Two Episode",
+                    audioUrl = "https://example.com/ep-s2.mp3", publishedAtEpochMillis = 200L,
+                    durationSeconds = 600, season = 2,
+                ).toEntity(),
+            ),
+        )
+        val repository = PodcastRepository(
+            itunesApi = NoOpItunesSearchApi(),
+            fetchFeed = { "" },
+            podcastDao = NoOpPodcastDao(),
+            episodeDao = episodeDao,
+        )
+
+        composeTestRule.setContent {
+            PodcastsScreen(repository = repository, onEpisodeSelected = { _, _ -> }, initialPodcast = podcast)
+        }
+
+        composeTestRule.onNodeWithText("Season 1").assertExists()
+        composeTestRule.onNodeWithText("Season 2").assertExists()
+        composeTestRule.onNodeWithText("Season One Episode").assertExists()
+        composeTestRule.onNodeWithText("Season Two Episode").assertExists()
+    }
+
+    @Test
+    fun `a single season across all episodes shows no group header`() {
+        val podcast = Podcast(
+            id = "p1",
+            title = "Test Show",
+            author = "Author",
+            artworkUrl = null,
+            feedUrl = "https://example.com/feed.xml",
+        )
+        val episodeDao = MultiEpisodeFakeEpisodeDao(
+            listOf(
+                Episode(
+                    id = "ep-a", podcastId = "p1", title = "Episode A",
+                    audioUrl = "https://example.com/ep-a.mp3", publishedAtEpochMillis = 100L,
+                    durationSeconds = 600, season = 1,
+                ).toEntity(),
+                Episode(
+                    id = "ep-b", podcastId = "p1", title = "Episode B",
+                    audioUrl = "https://example.com/ep-b.mp3", publishedAtEpochMillis = 200L,
+                    durationSeconds = 600, season = 1,
+                ).toEntity(),
+            ),
+        )
+        val repository = PodcastRepository(
+            itunesApi = NoOpItunesSearchApi(),
+            fetchFeed = { "" },
+            podcastDao = NoOpPodcastDao(),
+            episodeDao = episodeDao,
+        )
+
+        composeTestRule.setContent {
+            PodcastsScreen(repository = repository, onEpisodeSelected = { _, _ -> }, initialPodcast = podcast)
+        }
+
+        composeTestRule.onNodeWithText("Episode A").assertExists()
+        composeTestRule.onNodeWithText("Episode B").assertExists()
+        composeTestRule.onNodeWithText("Season 1").assertDoesNotExist()
     }
 }

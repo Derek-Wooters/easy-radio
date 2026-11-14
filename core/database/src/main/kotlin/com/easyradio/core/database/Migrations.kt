@@ -85,6 +85,16 @@ val MIGRATION_12_13: Migration = object : Migration(12, 13) {
     }
 }
 
+/**
+ * Adds a per-episode `<itunes:season>` number (see [com.easyradio.core.model.Episode.season]),
+ * parsed from the feed -- nullable, no default needed since most shows never publish it.
+ */
+val MIGRATION_13_14: Migration = object : Migration(13, 14) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE episodes ADD COLUMN season INTEGER")
+    }
+}
+
 /** Every migration the app knows how to run, in order; pass to `Room.databaseBuilder(...).addMigrations(*ALL_MIGRATIONS)`. */
 val ALL_MIGRATIONS: Array<Migration> =
-    arrayOf(MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
+    arrayOf(MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)

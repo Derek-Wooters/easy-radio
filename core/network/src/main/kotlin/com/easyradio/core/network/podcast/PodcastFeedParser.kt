@@ -42,6 +42,7 @@ object PodcastFeedParser {
         private var chaptersUrl: String? = null
         private var transcriptUrl: String? = null
         private var transcriptType: String? = null
+        private var season: String? = null
 
         override fun startElement(uri: String?, localName: String?, qName: String, attributes: Attributes) {
             if (qName == "item") {
@@ -55,6 +56,7 @@ object PodcastFeedParser {
                 chaptersUrl = null
                 transcriptUrl = null
                 transcriptType = null
+                season = null
             } else if (inItem && qName == "enclosure" && audioUrl == null) {
                 audioUrl = attributes.getValue("url")
             } else if (inItem && qName == "podcast:chapters" && chaptersUrl == null) {
@@ -84,6 +86,7 @@ object PodcastFeedParser {
                     "pubDate" -> if (pubDate == null) pubDate = value
                     "description" -> if (description == null) description = value
                     "itunes:duration" -> if (duration == null) duration = value
+                    "itunes:season" -> if (season == null) season = value
                 }
             }
             if (qName == "item") {
@@ -111,6 +114,7 @@ object PodcastFeedParser {
                     chaptersUrl = chaptersUrl?.trim()?.takeIf { it.startsWith("https://") },
                     transcriptUrl = transcriptUrl?.trim()?.takeIf { it.startsWith("https://") },
                     transcriptType = transcriptType,
+                    season = season?.trim()?.toIntOrNull(),
                 )
             } catch (e: IllegalArgumentException) {
                 null
