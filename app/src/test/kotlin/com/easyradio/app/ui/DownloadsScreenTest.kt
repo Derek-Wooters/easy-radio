@@ -48,6 +48,8 @@ private class DownloadsFakeEpisodeDao : EpisodeDao {
     override suspend fun getByIds(ids: List<String>): List<EpisodeEntity> = state.value.filter { it.id in ids }
     override fun observeDownloaded() = state.map { list -> list.filter { it.localFilePath != null } }
     override fun observeAll() = state
+    override suspend fun setStarred(episodeId: String, starred: Boolean) {}
+    override fun observeStarred() = MutableStateFlow<List<EpisodeEntity>>(emptyList())
 }
 
 private fun fakePodcastRepository(podcastDao: DownloadsFakePodcastDao, episodeDao: DownloadsFakeEpisodeDao) =

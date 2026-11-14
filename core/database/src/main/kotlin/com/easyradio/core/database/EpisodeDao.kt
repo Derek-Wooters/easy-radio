@@ -39,4 +39,10 @@ interface EpisodeDao {
 
     @Query("SELECT * FROM episodes ORDER BY publishedAtEpochMillis DESC")
     fun observeAll(): Flow<List<EpisodeEntity>>
+
+    @Query("UPDATE episodes SET isStarred = :starred WHERE id = :episodeId")
+    suspend fun setStarred(episodeId: String, starred: Boolean)
+
+    @Query("SELECT * FROM episodes WHERE isStarred = 1 ORDER BY publishedAtEpochMillis DESC")
+    fun observeStarred(): Flow<List<EpisodeEntity>>
 }

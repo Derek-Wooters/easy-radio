@@ -40,6 +40,8 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -52,6 +54,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -79,6 +82,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.easyradio.app.formatDuration
 import com.easyradio.app.ui.theme.LocalEasyRadioColors
 import com.easyradio.core.database.PodcastRepository
 import com.easyradio.core.media.IntroOutroSkip
@@ -565,6 +569,7 @@ private fun EpisodeListScreen(
                                     }
                                 }
                             },
+                            onToggleStar = { scope.launch { repository.setStarred(episode.id, !episode.isStarred) } },
                             downloadProgress = downloadProgress[episode.id],
                         )
                         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
@@ -649,6 +654,7 @@ private fun EpisodeListScreen(
                                 onListen = { replayAwareListen(scope, repository, episode) { onEpisodeSelected(episode) } },
                                 onQueue = { scope.launch { repository.enqueue(episode) } },
                                 onDownload = { scope.launch { repository.deleteDownload(episode) } },
+                                onToggleStar = { scope.launch { repository.setStarred(episode.id, !episode.isStarred) } },
                                 remainingLabel = ::episodeDownloadRemainingLabel,
                             )
                             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
@@ -734,6 +740,7 @@ internal fun EpisodeRow(
     onListen: () -> Unit,
     onQueue: () -> Unit,
     onDownload: () -> Unit,
+    onToggleStar: (() -> Unit)? = null,
     remainingLabel: (Episode) -> String? = ::episodeRemainingLabel,
     downloadProgress: Float? = null,
 ) {
@@ -804,6 +811,15 @@ internal fun EpisodeRow(
             IconButton(onClick = onQueue) {
                 Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = "Add to queue")
             }
+            if (onToggleStar != null) {
+                IconButton(onClick = onToggleStar) {
+                    Icon(
+                        if (episode.isStarred) Icons.Filled.Star else Icons.Filled.StarOutline,
+                        contentDescription = if (episode.isStarred) "Unstar episode" else "Star episode",
+                        tint = if (episode.isStarred) MaterialTheme.colorScheme.primary else LocalContentColor.current,
+                    )
+                }
+            }
             if (downloadProgress != null) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.size(48.dp)) {
                     CircularProgressIndicator(
@@ -855,6 +871,14 @@ private fun EpisodeDetailScreen(
     val scope = rememberCoroutineScope()
     var isDownloading by remember(episode.id) { mutableStateOf(false) }
     var pendingCellularDownload by remember { mutableStateOf<(() -> Unit)?>(null) }
+    // episode is a one-time navigation-time snapshot (see PodcastsScreen's selectedEpisode),
+    // never refreshed afterward -- looked up fresh here too, same reasoning and same bug class as
+    // liveOrSnapshot() above, so the star icon reflects a toggle immediately instead of only on
+    // the next visit to this screen.
+    val episodesForPodcast by remember(podcast.id) { repository.episodesFor(podcast.id) }
+        .collectAsState(initial = listOf(episode))
+    val currentEpisode = episodesForPodcast.find { it.id == episode.id } ?: episode
+    val bookmarks by remember(episode.id) { repository.bookmarksFor(episode.id) }.collectAsState(initial = emptyList())
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -904,14 +928,44 @@ private fun EpisodeDetailScreen(
         }
 
         Box(modifier = Modifier.weight(1f).padding(top = 16.dp)) {
-            Text(
-                text = episode.description.ifBlank { "No description available." },
-                style = MaterialTheme.typography.bodyMedium,
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 20.dp),
-            )
+            ) {
+                Text(
+                    text = episode.description.ifBlank { "No description available." },
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                if (bookmarks.isNotEmpty()) {
+                    Text(
+                        text = "Bookmarks",
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.padding(top = 20.dp, bottom = 4.dp),
+                    )
+                    bookmarks.forEach { bookmark ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(formatDuration(bookmark.positionMs), style = MaterialTheme.typography.bodyMedium)
+                                if (bookmark.note.isNotBlank()) {
+                                    Text(
+                                        bookmark.note,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                            IconButton(onClick = { scope.launch { repository.deleteBookmark(bookmark.id) } }) {
+                                Icon(Icons.Filled.Delete, contentDescription = "Delete bookmark")
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
@@ -939,6 +993,13 @@ private fun EpisodeDetailScreen(
             Spacer(modifier = Modifier.width(4.dp))
             IconButton(onClick = { scope.launch { repository.enqueue(episode) } }) {
                 Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = "Add to queue")
+            }
+            IconButton(onClick = { scope.launch { repository.setStarred(episode.id, !currentEpisode.isStarred) } }) {
+                Icon(
+                    if (currentEpisode.isStarred) Icons.Filled.Star else Icons.Filled.StarOutline,
+                    contentDescription = if (currentEpisode.isStarred) "Unstar episode" else "Star episode",
+                    tint = if (currentEpisode.isStarred) MaterialTheme.colorScheme.primary else LocalContentColor.current,
+                )
             }
             IconButton(
                 onClick = {

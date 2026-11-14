@@ -1,5 +1,6 @@
 package com.easyradio.core.database
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -17,6 +18,8 @@ data class EpisodeEntity(
     val chaptersUrl: String? = null,
     val transcriptUrl: String? = null,
     val transcriptType: String? = null,
+    // defaultValue must match MIGRATION_11_12's ALTER TABLE exactly, same reason as PodcastEntity's.
+    @ColumnInfo(defaultValue = "0") val isStarred: Boolean = false,
 )
 
 /**

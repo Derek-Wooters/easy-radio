@@ -45,6 +45,7 @@ fun PlaylistsScreen(
     val favorites by remember(repository) { repository.favorites() }.collectAsState(initial = emptyList())
     val podcasts by remember(podcastRepository) { podcastRepository.subscribedPodcasts() }.collectAsState(initial = emptyList())
     val episodes by remember(podcastRepository) { podcastRepository.allEpisodes() }.collectAsState(initial = emptyList())
+    val starred by remember(podcastRepository) { podcastRepository.starredEpisodes() }.collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
 
     val podcastsById = remember(podcasts) { podcasts.associateBy { it.id } }
@@ -111,6 +112,29 @@ fun PlaylistsScreen(
                     }
                 },
             )
+        }
+
+        item {
+            Text(
+                text = "Starred",
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.padding(start = 20.dp, top = 24.dp, bottom = 8.dp),
+            )
+        }
+        if (starred.isEmpty()) {
+            item {
+                Text(
+                    text = "Star an episode from any podcast to pin it here.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                )
+            }
+        }
+        items(starred, key = { "starred-${it.id}" }) { episode ->
+            SmartEpisodeRow(episode, podcastsById[episode.podcastId]) { podcast ->
+                onEpisodeSelected(podcast, episode)
+            }
         }
 
         item {

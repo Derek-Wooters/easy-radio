@@ -119,6 +119,23 @@ private class FakeEpisodeDao : EpisodeDao {
     override fun observeDownloaded() = state.map { list -> list.filter { it.localFilePath != null } }
 
     override fun observeAll() = state
+
+    override suspend fun setStarred(episodeId: String, starred: Boolean) {
+        state.update { list -> list.map { if (it.id == episodeId) it.copy(isStarred = starred) else it } }
+    }
+
+    override fun observeStarred() = state.map { list -> list.filter { it.isStarred } }
+}
+
+private class FakeBookmarkDao : BookmarkDao {
+    val state = MutableStateFlow<List<BookmarkEntity>>(emptyList())
+    override suspend fun insert(bookmark: BookmarkEntity) {
+        state.update { list -> list.filterNot { it.id == bookmark.id } + bookmark }
+    }
+    override fun observeForEpisode(episodeId: String) = state.map { list -> list.filter { it.episodeId == episodeId } }
+    override suspend fun delete(id: String) {
+        state.update { list -> list.filterNot { it.id == id } }
+    }
 }
 
 private class FakeQueueDao : QueueDao {
@@ -279,6 +296,60 @@ class PodcastRepositoryTest {
 
         val subscribed = repository.subscribedPodcasts().first().first()
         assertThat(subscribed.playbackSpeed).isEqualTo(1.5f)
+    }
+
+    @Test
+    fun `setStarred persists and starredEpisodes reflects it`() = runTest {
+        val episodeDao = FakeEpisodeDao()
+        val repository = PodcastRepository(FakeItunesSearchApi(), { feedXml }, FakePodcastDao(), episodeDao)
+        repository.refreshEpisodes(testPodcast)
+        val episodeId = repository.episodesFor(testPodcast.id).first().first().id
+
+        repository.setStarred(episodeId, true)
+
+        val starred = repository.starredEpisodes().first()
+        assertThat(starred).hasSize(1)
+        assertThat(starred.first().id).isEqualTo(episodeId)
+        assertThat(repository.episodesFor(testPodcast.id).first().first().isStarred).isTrue()
+    }
+
+    @Test
+    fun `unstarring removes the episode from starredEpisodes`() = runTest {
+        val episodeDao = FakeEpisodeDao()
+        val repository = PodcastRepository(FakeItunesSearchApi(), { feedXml }, FakePodcastDao(), episodeDao)
+        repository.refreshEpisodes(testPodcast)
+        val episodeId = repository.episodesFor(testPodcast.id).first().first().id
+        repository.setStarred(episodeId, true)
+
+        repository.setStarred(episodeId, false)
+
+        assertThat(repository.starredEpisodes().first()).isEmpty()
+    }
+
+    @Test
+    fun `addBookmark persists and bookmarksFor reflects it, deleteBookmark removes it`() = runTest {
+        val episodeDao = FakeEpisodeDao()
+        val bookmarkDao = FakeBookmarkDao()
+        val repository = PodcastRepository(
+            itunesApi = FakeItunesSearchApi(),
+            fetchFeed = { feedXml },
+            podcastDao = FakePodcastDao(),
+            episodeDao = episodeDao,
+            bookmarkDao = bookmarkDao,
+        )
+        repository.refreshEpisodes(testPodcast)
+        val episodeId = repository.episodesFor(testPodcast.id).first().first().id
+
+        repository.addBookmark(episodeId, positionMs = 90_000L, note = "Great point here")
+
+        val bookmarks = repository.bookmarksFor(episodeId).first()
+        assertThat(bookmarks).hasSize(1)
+        assertThat(bookmarks.first().positionMs).isEqualTo(90_000L)
+        assertThat(bookmarks.first().note).isEqualTo("Great point here")
+
+        repository.deleteBookmark(bookmarks.first().id)
+
+        assertThat(repository.bookmarksFor(episodeId).first()).isEmpty()
     }
 
     @Test

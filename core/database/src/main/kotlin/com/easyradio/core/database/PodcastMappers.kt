@@ -1,5 +1,6 @@
 package com.easyradio.core.database
 
+import com.easyradio.core.model.Bookmark
 import com.easyradio.core.model.Episode
 import com.easyradio.core.model.Podcast
 
@@ -48,6 +49,7 @@ fun Episode.toEntity(): EpisodeEntity = EpisodeEntity(
     chaptersUrl = chaptersUrl,
     transcriptUrl = transcriptUrl,
     transcriptType = transcriptType,
+    isStarred = isStarred,
 )
 
 fun EpisodeEntity.toEpisode(): Episode = Episode(
@@ -63,6 +65,15 @@ fun EpisodeEntity.toEpisode(): Episode = Episode(
     chaptersUrl = chaptersUrl,
     transcriptUrl = transcriptUrl,
     transcriptType = transcriptType,
+    isStarred = isStarred,
+)
+
+fun BookmarkEntity.toBookmark(): Bookmark = Bookmark(
+    id = id,
+    episodeId = episodeId,
+    positionMs = positionMs,
+    note = note,
+    createdAtEpochMillis = createdAtEpochMillis,
 )
 
 /**
