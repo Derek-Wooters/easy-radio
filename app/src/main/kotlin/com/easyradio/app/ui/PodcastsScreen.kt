@@ -81,6 +81,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.easyradio.app.ui.theme.LocalEasyRadioColors
 import com.easyradio.core.database.PodcastRepository
+import com.easyradio.core.media.IntroOutroSkip
 import com.easyradio.core.model.Episode
 import com.easyradio.core.model.Podcast
 import java.io.File
@@ -113,6 +114,16 @@ fun PodcastsScreen(
     var selectedPodcast by remember { mutableStateOf<Podcast?>(null) }
     var selectedEpisode by remember { mutableStateOf<Episode?>(null) }
 
+    // selectedPodcast is a one-time snapshot from whenever the user navigated into this podcast,
+    // not kept in sync afterward -- so looking a podcast up here instead, right before actually
+    // starting playback, is what makes a Options-tab change (skip-first/last, etc.) take effect
+    // immediately rather than only on the *next* visit to this podcast. Confirmed as a real,
+    // user-visible bug while testing skip-first: changing it and immediately tapping play on the
+    // same screen silently played with the setting from before the change.
+    val subscribedForPlayback by remember(repository) { repository.subscribedPodcasts() }
+        .collectAsState(initial = emptyList())
+    fun liveOrSnapshot(podcast: Podcast): Podcast = subscribedForPlayback.find { it.id == podcast.id } ?: podcast
+
     LaunchedEffect(initialPodcast) {
         initialPodcast?.let {
             selectedPodcast = it
@@ -135,7 +146,7 @@ fun PodcastsScreen(
                 repository = repository,
                 podcast = podcast,
                 onBack = { screenState = PodcastScreenState.LIBRARY },
-                onEpisodeSelected = { episode -> onEpisodeSelected(podcast, episode) },
+                onEpisodeSelected = { episode -> onEpisodeSelected(liveOrSnapshot(podcast), episode) },
                 onEpisodeClick = { episode ->
                     selectedEpisode = episode
                     screenState = PodcastScreenState.EPISODE_DETAIL
@@ -151,7 +162,7 @@ fun PodcastsScreen(
                     podcast = podcast,
                     episode = episode,
                     onBack = { screenState = PodcastScreenState.EPISODES },
-                    onListen = { onEpisodeSelected(podcast, episode) },
+                    onListen = { onEpisodeSelected(liveOrSnapshot(podcast), episode) },
                 )
             }
         }
@@ -655,6 +666,16 @@ private fun EpisodeListScreen(
                             checked = subscribedEntry.autoDownloadNewEpisodes,
                             onCheckedChange = { scope.launch { repository.setAutoDownloadNewEpisodes(podcast.id, it) } },
                         )
+                        PodcastSkipOptionRow(
+                            label = "Skip first",
+                            seconds = subscribedEntry.skipFirstSeconds,
+                            onSelect = { scope.launch { repository.setSkipFirstSeconds(podcast.id, it) } },
+                        )
+                        PodcastSkipOptionRow(
+                            label = "Skip last",
+                            seconds = subscribedEntry.skipLastSeconds,
+                            onSelect = { scope.launch { repository.setSkipLastSeconds(podcast.id, it) } },
+                        )
                     } else {
                         Text(
                             text = "Follow this podcast to set notification and download options.",
@@ -918,6 +939,43 @@ private fun PodcastOptionRow(label: String, checked: Boolean, onCheckedChange: (
             onCheckedChange = onCheckedChange,
             modifier = Modifier.semantics { contentDescription = label },
         )
+    }
+}
+
+private val SKIP_INTRO_OUTRO_SECONDS_OPTIONS = listOf(0, 5, 10, 15, 20, 30, 45, 60)
+
+/**
+ * A label with a tappable current value that opens a dropdown of seconds options (0 = off), for
+ * this podcast's "skip first"/"skip last" (auto intro/outro skip) -- see [IntroOutroSkip].
+ */
+@Composable
+private fun PodcastSkipOptionRow(label: String, seconds: Int, onSelect: (Int) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 20.dp)
+            .clickable { expanded = true }
+            .semantics { contentDescription = label },
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Text(
+            text = if (seconds == 0) "Off" else "$seconds sec",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            SKIP_INTRO_OUTRO_SECONDS_OPTIONS.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(if (option == 0) "Off" else "$option sec") },
+                    onClick = {
+                        onSelect(option)
+                        expanded = false
+                    },
+                )
+            }
+        }
     }
 }
 
