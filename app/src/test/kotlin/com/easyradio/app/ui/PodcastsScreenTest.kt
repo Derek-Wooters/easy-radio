@@ -43,6 +43,7 @@ private class NoOpPodcastDao : PodcastDao {
     override suspend fun setAutoDownloadNewEpisodes(id: String, enabled: Boolean) {}
     override suspend fun setSkipFirstSeconds(id: String, seconds: Int) {}
     override suspend fun setSkipLastSeconds(id: String, seconds: Int) {}
+    override suspend fun setPlaybackSpeed(id: String, speed: Float) {}
 }
 
 /** Unlike [NoOpPodcastDao], actually mutates state -- needed to verify the Options tab's toggles. */
@@ -66,6 +67,9 @@ private class OptionsFakePodcastDao : PodcastDao {
     }
     override suspend fun setSkipLastSeconds(id: String, seconds: Int) {
         state.update { list -> list.map { if (it.id == id) it.copy(skipLastSeconds = seconds) else it } }
+    }
+    override suspend fun setPlaybackSpeed(id: String, speed: Float) {
+        state.update { list -> list.map { if (it.id == id) it.copy(playbackSpeed = speed) else it } }
     }
 }
 

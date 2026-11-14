@@ -35,6 +35,7 @@ private class PlaylistsFakePodcastDao : PodcastDao {
     override suspend fun setAutoDownloadNewEpisodes(id: String, enabled: Boolean) {}
     override suspend fun setSkipFirstSeconds(id: String, seconds: Int) {}
     override suspend fun setSkipLastSeconds(id: String, seconds: Int) {}
+    override suspend fun setPlaybackSpeed(id: String, speed: Float) {}
 }
 
 private class PlaylistsFakeEpisodeDao : EpisodeDao {

@@ -61,6 +61,10 @@ private class FakePodcastDao : PodcastDao {
     override suspend fun setSkipLastSeconds(id: String, seconds: Int) {
         state.update { list -> list.map { if (it.id == id) it.copy(skipLastSeconds = seconds) else it } }
     }
+
+    override suspend fun setPlaybackSpeed(id: String, speed: Float) {
+        state.update { list -> list.map { if (it.id == id) it.copy(playbackSpeed = speed) else it } }
+    }
 }
 
 private class FakeEpisodeDao : EpisodeDao {
@@ -263,6 +267,18 @@ class PodcastRepositoryTest {
         val subscribed = repository.subscribedPodcasts().first().first()
         assertThat(subscribed.skipFirstSeconds).isEqualTo(30)
         assertThat(subscribed.skipLastSeconds).isEqualTo(15)
+    }
+
+    @Test
+    fun `setPlaybackSpeed persists per podcast`() = runTest {
+        val podcastDao = FakePodcastDao()
+        val repository = PodcastRepository(FakeItunesSearchApi(), { feedXml }, podcastDao, FakeEpisodeDao())
+        repository.subscribe(testPodcast)
+
+        repository.setPlaybackSpeed(testPodcast.id, 1.5f)
+
+        val subscribed = repository.subscribedPodcasts().first().first()
+        assertThat(subscribed.playbackSpeed).isEqualTo(1.5f)
     }
 
     @Test

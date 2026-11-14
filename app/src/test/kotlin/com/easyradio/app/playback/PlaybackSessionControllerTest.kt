@@ -58,6 +58,7 @@ private class FakePodcastDao : PodcastDao {
     override suspend fun setAutoDownloadNewEpisodes(id: String, enabled: Boolean) {}
     override suspend fun setSkipFirstSeconds(id: String, seconds: Int) {}
     override suspend fun setSkipLastSeconds(id: String, seconds: Int) {}
+    override suspend fun setPlaybackSpeed(id: String, speed: Float) {}
 }
 
 private class FakeEpisodeDao : EpisodeDao {
@@ -466,6 +467,62 @@ class PlaybackSessionControllerTest {
         // startPlayback for ep1, then again for the auto-advanced ep2 -- triggered by the outro
         // check, not a real STATE_ENDED.
         verify(exactly = 2) { player.setMediaItem(any(), any<Long>()) }
+        sut.release() // ep2's position-save loop is still running; runs forever otherwise
+    }
+
+    @Test
+    fun `startPlayback applies the given playback speed before the media item loads`() {
+        val player = fakePlayer()
+        val sut = controller(player)
+
+        sut.startPlayback(
+            Uri.parse("https://example.com/ep1.mp3"), "Ep1", "Podcast", null, 0L,
+            episodeId = "ep1", playbackSpeed = 1.5f,
+        )
+
+        verify { player.setPlaybackParameters(PlaybackParameters(1.5f)) }
+    }
+
+    @Test
+    fun `startPlayback defaults to 1x when no speed is given`() {
+        val player = fakePlayer()
+        val sut = controller(player)
+
+        sut.startPlayback(Uri.parse("https://example.com/ep1.mp3"), "Ep1", "Podcast", null, 0L)
+
+        verify { player.setPlaybackParameters(PlaybackParameters(1.0f)) }
+    }
+
+    @Test
+    fun `auto-advancing to the next unplayed episode applies its podcast's playback speed`() = runTest(dispatcher) {
+        val podcast = Podcast(
+            id = "p1",
+            title = "The Daily",
+            author = "NYT",
+            artworkUrl = null,
+            feedUrl = "https://example.com/feed",
+            playbackSpeed = 2.0f,
+        )
+        podcastDao.state.value = listOf(podcast.toEntity(subscribedAtEpochMillis = 0))
+        val next = Episode(
+            id = "ep2",
+            podcastId = "p1",
+            title = "Episode 2",
+            audioUrl = "https://example.com/ep2.mp3",
+            publishedAtEpochMillis = null,
+            durationSeconds = 600,
+        )
+        episodeDao.state.value = listOf(next.toEntity())
+        queueDao.state.value = listOf(QueueItemEntity(episodeId = "ep2", position = 0))
+
+        val player = fakePlayer()
+        val sut = controller(player)
+        sut.startPlayback(Uri.parse("https://example.com/ep1.mp3"), "Ep1", "Podcast", null, 0L, episodeId = "ep1")
+
+        sut.onPlayerPlaybackStateChanged(Player.STATE_ENDED)
+        dispatcher.scheduler.runCurrent()
+
+        verify { player.setPlaybackParameters(PlaybackParameters(2.0f)) }
         sut.release() // ep2's position-save loop is still running; runs forever otherwise
     }
 }
