@@ -71,6 +71,14 @@ const val EXTRA_STATION_ID = "com.easyradio.app.EXTRA_STATION_ID"
 const val EXTRA_SKIP_LAST_SECONDS = "com.easyradio.app.EXTRA_SKIP_LAST_SECONDS"
 
 /**
+ * Extras key carrying the playing episode's podcast's playback speed (Options tab/the Now
+ * Playing speed control), baked into the initial playFromUri the same way EXTRA_RESUME_POSITION_MS
+ * is -- applying it only after playback has already started would otherwise play a moment of
+ * audio at the previous episode's speed first.
+ */
+const val EXTRA_PLAYBACK_SPEED = "com.easyradio.app.EXTRA_PLAYBACK_SPEED"
+
+/**
  * Custom [MediaSessionCompat.Callback.onCustomAction] sent by [MainActivity]'s sleep-timer picker
  * to arm a one-shot "stop instead of advancing to the next queued episode" for the episode
  * currently playing, rather than the persisted minutes-based default.
@@ -409,6 +417,7 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
                 stationId = extras?.getString(EXTRA_STATION_ID),
                 podcastId = extras?.getString(EXTRA_PODCAST_ID),
                 skipLastSeconds = extras?.getInt(EXTRA_SKIP_LAST_SECONDS) ?: 0,
+                playbackSpeed = extras?.getFloat(EXTRA_PLAYBACK_SPEED) ?: 1.0f,
             )
         }
 

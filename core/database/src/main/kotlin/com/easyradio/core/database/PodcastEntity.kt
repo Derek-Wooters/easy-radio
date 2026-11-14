@@ -21,4 +21,6 @@ data class PodcastEntity(
     // defaultValue must match MIGRATION_9_10's ALTER TABLE exactly, same reason as above.
     @ColumnInfo(defaultValue = "0") val skipFirstSeconds: Int = 0,
     @ColumnInfo(defaultValue = "0") val skipLastSeconds: Int = 0,
+    // defaultValue must match MIGRATION_10_11's ALTER TABLE exactly, same reason as above.
+    @ColumnInfo(defaultValue = "1.0") val playbackSpeed: Float = 1.0f,
 )

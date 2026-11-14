@@ -112,6 +112,14 @@ internal fun episodeMiniPlayerTagline(podcastTitle: String, positionMs: Long, du
     return if (podcastTitle.isNotEmpty()) "$podcastTitle · $left left" else "$left left"
 }
 
+/**
+ * Which [PLAYBACK_SPEEDS] entry a podcast's saved speed corresponds to, so adopting a now-playing
+ * episode can show (and the player can apply) that podcast's own speed instead of always
+ * resetting to 1.0x -- falling back to 1.0x's index for a speed outside the fixed list (e.g. one
+ * saved by a future version with more options) rather than crashing or showing a blank label.
+ */
+internal fun playbackSpeedIndexFor(speed: Float): Int = PLAYBACK_SPEEDS.indexOf(speed).let { if (it >= 0) it else 0 }
+
 class MainActivity : ComponentActivity() {
 
     private val notificationPermissionLauncher =
@@ -793,7 +801,7 @@ class MainActivity : ComponentActivity() {
         currentStation = null
         currentEpisode = episode
         currentPodcast = podcast
-        playbackSpeedIndex = 0
+        playbackSpeedIndex = playbackSpeedIndexFor(podcast.playbackSpeed)
 
         lifecycleScope.launch {
             recentlyPlayedRepository.record(
@@ -928,7 +936,12 @@ class MainActivity : ComponentActivity() {
 
     private fun cyclePlaybackSpeed() {
         playbackSpeedIndex = (playbackSpeedIndex + 1) % PLAYBACK_SPEEDS.size
-        sessionConnection.controller?.transportControls?.setPlaybackSpeed(PLAYBACK_SPEEDS[playbackSpeedIndex])
+        val speed = PLAYBACK_SPEEDS[playbackSpeedIndex]
+        sessionConnection.controller?.transportControls?.setPlaybackSpeed(speed)
+        // Speed only ever shows (and this is only ever reachable) while a podcast episode is
+        // playing -- stations' Now Playing screen passes no onSpeedClick/speedLabel at all -- so
+        // currentPodcast is always non-null here in practice; the null-safe call is just defensive.
+        currentPodcast?.let { podcast -> lifecycleScope.launch { podcastRepository.setPlaybackSpeed(podcast.id, speed) } }
     }
 
     /**

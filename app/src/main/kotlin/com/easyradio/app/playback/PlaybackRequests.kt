@@ -52,6 +52,7 @@ object PlaybackRequests {
                 putString(EXTRA_EPISODE_ID, episode.id)
                 putString(EXTRA_PODCAST_ID, episode.podcastId)
                 putInt(EXTRA_SKIP_LAST_SECONDS, podcast.skipLastSeconds)
+                putFloat(EXTRA_PLAYBACK_SPEED, podcast.playbackSpeed)
             },
         )
     }
