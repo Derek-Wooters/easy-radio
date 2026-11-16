@@ -54,6 +54,8 @@ private class HomeFakeEpisodeDao : EpisodeDao {
     override suspend fun getByIds(ids: List<String>): List<EpisodeEntity> = emptyList()
     override fun observeDownloaded() = MutableStateFlow<List<EpisodeEntity>>(emptyList())
     override fun observeAll() = state
+    override suspend fun setStarred(episodeId: String, starred: Boolean) {}
+    override fun observeStarred() = MutableStateFlow<List<EpisodeEntity>>(emptyList())
 }
 
 private class HomeFakePodcastDao : PodcastDao {

@@ -101,6 +101,7 @@ object EasyRadioGraph {
             downloadFile = downloader::download,
             deleteFile = downloader::delete,
             queueDao = database.queueDao(),
+            bookmarkDao = database.bookmarkDao(),
         )
     }
 }

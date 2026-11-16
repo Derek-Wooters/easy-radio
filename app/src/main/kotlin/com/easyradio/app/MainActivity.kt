@@ -546,6 +546,10 @@ class MainActivity : ComponentActivity() {
                                     if (durationMs > 0) seekToFraction(chapter.startTimeMs.toFloat() / durationMs)
                                 },
                                 transcript = currentTranscript,
+                                onBookmarkClick = {
+                                    lifecycleScope.launch { podcastRepository.addBookmark(episode.id, positionMs) }
+                                    android.widget.Toast.makeText(this@MainActivity, "Bookmark added", android.widget.Toast.LENGTH_SHORT).show()
+                                },
                             )
                             else -> NowPlayingScreen(
                                 topLabel = "",

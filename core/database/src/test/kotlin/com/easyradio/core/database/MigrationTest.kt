@@ -167,4 +167,63 @@ class MigrationTest {
         }
         db.close()
     }
+
+    @Test
+    fun `MIGRATION_11_12 adds isStarred to episodes, preserves existing rows, and creates bookmarks`() {
+        val helper = openHelper("migration-test-${System.nanoTime()}.db")
+        val db = helper.writableDatabase
+
+        // The exact version-11 "episodes" table (unchanged since this project's earliest schema
+        // export -- isStarred is the first episodes-table migration).
+        db.execSQL(
+            """
+            CREATE TABLE episodes (
+                id TEXT NOT NULL PRIMARY KEY,
+                podcastId TEXT NOT NULL,
+                title TEXT NOT NULL,
+                audioUrl TEXT NOT NULL,
+                publishedAtEpochMillis INTEGER,
+                durationSeconds INTEGER,
+                description TEXT NOT NULL,
+                positionMs INTEGER NOT NULL DEFAULT 0,
+                localFilePath TEXT,
+                chaptersUrl TEXT,
+                transcriptUrl TEXT,
+                transcriptType TEXT
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            """
+            INSERT INTO episodes (
+                id, podcastId, title, audioUrl, publishedAtEpochMillis, durationSeconds,
+                description, positionMs, localFilePath, chaptersUrl, transcriptUrl, transcriptType
+            )
+            VALUES (
+                'ep1', 'p1', 'Episode One', 'https://example.com/ep1.mp3', 1000, 600,
+                'desc', 42000, NULL, NULL, NULL, NULL
+            )
+            """.trimIndent(),
+        )
+
+        MIGRATION_11_12.migrate(db)
+
+        db.query("SELECT * FROM episodes WHERE id = 'ep1'").use { cursor ->
+            assertThat(cursor.moveToFirst()).isTrue()
+            assertThat(cursor.getString(cursor.getColumnIndexOrThrow("title"))).isEqualTo("Episode One")
+            assertThat(cursor.getLong(cursor.getColumnIndexOrThrow("positionMs"))).isEqualTo(42000L)
+            assertThat(cursor.getInt(cursor.getColumnIndexOrThrow("isStarred"))).isEqualTo(0)
+        }
+
+        // The new bookmarks table must actually be usable, not just present.
+        db.execSQL(
+            "INSERT INTO bookmarks (id, episodeId, positionMs, note, createdAtEpochMillis) " +
+                "VALUES ('b1', 'ep1', 90000, 'note', 5000)",
+        )
+        db.query("SELECT * FROM bookmarks WHERE id = 'b1'").use { cursor ->
+            assertThat(cursor.moveToFirst()).isTrue()
+            assertThat(cursor.getLong(cursor.getColumnIndexOrThrow("positionMs"))).isEqualTo(90000L)
+        }
+        db.close()
+    }
 }

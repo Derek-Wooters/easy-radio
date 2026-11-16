@@ -11,8 +11,9 @@ import androidx.room.RoomDatabase
         FavoriteStationEntity::class,
         RecentlyPlayedEntity::class,
         ListeningStatsEntity::class,
+        BookmarkEntity::class,
     ],
-    version = 11,
+    version = 12,
     exportSchema = true,
 )
 abstract class EasyRadioDatabase : RoomDatabase() {
@@ -22,4 +23,5 @@ abstract class EasyRadioDatabase : RoomDatabase() {
     abstract fun favoriteStationDao(): FavoriteStationDao
     abstract fun recentlyPlayedDao(): RecentlyPlayedDao
     abstract fun listeningStatsDao(): ListeningStatsDao
+    abstract fun bookmarkDao(): BookmarkDao
 }

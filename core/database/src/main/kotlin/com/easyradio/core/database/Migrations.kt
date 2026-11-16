@@ -40,5 +40,28 @@ val MIGRATION_10_11: Migration = object : Migration(10, 11) {
     }
 }
 
+/**
+ * Adds per-episode starring (default off -- see [com.easyradio.core.model.Episode]) and a new
+ * bookmarks table (saved timestamps within an episode, created from Now Playing's bookmark
+ * button -- see [com.easyradio.core.model.Bookmark]). Shipped together since both are part of
+ * the same "episode interactions" feature.
+ */
+val MIGRATION_11_12: Migration = object : Migration(11, 12) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE episodes ADD COLUMN isStarred INTEGER NOT NULL DEFAULT 0")
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS bookmarks (
+                id TEXT NOT NULL PRIMARY KEY,
+                episodeId TEXT NOT NULL,
+                positionMs INTEGER NOT NULL,
+                note TEXT NOT NULL,
+                createdAtEpochMillis INTEGER NOT NULL
+            )
+            """.trimIndent(),
+        )
+    }
+}
+
 /** Every migration the app knows how to run, in order; pass to `Room.databaseBuilder(...).addMigrations(*ALL_MIGRATIONS)`. */
-val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
+val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
