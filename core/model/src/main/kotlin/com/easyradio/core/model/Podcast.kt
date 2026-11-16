@@ -13,6 +13,7 @@ data class Podcast(
     val autoDownloadNewEpisodes: Boolean = false,
     val skipFirstSeconds: Int = 0,
     val skipLastSeconds: Int = 0,
+    val playbackSpeed: Float = 1.0f,
 ) {
     init {
         require(id.isNotBlank()) { "Podcast.id must not be blank" }

@@ -86,6 +86,10 @@ class PodcastRepository(
         podcastDao.setSkipLastSeconds(podcastId, seconds)
     }
 
+    suspend fun setPlaybackSpeed(podcastId: String, speed: Float) {
+        podcastDao.setPlaybackSpeed(podcastId, speed)
+    }
+
     suspend fun markPlayed(podcastId: String) {
         podcastDao.updateLastPlayed(podcastId, System.currentTimeMillis())
     }

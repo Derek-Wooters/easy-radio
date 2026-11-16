@@ -118,4 +118,53 @@ class MigrationTest {
         }
         db.close()
     }
+
+    @Test
+    fun `MIGRATION_10_11 adds playbackSpeed defaulting to 1_0 and preserves existing rows`() {
+        val helper = openHelper("migration-test-${System.nanoTime()}.db")
+        val db = helper.writableDatabase
+
+        // The exact version-10 "podcasts" table (version 9's columns plus MIGRATION_9_10's two).
+        db.execSQL(
+            """
+            CREATE TABLE podcasts (
+                id TEXT NOT NULL PRIMARY KEY,
+                title TEXT NOT NULL,
+                author TEXT NOT NULL,
+                artworkUrl TEXT,
+                feedUrl TEXT NOT NULL,
+                subscribedAtEpochMillis INTEGER NOT NULL,
+                isPreset INTEGER NOT NULL,
+                lastPlayedAtEpochMillis INTEGER,
+                notifyNewEpisodes INTEGER NOT NULL DEFAULT 0,
+                autoDownloadNewEpisodes INTEGER NOT NULL DEFAULT 0,
+                skipFirstSeconds INTEGER NOT NULL DEFAULT 0,
+                skipLastSeconds INTEGER NOT NULL DEFAULT 0
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            """
+            INSERT INTO podcasts (
+                id, title, author, artworkUrl, feedUrl, subscribedAtEpochMillis,
+                isPreset, lastPlayedAtEpochMillis, notifyNewEpisodes, autoDownloadNewEpisodes,
+                skipFirstSeconds, skipLastSeconds
+            )
+            VALUES (
+                'p1', 'The Daily', 'NYT', NULL, 'https://example.com/feed.xml', 1000,
+                0, NULL, 1, 0, 30, 0
+            )
+            """.trimIndent(),
+        )
+
+        MIGRATION_10_11.migrate(db)
+
+        db.query("SELECT * FROM podcasts WHERE id = 'p1'").use { cursor ->
+            assertThat(cursor.moveToFirst()).isTrue()
+            assertThat(cursor.getString(cursor.getColumnIndexOrThrow("title"))).isEqualTo("The Daily")
+            assertThat(cursor.getInt(cursor.getColumnIndexOrThrow("skipFirstSeconds"))).isEqualTo(30)
+            assertThat(cursor.getFloat(cursor.getColumnIndexOrThrow("playbackSpeed"))).isEqualTo(1.0f)
+        }
+        db.close()
+    }
 }

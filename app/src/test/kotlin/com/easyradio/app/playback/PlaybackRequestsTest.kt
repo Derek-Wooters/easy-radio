@@ -135,4 +135,22 @@ class PlaybackRequestsTest {
 
         assertThat(request.extras.getInt(EXTRA_SKIP_LAST_SECONDS)).isEqualTo(15)
     }
+
+    @Test
+    fun `forEpisode includes the podcast's playback speed`() {
+        val request = PlaybackRequests.forEpisode(
+            podcast.copy(playbackSpeed = 1.5f),
+            episode(),
+            resumePositionMs = 0L,
+        )
+
+        assertThat(request.extras.getFloat(EXTRA_PLAYBACK_SPEED)).isEqualTo(1.5f)
+    }
+
+    @Test
+    fun `forEpisode defaults to 1x for a podcast with no custom speed set`() {
+        val request = PlaybackRequests.forEpisode(podcast, episode(), resumePositionMs = 0L)
+
+        assertThat(request.extras.getFloat(EXTRA_PLAYBACK_SPEED)).isEqualTo(1.0f)
+    }
 }

@@ -29,5 +29,16 @@ val MIGRATION_9_10: Migration = object : Migration(9, 10) {
     }
 }
 
+/**
+ * Adds a per-podcast playback speed (default 1.0x -- see [com.easyradio.core.model.Podcast]), set
+ * implicitly whenever the user adjusts speed while playing an episode of that show, instead of
+ * always resetting to 1.0x on the next episode.
+ */
+val MIGRATION_10_11: Migration = object : Migration(10, 11) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE podcasts ADD COLUMN playbackSpeed REAL NOT NULL DEFAULT 1.0")
+    }
+}
+
 /** Every migration the app knows how to run, in order; pass to `Room.databaseBuilder(...).addMigrations(*ALL_MIGRATIONS)`. */
-val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_8_9, MIGRATION_9_10)
+val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
