@@ -17,5 +17,17 @@ val MIGRATION_8_9: Migration = object : Migration(8, 9) {
     }
 }
 
+/**
+ * Adds per-podcast "skip first"/"skip last" seconds (both default 0/off -- see
+ * [com.easyradio.core.model.Podcast]), set from that show's Options tab to auto-skip a fixed
+ * intro or outro on every episode.
+ */
+val MIGRATION_9_10: Migration = object : Migration(9, 10) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE podcasts ADD COLUMN skipFirstSeconds INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE podcasts ADD COLUMN skipLastSeconds INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
 /** Every migration the app knows how to run, in order; pass to `Room.databaseBuilder(...).addMigrations(*ALL_MIGRATIONS)`. */
-val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_8_9)
+val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_8_9, MIGRATION_9_10)

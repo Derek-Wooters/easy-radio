@@ -29,4 +29,10 @@ interface PodcastDao {
 
     @Query("UPDATE podcasts SET autoDownloadNewEpisodes = :enabled WHERE id = :id")
     suspend fun setAutoDownloadNewEpisodes(id: String, enabled: Boolean)
+
+    @Query("UPDATE podcasts SET skipFirstSeconds = :seconds WHERE id = :id")
+    suspend fun setSkipFirstSeconds(id: String, seconds: Int)
+
+    @Query("UPDATE podcasts SET skipLastSeconds = :seconds WHERE id = :id")
+    suspend fun setSkipLastSeconds(id: String, seconds: Int)
 }

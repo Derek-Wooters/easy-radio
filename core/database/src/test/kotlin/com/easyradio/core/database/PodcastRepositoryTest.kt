@@ -53,6 +53,14 @@ private class FakePodcastDao : PodcastDao {
     override suspend fun setAutoDownloadNewEpisodes(id: String, enabled: Boolean) {
         state.update { list -> list.map { if (it.id == id) it.copy(autoDownloadNewEpisodes = enabled) else it } }
     }
+
+    override suspend fun setSkipFirstSeconds(id: String, seconds: Int) {
+        state.update { list -> list.map { if (it.id == id) it.copy(skipFirstSeconds = seconds) else it } }
+    }
+
+    override suspend fun setSkipLastSeconds(id: String, seconds: Int) {
+        state.update { list -> list.map { if (it.id == id) it.copy(skipLastSeconds = seconds) else it } }
+    }
 }
 
 private class FakeEpisodeDao : EpisodeDao {
@@ -241,6 +249,20 @@ class PodcastRepositoryTest {
         val subscribed = repository.subscribedPodcasts().first().first()
         assertThat(subscribed.notifyNewEpisodes).isTrue()
         assertThat(subscribed.autoDownloadNewEpisodes).isTrue()
+    }
+
+    @Test
+    fun `setSkipFirstSeconds and setSkipLastSeconds persist independently per podcast`() = runTest {
+        val podcastDao = FakePodcastDao()
+        val repository = PodcastRepository(FakeItunesSearchApi(), { feedXml }, podcastDao, FakeEpisodeDao())
+        repository.subscribe(testPodcast)
+
+        repository.setSkipFirstSeconds(testPodcast.id, 30)
+        repository.setSkipLastSeconds(testPodcast.id, 15)
+
+        val subscribed = repository.subscribedPodcasts().first().first()
+        assertThat(subscribed.skipFirstSeconds).isEqualTo(30)
+        assertThat(subscribed.skipLastSeconds).isEqualTo(15)
     }
 
     @Test

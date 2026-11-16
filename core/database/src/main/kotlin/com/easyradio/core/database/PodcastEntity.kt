@@ -18,4 +18,7 @@ data class PodcastEntity(
     // schema validation fails on next launch (expected schema vs. actual migrated schema).
     @ColumnInfo(defaultValue = "0") val notifyNewEpisodes: Boolean = false,
     @ColumnInfo(defaultValue = "0") val autoDownloadNewEpisodes: Boolean = false,
+    // defaultValue must match MIGRATION_9_10's ALTER TABLE exactly, same reason as above.
+    @ColumnInfo(defaultValue = "0") val skipFirstSeconds: Int = 0,
+    @ColumnInfo(defaultValue = "0") val skipLastSeconds: Int = 0,
 )

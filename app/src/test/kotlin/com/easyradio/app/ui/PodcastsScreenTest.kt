@@ -1,6 +1,7 @@
 package com.easyradio.app.ui
 
 import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -40,6 +41,8 @@ private class NoOpPodcastDao : PodcastDao {
     override suspend fun updateLastPlayed(id: String, timestamp: Long) {}
     override suspend fun setNotifyNewEpisodes(id: String, enabled: Boolean) {}
     override suspend fun setAutoDownloadNewEpisodes(id: String, enabled: Boolean) {}
+    override suspend fun setSkipFirstSeconds(id: String, seconds: Int) {}
+    override suspend fun setSkipLastSeconds(id: String, seconds: Int) {}
 }
 
 /** Unlike [NoOpPodcastDao], actually mutates state -- needed to verify the Options tab's toggles. */
@@ -58,6 +61,12 @@ private class OptionsFakePodcastDao : PodcastDao {
     override suspend fun setAutoDownloadNewEpisodes(id: String, enabled: Boolean) {
         state.update { list -> list.map { if (it.id == id) it.copy(autoDownloadNewEpisodes = enabled) else it } }
     }
+    override suspend fun setSkipFirstSeconds(id: String, seconds: Int) {
+        state.update { list -> list.map { if (it.id == id) it.copy(skipFirstSeconds = seconds) else it } }
+    }
+    override suspend fun setSkipLastSeconds(id: String, seconds: Int) {
+        state.update { list -> list.map { if (it.id == id) it.copy(skipLastSeconds = seconds) else it } }
+    }
 }
 
 private class OptionsFakeEpisodeDao : EpisodeDao {
@@ -70,6 +79,20 @@ private class OptionsFakeEpisodeDao : EpisodeDao {
     override suspend fun getByIds(ids: List<String>): List<EpisodeEntity> = emptyList()
     override fun observeDownloaded() = MutableStateFlow<List<EpisodeEntity>>(emptyList())
     override fun observeAll() = MutableStateFlow<List<EpisodeEntity>>(emptyList())
+}
+
+/** Serves a single fixed episode for its podcast -- enough to render one Listen/Resume row. */
+private class SingleEpisodeFakeEpisodeDao(private val episode: EpisodeEntity) : EpisodeDao {
+    override fun observeByPodcast(podcastId: String) =
+        MutableStateFlow(if (podcastId == episode.podcastId) listOf(episode) else emptyList())
+    override suspend fun insertIgnore(episodes: List<EpisodeEntity>) {}
+    override suspend fun updateMetadata(updates: List<EpisodeMetadata>) {}
+    override suspend fun updatePosition(episodeId: String, positionMs: Long) {}
+    override suspend fun getPosition(episodeId: String): Long? = null
+    override suspend fun updateLocalFilePath(episodeId: String, localFilePath: String?) {}
+    override suspend fun getByIds(ids: List<String>): List<EpisodeEntity> = emptyList()
+    override fun observeDownloaded() = MutableStateFlow<List<EpisodeEntity>>(emptyList())
+    override fun observeAll() = MutableStateFlow(listOf(episode))
 }
 
 /** Tracks updatePosition calls so replayAwareListen's behavior can be asserted directly. */
@@ -250,5 +273,86 @@ class PodcastsScreenTest {
 
         assertThat(podcastDao.state.value.first().notifyNewEpisodes).isTrue()
         assertThat(podcastDao.state.value.first().autoDownloadNewEpisodes).isFalse()
+    }
+
+    @Test
+    fun `Options tab defaults skip-first and skip-last to Off, and picking a value persists`() {
+        val podcastDao = OptionsFakePodcastDao()
+        val podcast = Podcast(
+            id = "p1",
+            title = "Test Show",
+            author = "Author",
+            artworkUrl = null,
+            feedUrl = "https://example.com/feed.xml",
+        )
+        podcastDao.state.value = listOf(podcast.toEntity(subscribedAtEpochMillis = 0L))
+        val repository = PodcastRepository(
+            itunesApi = NoOpItunesSearchApi(),
+            fetchFeed = { "" },
+            podcastDao = podcastDao,
+            episodeDao = OptionsFakeEpisodeDao(),
+        )
+
+        composeTestRule.setContent {
+            PodcastsScreen(repository = repository, onEpisodeSelected = { _, _ -> }, initialPodcast = podcast)
+        }
+        composeTestRule.onNodeWithText("Options").performClick()
+
+        composeTestRule.onNodeWithContentDescription("Skip first").assertTextContains("Off")
+        composeTestRule.onNodeWithContentDescription("Skip last").assertTextContains("Off")
+
+        composeTestRule.onNodeWithContentDescription("Skip first").performClick()
+        composeTestRule.onNodeWithText("30 sec").performClick()
+
+        assertThat(podcastDao.state.value.first().skipFirstSeconds).isEqualTo(30)
+        assertThat(podcastDao.state.value.first().skipLastSeconds).isEqualTo(0)
+    }
+
+    @Test
+    fun `playing an episode uses the podcast's current skip-first, not the stale navigation-time snapshot`() {
+        // Regression test for a real bug hit while testing skip-first live: PodcastsScreen holds
+        // the Podcast it navigated to the episode list with as a one-time snapshot, never
+        // refreshed afterward -- so setting "Skip first" from the Options tab and then tapping
+        // Listen on the same visit silently played with whatever skipFirstSeconds was true when
+        // the user first opened this podcast, not the value just set.
+        val staleSnapshot = Podcast(
+            id = "p1",
+            title = "Test Show",
+            author = "Author",
+            artworkUrl = null,
+            feedUrl = "https://example.com/feed.xml",
+            skipFirstSeconds = 0,
+        )
+        val podcastDao = OptionsFakePodcastDao()
+        // The DAO/repository -- what the live Options tab reads from -- already has 30; the
+        // Podcast instance navigated in with (below) still says 0, exactly like a user who set
+        // Skip first to 30 after already being on this podcast's screen.
+        podcastDao.state.value = listOf(staleSnapshot.toEntity(subscribedAtEpochMillis = 0L).copy(skipFirstSeconds = 30))
+        val episode = Episode(
+            id = "ep-1",
+            podcastId = "p1",
+            title = "Episode",
+            audioUrl = "https://example.com/ep1.mp3",
+            publishedAtEpochMillis = null,
+            durationSeconds = 600,
+        )
+        val repository = PodcastRepository(
+            itunesApi = NoOpItunesSearchApi(),
+            fetchFeed = { "" },
+            podcastDao = podcastDao,
+            episodeDao = SingleEpisodeFakeEpisodeDao(episode.toEntity()),
+        )
+        var selectedPodcast: Podcast? = null
+
+        composeTestRule.setContent {
+            PodcastsScreen(
+                repository = repository,
+                onEpisodeSelected = { podcast, _ -> selectedPodcast = podcast },
+                initialPodcast = staleSnapshot,
+            )
+        }
+        composeTestRule.onNodeWithText("Listen").performClick()
+
+        assertThat(selectedPodcast?.skipFirstSeconds).isEqualTo(30)
     }
 }

@@ -65,6 +65,8 @@ private class HomeFakePodcastDao : PodcastDao {
     override suspend fun updateLastPlayed(id: String, timestamp: Long) {}
     override suspend fun setNotifyNewEpisodes(id: String, enabled: Boolean) {}
     override suspend fun setAutoDownloadNewEpisodes(id: String, enabled: Boolean) {}
+    override suspend fun setSkipFirstSeconds(id: String, seconds: Int) {}
+    override suspend fun setSkipLastSeconds(id: String, seconds: Int) {}
 }
 
 private class HomeFakeFavoriteStationDao : FavoriteStationDao {

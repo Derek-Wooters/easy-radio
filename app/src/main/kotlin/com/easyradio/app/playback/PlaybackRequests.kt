@@ -2,6 +2,7 @@ package com.easyradio.app.playback
 
 import android.net.Uri
 import android.os.Bundle
+import com.easyradio.core.media.IntroOutroSkip
 import com.easyradio.core.model.Episode
 import com.easyradio.core.model.Podcast
 import com.easyradio.core.model.RadioStation
@@ -40,15 +41,17 @@ object PlaybackRequests {
         } else {
             Uri.parse(episode.audioUrl)
         }
+        val startPositionMs = IntroOutroSkip.resolveStartPositionMs(resumePositionMs, podcast.skipFirstSeconds)
         return PlaybackRequest(
             uri = uri,
             extras = Bundle().apply {
                 putString(EXTRA_TITLE, episode.title)
                 putString(EXTRA_ARTIST, podcast.author.ifBlank { podcast.title })
                 putString(EXTRA_ARTWORK_URL, podcast.artworkUrl)
-                putLong(EXTRA_RESUME_POSITION_MS, resumePositionMs)
+                putLong(EXTRA_RESUME_POSITION_MS, startPositionMs)
                 putString(EXTRA_EPISODE_ID, episode.id)
                 putString(EXTRA_PODCAST_ID, episode.podcastId)
+                putInt(EXTRA_SKIP_LAST_SECONDS, podcast.skipLastSeconds)
             },
         )
     }

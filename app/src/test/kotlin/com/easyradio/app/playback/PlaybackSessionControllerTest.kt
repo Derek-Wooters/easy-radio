@@ -56,6 +56,8 @@ private class FakePodcastDao : PodcastDao {
     override suspend fun updateLastPlayed(id: String, timestamp: Long) {}
     override suspend fun setNotifyNewEpisodes(id: String, enabled: Boolean) {}
     override suspend fun setAutoDownloadNewEpisodes(id: String, enabled: Boolean) {}
+    override suspend fun setSkipFirstSeconds(id: String, seconds: Int) {}
+    override suspend fun setSkipLastSeconds(id: String, seconds: Int) {}
 }
 
 private class FakeEpisodeDao : EpisodeDao {
@@ -122,6 +124,7 @@ class PlaybackSessionControllerTest {
         isPlaying: Boolean = true,
         positionMs: Long = 0L,
         bufferedPositionMs: Long = 0L,
+        durationMs: Long = 0L,
     ): Player {
         val player = mockk<Player>(relaxed = true)
         every { player.playerError } returns
@@ -132,6 +135,7 @@ class PlaybackSessionControllerTest {
         every { player.playbackParameters } returns PlaybackParameters(1.0f)
         every { player.currentPosition } returns positionMs
         every { player.bufferedPosition } returns bufferedPositionMs
+        every { player.duration } returns durationMs
         return player
     }
 
@@ -394,5 +398,74 @@ class PlaybackSessionControllerTest {
 
         assertThat(episodeDao.state.value.find { it.id == "ep1" }?.positionMs).isEqualTo(0L)
         sut.release() // the save loop runs forever otherwise, hanging runTest's cleanup
+    }
+
+    @Test
+    fun `auto-advancing to the next unplayed episode jumps past its podcast's configured intro`() = runTest(dispatcher) {
+        val podcast = Podcast(
+            id = "p1",
+            title = "The Daily",
+            author = "NYT",
+            artworkUrl = null,
+            feedUrl = "https://example.com/feed",
+            skipFirstSeconds = 30,
+        )
+        podcastDao.state.value = listOf(podcast.toEntity(subscribedAtEpochMillis = 0))
+        val next = Episode(
+            id = "ep2",
+            podcastId = "p1",
+            title = "Episode 2",
+            audioUrl = "https://example.com/ep2.mp3",
+            publishedAtEpochMillis = null,
+            durationSeconds = 600,
+        )
+        episodeDao.state.value = listOf(next.toEntity())
+        queueDao.state.value = listOf(QueueItemEntity(episodeId = "ep2", position = 0))
+
+        val player = fakePlayer()
+        val sut = controller(player)
+        sut.startPlayback(Uri.parse("https://example.com/ep1.mp3"), "Ep1", "Podcast", null, 0L, episodeId = "ep1")
+
+        sut.onPlayerPlaybackStateChanged(Player.STATE_ENDED)
+        dispatcher.scheduler.runCurrent()
+
+        verify { player.setMediaItem(any(), 30_000L) }
+        sut.release() // ep2's position-save loop is still running; runs forever otherwise
+    }
+
+    @Test
+    fun `playback ends and advances once it reaches its podcast's configured outro`() = runTest(dispatcher) {
+        // Regression coverage for "skip last" (Options tab): the player never actually reaches
+        // Player.STATE_ENDED here -- reaching the configured point short of the real duration must
+        // be treated exactly like a true end on its own, via the same position-save poll loop that
+        // already runs every POSITION_SAVE_INTERVAL_MS.
+        val podcast = Podcast(id = "p1", title = "The Daily", author = "NYT", artworkUrl = null, feedUrl = "https://example.com/feed")
+        podcastDao.state.value = listOf(podcast.toEntity(subscribedAtEpochMillis = 0))
+        val next = Episode(
+            id = "ep2",
+            podcastId = "p1",
+            title = "Episode 2",
+            audioUrl = "https://example.com/ep2.mp3",
+            publishedAtEpochMillis = null,
+            durationSeconds = 600,
+        )
+        episodeDao.state.value = listOf(next.toEntity())
+        queueDao.state.value = listOf(QueueItemEntity(episodeId = "ep2", position = 0))
+
+        // 570s into a 600s episode with a 30s configured outro -- exactly at the cutoff.
+        val player = fakePlayer(positionMs = 570_000L, durationMs = 600_000L)
+        val sut = controller(player)
+        sut.startPlayback(
+            Uri.parse("https://example.com/ep1.mp3"), "Ep1", "Podcast", null, 0L,
+            episodeId = "ep1", podcastId = "p1", skipLastSeconds = 30,
+        )
+
+        dispatcher.scheduler.advanceTimeBy(POSITION_SAVE_INTERVAL_MS + 100)
+        dispatcher.scheduler.runCurrent()
+
+        // startPlayback for ep1, then again for the auto-advanced ep2 -- triggered by the outro
+        // check, not a real STATE_ENDED.
+        verify(exactly = 2) { player.setMediaItem(any(), any<Long>()) }
+        sut.release() // ep2's position-save loop is still running; runs forever otherwise
     }
 }

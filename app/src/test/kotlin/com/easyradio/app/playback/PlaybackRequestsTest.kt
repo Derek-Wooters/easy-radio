@@ -102,4 +102,37 @@ class PlaybackRequestsTest {
         assertThat(request.extras.getString(EXTRA_EPISODE_ID)).isEqualTo("ep1")
         assertThat(request.extras.getString(EXTRA_PODCAST_ID)).isEqualTo("p1")
     }
+
+    @Test
+    fun `forEpisode jumps a fresh play past the podcast's configured intro`() {
+        val request = PlaybackRequests.forEpisode(
+            podcast.copy(skipFirstSeconds = 30),
+            episode(),
+            resumePositionMs = 0L,
+        )
+
+        assertThat(request.extras.getLong(EXTRA_RESUME_POSITION_MS)).isEqualTo(30_000L)
+    }
+
+    @Test
+    fun `forEpisode leaves a resumed play's position alone despite skip-first`() {
+        val request = PlaybackRequests.forEpisode(
+            podcast.copy(skipFirstSeconds = 30),
+            episode(),
+            resumePositionMs = 120_000L,
+        )
+
+        assertThat(request.extras.getLong(EXTRA_RESUME_POSITION_MS)).isEqualTo(120_000L)
+    }
+
+    @Test
+    fun `forEpisode includes the podcast's configured skip-last seconds`() {
+        val request = PlaybackRequests.forEpisode(
+            podcast.copy(skipLastSeconds = 15),
+            episode(),
+            resumePositionMs = 0L,
+        )
+
+        assertThat(request.extras.getInt(EXTRA_SKIP_LAST_SECONDS)).isEqualTo(15)
+    }
 }

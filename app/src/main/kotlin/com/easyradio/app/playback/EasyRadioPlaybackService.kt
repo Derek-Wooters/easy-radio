@@ -64,6 +64,13 @@ const val EXTRA_PODCAST_ID = "com.easyradio.app.EXTRA_PODCAST_ID"
 const val EXTRA_STATION_ID = "com.easyradio.app.EXTRA_STATION_ID"
 
 /**
+ * Extras key carrying the playing episode's podcast's "skip last" seconds (Options tab), so
+ * playback can end early once it reaches that point short of the episode's true end -- see
+ * [com.easyradio.core.media.IntroOutroSkip].
+ */
+const val EXTRA_SKIP_LAST_SECONDS = "com.easyradio.app.EXTRA_SKIP_LAST_SECONDS"
+
+/**
  * Custom [MediaSessionCompat.Callback.onCustomAction] sent by [MainActivity]'s sleep-timer picker
  * to arm a one-shot "stop instead of advancing to the next queued episode" for the episode
  * currently playing, rather than the persisted minutes-based default.
@@ -401,6 +408,7 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
                 episodeId = extras?.getString(EXTRA_EPISODE_ID),
                 stationId = extras?.getString(EXTRA_STATION_ID),
                 podcastId = extras?.getString(EXTRA_PODCAST_ID),
+                skipLastSeconds = extras?.getInt(EXTRA_SKIP_LAST_SECONDS) ?: 0,
             )
         }
 
