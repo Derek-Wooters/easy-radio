@@ -3,6 +3,8 @@ package com.easyradio.core.database
 import com.easyradio.core.model.Bookmark
 import com.easyradio.core.model.Episode
 import com.easyradio.core.model.Podcast
+import com.easyradio.core.model.SmartPlaylist
+import com.easyradio.core.model.SmartPlaylistStatus
 
 fun Podcast.toEntity(subscribedAtEpochMillis: Long): PodcastEntity = PodcastEntity(
     id = id,
@@ -73,6 +75,26 @@ fun BookmarkEntity.toBookmark(): Bookmark = Bookmark(
     episodeId = episodeId,
     positionMs = positionMs,
     note = note,
+    createdAtEpochMillis = createdAtEpochMillis,
+)
+
+fun SmartPlaylist.toEntity(): SmartPlaylistEntity = SmartPlaylistEntity(
+    id = id,
+    name = name,
+    podcastIds = podcastIds.joinToString(","),
+    status = status.name,
+    downloadedOnly = downloadedOnly,
+    starredOnly = starredOnly,
+    createdAtEpochMillis = createdAtEpochMillis,
+)
+
+fun SmartPlaylistEntity.toSmartPlaylist(): SmartPlaylist = SmartPlaylist(
+    id = id,
+    name = name,
+    podcastIds = podcastIds.split(",").filter { it.isNotBlank() }.toSet(),
+    status = runCatching { SmartPlaylistStatus.valueOf(status) }.getOrDefault(SmartPlaylistStatus.ANY),
+    downloadedOnly = downloadedOnly,
+    starredOnly = starredOnly,
     createdAtEpochMillis = createdAtEpochMillis,
 )
 
