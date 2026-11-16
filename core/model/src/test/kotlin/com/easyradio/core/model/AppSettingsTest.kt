@@ -32,5 +32,6 @@ class AppSettingsTest {
         assertThat(settings.skipSilenceEnabled).isFalse()
         assertThat(settings.voiceBoostEnabled).isFalse()
         assertThat(settings.smartResumeEnabled).isFalse()
+        assertThat(settings.warnBeforeCellularDownloads).isFalse()
     }
 }

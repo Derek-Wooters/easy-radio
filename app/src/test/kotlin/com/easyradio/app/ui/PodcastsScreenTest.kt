@@ -359,4 +359,92 @@ class PodcastsScreenTest {
 
         assertThat(selectedPodcast?.skipFirstSeconds).isEqualTo(30)
     }
+
+    @Test
+    fun `downloading on cellular with the warning enabled asks first, then downloads on confirm`() {
+        val podcast = Podcast(
+            id = "p1",
+            title = "Test Show",
+            author = "Author",
+            artworkUrl = null,
+            feedUrl = "https://example.com/feed.xml",
+        )
+        val episode = Episode(
+            id = "ep-1",
+            podcastId = "p1",
+            title = "Episode",
+            audioUrl = "https://example.com/ep1.mp3",
+            publishedAtEpochMillis = null,
+            durationSeconds = 600,
+        )
+        var downloadStarted = false
+        val repository = PodcastRepository(
+            itunesApi = NoOpItunesSearchApi(),
+            fetchFeed = { "" },
+            podcastDao = NoOpPodcastDao(),
+            episodeDao = SingleEpisodeFakeEpisodeDao(episode.toEntity()),
+            downloadFile = { _, _, _ -> downloadStarted = true; null },
+        )
+
+        composeTestRule.setContent {
+            PodcastsScreen(
+                repository = repository,
+                onEpisodeSelected = { _, _ -> },
+                initialPodcast = podcast,
+                warnBeforeCellularDownloads = true,
+                isOnWifi = { false },
+            )
+        }
+
+        composeTestRule.onNodeWithContentDescription("Download").performClick()
+
+        composeTestRule.onNodeWithText("Download over mobile data?").assertExists()
+        assertThat(downloadStarted).isFalse()
+
+        composeTestRule.onNodeWithText("Download").performClick()
+
+        assertThat(downloadStarted).isTrue()
+    }
+
+    @Test
+    fun `downloading on Wi-Fi never shows the cellular warning even when enabled`() {
+        val podcast = Podcast(
+            id = "p1",
+            title = "Test Show",
+            author = "Author",
+            artworkUrl = null,
+            feedUrl = "https://example.com/feed.xml",
+        )
+        val episode = Episode(
+            id = "ep-1",
+            podcastId = "p1",
+            title = "Episode",
+            audioUrl = "https://example.com/ep1.mp3",
+            publishedAtEpochMillis = null,
+            durationSeconds = 600,
+        )
+        var downloadStarted = false
+        val repository = PodcastRepository(
+            itunesApi = NoOpItunesSearchApi(),
+            fetchFeed = { "" },
+            podcastDao = NoOpPodcastDao(),
+            episodeDao = SingleEpisodeFakeEpisodeDao(episode.toEntity()),
+            downloadFile = { _, _, _ -> downloadStarted = true; null },
+        )
+
+        composeTestRule.setContent {
+            PodcastsScreen(
+                repository = repository,
+                onEpisodeSelected = { _, _ -> },
+                initialPodcast = podcast,
+                warnBeforeCellularDownloads = true,
+                isOnWifi = { true },
+            )
+        }
+
+        composeTestRule.onNodeWithContentDescription("Download").performClick()
+
+        composeTestRule.onNodeWithText("Download over mobile data?").assertDoesNotExist()
+        assertThat(downloadStarted).isTrue()
+    }
 }
