@@ -228,6 +228,56 @@ class MigrationTest {
     }
 
     @Test
+    fun `MIGRATION_13_14 adds season to episodes and preserves existing rows`() {
+        val helper = openHelper("migration-test-${System.nanoTime()}.db")
+        val db = helper.writableDatabase
+
+        // The exact version-13 "episodes" table (version-11's columns plus MIGRATION_11_12's
+        // isStarred).
+        db.execSQL(
+            """
+            CREATE TABLE episodes (
+                id TEXT NOT NULL PRIMARY KEY,
+                podcastId TEXT NOT NULL,
+                title TEXT NOT NULL,
+                audioUrl TEXT NOT NULL,
+                publishedAtEpochMillis INTEGER,
+                durationSeconds INTEGER,
+                description TEXT NOT NULL,
+                positionMs INTEGER NOT NULL DEFAULT 0,
+                localFilePath TEXT,
+                chaptersUrl TEXT,
+                transcriptUrl TEXT,
+                transcriptType TEXT,
+                isStarred INTEGER NOT NULL DEFAULT 0
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            """
+            INSERT INTO episodes (
+                id, podcastId, title, audioUrl, publishedAtEpochMillis, durationSeconds,
+                description, positionMs, localFilePath, chaptersUrl, transcriptUrl, transcriptType, isStarred
+            )
+            VALUES (
+                'ep1', 'p1', 'Episode One', 'https://example.com/ep1.mp3', 1000, 600,
+                'desc', 42000, NULL, NULL, NULL, NULL, 1
+            )
+            """.trimIndent(),
+        )
+
+        MIGRATION_13_14.migrate(db)
+
+        db.query("SELECT * FROM episodes WHERE id = 'ep1'").use { cursor ->
+            assertThat(cursor.moveToFirst()).isTrue()
+            assertThat(cursor.getString(cursor.getColumnIndexOrThrow("title"))).isEqualTo("Episode One")
+            assertThat(cursor.getInt(cursor.getColumnIndexOrThrow("isStarred"))).isEqualTo(1)
+            assertThat(cursor.isNull(cursor.getColumnIndexOrThrow("season"))).isTrue()
+        }
+        db.close()
+    }
+
+    @Test
     fun `MIGRATION_12_13 creates a usable smart_playlists table`() {
         val helper = openHelper("migration-test-${System.nanoTime()}.db")
         val db = helper.writableDatabase

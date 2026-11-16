@@ -404,6 +404,12 @@ private fun EpisodeListScreen(
     LaunchedEffect(podcast.id) { repository.ensureEpisodesLoaded(podcast) }
     var newestFirst by remember { mutableStateOf(true) }
     val episodes = if (newestFirst) episodesRaw else episodesRaw.asReversed()
+    // Headers are only worth showing once there's more than one group -- a typical podcast with
+    // a single season/year of episodes would otherwise get one noisy header above everything.
+    val episodeGroups = remember(episodes) {
+        val grouped = episodes.groupBy(::episodeGroupKey)
+        if (grouped.size > 1) grouped.toList() else listOf(null to episodes)
+    }
     val scope = rememberCoroutineScope()
     var downloadProgress by remember { mutableStateOf<Map<String, Float>>(emptyMap()) }
     var pendingCellularDownload by remember { mutableStateOf<(() -> Unit)?>(null) }
@@ -541,38 +547,50 @@ private fun EpisodeListScreen(
                 }
 
                 LazyColumn(state = episodeListState) {
-                    items(episodes, key = { it.id }) { episode ->
-                        EpisodeRow(
-                            episode = episode,
-                            podcast = podcast,
-                            onRowClick = { onEpisodeClick(episode) },
-                            onListen = { replayAwareListen(scope, repository, episode) { onEpisodeSelected(episode) } },
-                            onQueue = { scope.launch { repository.enqueue(episode) } },
-                            onDownload = {
-                                if (episode.localFilePath != null) {
-                                    scope.launch { repository.deleteDownload(episode) }
-                                } else if (episode.id !in downloadProgress) {
-                                    val startDownload = {
-                                        downloadProgress = downloadProgress + (episode.id to 0f)
-                                        scope.launch {
-                                            repository.downloadEpisode(episode) { progress ->
-                                                downloadProgress = downloadProgress + (episode.id to progress)
+                    for ((groupLabel, groupEpisodes) in episodeGroups) {
+                        if (groupLabel != null) {
+                            item(key = "group-$groupLabel") {
+                                Text(
+                                    text = groupLabel,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(start = 20.dp, top = 16.dp, bottom = 4.dp),
+                                )
+                            }
+                        }
+                        items(groupEpisodes, key = { it.id }) { episode ->
+                            EpisodeRow(
+                                episode = episode,
+                                podcast = podcast,
+                                onRowClick = { onEpisodeClick(episode) },
+                                onListen = { replayAwareListen(scope, repository, episode) { onEpisodeSelected(episode) } },
+                                onQueue = { scope.launch { repository.enqueue(episode) } },
+                                onDownload = {
+                                    if (episode.localFilePath != null) {
+                                        scope.launch { repository.deleteDownload(episode) }
+                                    } else if (episode.id !in downloadProgress) {
+                                        val startDownload = {
+                                            downloadProgress = downloadProgress + (episode.id to 0f)
+                                            scope.launch {
+                                                repository.downloadEpisode(episode) { progress ->
+                                                    downloadProgress = downloadProgress + (episode.id to progress)
+                                                }
+                                                downloadProgress = downloadProgress - episode.id
                                             }
-                                            downloadProgress = downloadProgress - episode.id
+                                            Unit
                                         }
-                                        Unit
+                                        if (warnBeforeCellularDownloads && !isOnWifi()) {
+                                            pendingCellularDownload = startDownload
+                                        } else {
+                                            startDownload()
+                                        }
                                     }
-                                    if (warnBeforeCellularDownloads && !isOnWifi()) {
-                                        pendingCellularDownload = startDownload
-                                    } else {
-                                        startDownload()
-                                    }
-                                }
-                            },
-                            onToggleStar = { scope.launch { repository.setStarred(episode.id, !episode.isStarred) } },
-                            downloadProgress = downloadProgress[episode.id],
-                        )
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                                },
+                                onToggleStar = { scope.launch { repository.setStarred(episode.id, !episode.isStarred) } },
+                                downloadProgress = downloadProgress[episode.id],
+                            )
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                        }
                     }
                     if (loadingMoreEpisodes) {
                         item {
@@ -1132,6 +1150,17 @@ internal fun episodeListenState(episode: Episode): EpisodeListenState {
         episode.positionMs >= durationMs * EPISODE_FINISHED_FRACTION -> EpisodeListenState.REPLAY
         else -> EpisodeListenState.RESUME
     }
+}
+
+/**
+ * Groups episodes for display in large back-catalogs: by `<itunes:season>` when a show publishes
+ * it, falling back to publish year (in the device's local time zone) otherwise. Episodes with
+ * neither are grouped under "Unknown".
+ */
+internal fun episodeGroupKey(episode: Episode): String {
+    episode.season?.let { return "Season $it" }
+    val epochMillis = episode.publishedAtEpochMillis ?: return "Unknown"
+    return java.time.Instant.ofEpochMilli(epochMillis).atZone(java.time.ZoneId.systemDefault()).year.toString()
 }
 
 /**
