@@ -96,6 +96,15 @@ class SettingsRepositoryTest {
     }
 
     @Test
+    fun `setSmartResumeEnabled persists`() = runTest {
+        val repository = repository()
+
+        repository.setSmartResumeEnabled(true)
+
+        assertThat(repository.settings.first().smartResumeEnabled).isTrue()
+    }
+
+    @Test
     fun `completeOnboarding persists the completed flag and the chosen genres`() = runTest {
         val repository = repository()
 

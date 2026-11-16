@@ -49,6 +49,7 @@ fun SettingsScreen(
     onSkipForwardSecondsChange: (Int) -> Unit,
     onSkipSilenceEnabledChange: (Boolean) -> Unit = {},
     onVoiceBoostEnabledChange: (Boolean) -> Unit = {},
+    onSmartResumeEnabledChange: (Boolean) -> Unit = {},
     onManageDownloadsClick: (() -> Unit)? = null,
     listenedTodaySeconds: Long = 0L,
     listenedThisWeekSeconds: Long = 0L,
@@ -174,6 +175,17 @@ fun SettingsScreen(
             label = "Voice boost",
             checked = settings.voiceBoostEnabled,
             onCheckedChange = onVoiceBoostEnabledChange,
+        )
+        SwitchRow(
+            label = "Smart resume",
+            checked = settings.smartResumeEnabled,
+            onCheckedChange = onSmartResumeEnabledChange,
+        )
+        Text(
+            text = "Rewinds a few seconds when you resume a paused episode, so you can catch back up.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp),
         )
     }
 }

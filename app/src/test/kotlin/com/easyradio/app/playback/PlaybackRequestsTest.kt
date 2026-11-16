@@ -137,6 +137,42 @@ class PlaybackRequestsTest {
     }
 
     @Test
+    fun `forEpisode rewinds a resumed play when smart resume is enabled`() {
+        val request = PlaybackRequests.forEpisode(
+            podcast,
+            episode(),
+            resumePositionMs = 60_000L,
+            smartResumeEnabled = true,
+        )
+
+        assertThat(request.extras.getLong(EXTRA_RESUME_POSITION_MS)).isEqualTo(55_000L)
+    }
+
+    @Test
+    fun `forEpisode leaves a resumed play alone when smart resume is disabled`() {
+        val request = PlaybackRequests.forEpisode(
+            podcast,
+            episode(),
+            resumePositionMs = 60_000L,
+            smartResumeEnabled = false,
+        )
+
+        assertThat(request.extras.getLong(EXTRA_RESUME_POSITION_MS)).isEqualTo(60_000L)
+    }
+
+    @Test
+    fun `forEpisode never applies smart resume to a fresh play, even when enabled`() {
+        val request = PlaybackRequests.forEpisode(
+            podcast,
+            episode(),
+            resumePositionMs = 0L,
+            smartResumeEnabled = true,
+        )
+
+        assertThat(request.extras.getLong(EXTRA_RESUME_POSITION_MS)).isEqualTo(0L)
+    }
+
+    @Test
     fun `forEpisode includes the podcast's playback speed`() {
         val request = PlaybackRequests.forEpisode(
             podcast.copy(playbackSpeed = 1.5f),

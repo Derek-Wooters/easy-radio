@@ -602,6 +602,9 @@ class MainActivity : ComponentActivity() {
                                 onVoiceBoostEnabledChange = {
                                     lifecycleScope.launch { settingsRepository.setVoiceBoostEnabled(it) }
                                 },
+                                onSmartResumeEnabledChange = {
+                                    lifecycleScope.launch { settingsRepository.setSmartResumeEnabled(it) }
+                                },
                                 onManageDownloadsClick = {
                                     showSettings = false
                                     showDownloads = true
@@ -759,7 +762,10 @@ class MainActivity : ComponentActivity() {
         // atomically via ExoPlayer's own setMediaItem(item, startPositionMs).
         lifecycleScope.launch {
             val resumeMs = podcastRepository.lastPosition(episode.id)
-            val request = com.easyradio.app.playback.PlaybackRequests.forEpisode(podcast, episode, resumeMs)
+            val smartResumeEnabled = settingsRepository.settings.first().smartResumeEnabled
+            val request = com.easyradio.app.playback.PlaybackRequests.forEpisode(
+                podcast, episode, resumeMs, smartResumeEnabled,
+            )
             controller.transportControls.playFromUri(request.uri, request.extras)
         }
     }

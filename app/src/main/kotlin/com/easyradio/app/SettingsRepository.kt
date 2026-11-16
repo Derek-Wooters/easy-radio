@@ -38,6 +38,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val skipForwardSeconds = intPreferencesKey("skip_forward_seconds")
         val skipSilenceEnabled = booleanPreferencesKey("skip_silence_enabled")
         val voiceBoostEnabled = booleanPreferencesKey("voice_boost_enabled")
+        val smartResumeEnabled = booleanPreferencesKey("smart_resume_enabled")
     }
 
     val settings: Flow<AppSettings> = dataStore.data.map { prefs ->
@@ -57,6 +58,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             skipForwardSeconds = prefs[Keys.skipForwardSeconds] ?: defaults.skipForwardSeconds,
             skipSilenceEnabled = prefs[Keys.skipSilenceEnabled] ?: defaults.skipSilenceEnabled,
             voiceBoostEnabled = prefs[Keys.voiceBoostEnabled] ?: defaults.voiceBoostEnabled,
+            smartResumeEnabled = prefs[Keys.smartResumeEnabled] ?: defaults.smartResumeEnabled,
         )
     }
 
@@ -90,6 +92,10 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setVoiceBoostEnabled(value: Boolean) {
         dataStore.edit { it[Keys.voiceBoostEnabled] = value }
+    }
+
+    suspend fun setSmartResumeEnabled(value: Boolean) {
+        dataStore.edit { it[Keys.smartResumeEnabled] = value }
     }
 
     suspend fun completeOnboarding(favoriteGenres: Set<String>) {
