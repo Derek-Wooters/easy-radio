@@ -35,4 +35,7 @@ interface PodcastDao {
 
     @Query("UPDATE podcasts SET skipLastSeconds = :seconds WHERE id = :id")
     suspend fun setSkipLastSeconds(id: String, seconds: Int)
+
+    @Query("UPDATE podcasts SET playbackSpeed = :speed WHERE id = :id")
+    suspend fun setPlaybackSpeed(id: String, speed: Float)
 }

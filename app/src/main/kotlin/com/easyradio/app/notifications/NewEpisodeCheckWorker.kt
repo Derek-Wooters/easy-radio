@@ -1,11 +1,10 @@
 package com.easyradio.app.notifications
 
 import android.content.Context
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.easyradio.app.EasyRadioGraph
+import com.easyradio.app.NetworkUtils
 import kotlinx.coroutines.flow.first
 
 /**
@@ -25,7 +24,7 @@ class NewEpisodeCheckWorker(context: Context, params: WorkerParameters) : Corout
             val newEpisodes = repository.checkForNewEpisodes(podcast)
             if (newEpisodes.isEmpty()) continue
 
-            if (podcast.autoDownloadNewEpisodes && (!settings.downloadOverWifiOnly || isOnWifi())) {
+            if (podcast.autoDownloadNewEpisodes && (!settings.downloadOverWifiOnly || NetworkUtils.isOnWifi(applicationContext))) {
                 newEpisodes.forEach { repository.downloadEpisode(it) }
             }
 
@@ -35,13 +34,5 @@ class NewEpisodeCheckWorker(context: Context, params: WorkerParameters) : Corout
         }
 
         return Result.success()
-    }
-
-    private fun isOnWifi(): Boolean {
-        val connectivityManager =
-            applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
-        val network = connectivityManager.activeNetwork ?: return false
-        val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
-        return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
     }
 }

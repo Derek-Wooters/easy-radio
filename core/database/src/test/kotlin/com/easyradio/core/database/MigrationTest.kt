@@ -118,4 +118,183 @@ class MigrationTest {
         }
         db.close()
     }
+
+    @Test
+    fun `MIGRATION_10_11 adds playbackSpeed defaulting to 1_0 and preserves existing rows`() {
+        val helper = openHelper("migration-test-${System.nanoTime()}.db")
+        val db = helper.writableDatabase
+
+        // The exact version-10 "podcasts" table (version 9's columns plus MIGRATION_9_10's two).
+        db.execSQL(
+            """
+            CREATE TABLE podcasts (
+                id TEXT NOT NULL PRIMARY KEY,
+                title TEXT NOT NULL,
+                author TEXT NOT NULL,
+                artworkUrl TEXT,
+                feedUrl TEXT NOT NULL,
+                subscribedAtEpochMillis INTEGER NOT NULL,
+                isPreset INTEGER NOT NULL,
+                lastPlayedAtEpochMillis INTEGER,
+                notifyNewEpisodes INTEGER NOT NULL DEFAULT 0,
+                autoDownloadNewEpisodes INTEGER NOT NULL DEFAULT 0,
+                skipFirstSeconds INTEGER NOT NULL DEFAULT 0,
+                skipLastSeconds INTEGER NOT NULL DEFAULT 0
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            """
+            INSERT INTO podcasts (
+                id, title, author, artworkUrl, feedUrl, subscribedAtEpochMillis,
+                isPreset, lastPlayedAtEpochMillis, notifyNewEpisodes, autoDownloadNewEpisodes,
+                skipFirstSeconds, skipLastSeconds
+            )
+            VALUES (
+                'p1', 'The Daily', 'NYT', NULL, 'https://example.com/feed.xml', 1000,
+                0, NULL, 1, 0, 30, 0
+            )
+            """.trimIndent(),
+        )
+
+        MIGRATION_10_11.migrate(db)
+
+        db.query("SELECT * FROM podcasts WHERE id = 'p1'").use { cursor ->
+            assertThat(cursor.moveToFirst()).isTrue()
+            assertThat(cursor.getString(cursor.getColumnIndexOrThrow("title"))).isEqualTo("The Daily")
+            assertThat(cursor.getInt(cursor.getColumnIndexOrThrow("skipFirstSeconds"))).isEqualTo(30)
+            assertThat(cursor.getFloat(cursor.getColumnIndexOrThrow("playbackSpeed"))).isEqualTo(1.0f)
+        }
+        db.close()
+    }
+
+    @Test
+    fun `MIGRATION_11_12 adds isStarred to episodes, preserves existing rows, and creates bookmarks`() {
+        val helper = openHelper("migration-test-${System.nanoTime()}.db")
+        val db = helper.writableDatabase
+
+        // The exact version-11 "episodes" table (unchanged since this project's earliest schema
+        // export -- isStarred is the first episodes-table migration).
+        db.execSQL(
+            """
+            CREATE TABLE episodes (
+                id TEXT NOT NULL PRIMARY KEY,
+                podcastId TEXT NOT NULL,
+                title TEXT NOT NULL,
+                audioUrl TEXT NOT NULL,
+                publishedAtEpochMillis INTEGER,
+                durationSeconds INTEGER,
+                description TEXT NOT NULL,
+                positionMs INTEGER NOT NULL DEFAULT 0,
+                localFilePath TEXT,
+                chaptersUrl TEXT,
+                transcriptUrl TEXT,
+                transcriptType TEXT
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            """
+            INSERT INTO episodes (
+                id, podcastId, title, audioUrl, publishedAtEpochMillis, durationSeconds,
+                description, positionMs, localFilePath, chaptersUrl, transcriptUrl, transcriptType
+            )
+            VALUES (
+                'ep1', 'p1', 'Episode One', 'https://example.com/ep1.mp3', 1000, 600,
+                'desc', 42000, NULL, NULL, NULL, NULL
+            )
+            """.trimIndent(),
+        )
+
+        MIGRATION_11_12.migrate(db)
+
+        db.query("SELECT * FROM episodes WHERE id = 'ep1'").use { cursor ->
+            assertThat(cursor.moveToFirst()).isTrue()
+            assertThat(cursor.getString(cursor.getColumnIndexOrThrow("title"))).isEqualTo("Episode One")
+            assertThat(cursor.getLong(cursor.getColumnIndexOrThrow("positionMs"))).isEqualTo(42000L)
+            assertThat(cursor.getInt(cursor.getColumnIndexOrThrow("isStarred"))).isEqualTo(0)
+        }
+
+        // The new bookmarks table must actually be usable, not just present.
+        db.execSQL(
+            "INSERT INTO bookmarks (id, episodeId, positionMs, note, createdAtEpochMillis) " +
+                "VALUES ('b1', 'ep1', 90000, 'note', 5000)",
+        )
+        db.query("SELECT * FROM bookmarks WHERE id = 'b1'").use { cursor ->
+            assertThat(cursor.moveToFirst()).isTrue()
+            assertThat(cursor.getLong(cursor.getColumnIndexOrThrow("positionMs"))).isEqualTo(90000L)
+        }
+        db.close()
+    }
+
+    @Test
+    fun `MIGRATION_13_14 adds season to episodes and preserves existing rows`() {
+        val helper = openHelper("migration-test-${System.nanoTime()}.db")
+        val db = helper.writableDatabase
+
+        // The exact version-13 "episodes" table (version-11's columns plus MIGRATION_11_12's
+        // isStarred).
+        db.execSQL(
+            """
+            CREATE TABLE episodes (
+                id TEXT NOT NULL PRIMARY KEY,
+                podcastId TEXT NOT NULL,
+                title TEXT NOT NULL,
+                audioUrl TEXT NOT NULL,
+                publishedAtEpochMillis INTEGER,
+                durationSeconds INTEGER,
+                description TEXT NOT NULL,
+                positionMs INTEGER NOT NULL DEFAULT 0,
+                localFilePath TEXT,
+                chaptersUrl TEXT,
+                transcriptUrl TEXT,
+                transcriptType TEXT,
+                isStarred INTEGER NOT NULL DEFAULT 0
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            """
+            INSERT INTO episodes (
+                id, podcastId, title, audioUrl, publishedAtEpochMillis, durationSeconds,
+                description, positionMs, localFilePath, chaptersUrl, transcriptUrl, transcriptType, isStarred
+            )
+            VALUES (
+                'ep1', 'p1', 'Episode One', 'https://example.com/ep1.mp3', 1000, 600,
+                'desc', 42000, NULL, NULL, NULL, NULL, 1
+            )
+            """.trimIndent(),
+        )
+
+        MIGRATION_13_14.migrate(db)
+
+        db.query("SELECT * FROM episodes WHERE id = 'ep1'").use { cursor ->
+            assertThat(cursor.moveToFirst()).isTrue()
+            assertThat(cursor.getString(cursor.getColumnIndexOrThrow("title"))).isEqualTo("Episode One")
+            assertThat(cursor.getInt(cursor.getColumnIndexOrThrow("isStarred"))).isEqualTo(1)
+            assertThat(cursor.isNull(cursor.getColumnIndexOrThrow("season"))).isTrue()
+        }
+        db.close()
+    }
+
+    @Test
+    fun `MIGRATION_12_13 creates a usable smart_playlists table`() {
+        val helper = openHelper("migration-test-${System.nanoTime()}.db")
+        val db = helper.writableDatabase
+
+        // This migration only creates a new table -- no pre-existing schema needed.
+        MIGRATION_12_13.migrate(db)
+
+        db.execSQL(
+            "INSERT INTO smart_playlists (id, name, podcastIds, status, downloadedOnly, starredOnly, createdAtEpochMillis) " +
+                "VALUES ('sp1', 'Downloaded Favorites', 'p1,p2', 'IN_PROGRESS', 1, 1, 5000)",
+        )
+        db.query("SELECT * FROM smart_playlists WHERE id = 'sp1'").use { cursor ->
+            assertThat(cursor.moveToFirst()).isTrue()
+            assertThat(cursor.getString(cursor.getColumnIndexOrThrow("name"))).isEqualTo("Downloaded Favorites")
+            assertThat(cursor.getString(cursor.getColumnIndexOrThrow("podcastIds"))).isEqualTo("p1,p2")
+            assertThat(cursor.getInt(cursor.getColumnIndexOrThrow("downloadedOnly"))).isEqualTo(1)
+        }
+        db.close()
+    }
 }

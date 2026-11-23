@@ -34,4 +34,6 @@ data class AppSettings(
     val skipForwardSeconds: Int = 30,
     val skipSilenceEnabled: Boolean = false,
     val voiceBoostEnabled: Boolean = false,
+    val smartResumeEnabled: Boolean = false,
+    val warnBeforeCellularDownloads: Boolean = false,
 )

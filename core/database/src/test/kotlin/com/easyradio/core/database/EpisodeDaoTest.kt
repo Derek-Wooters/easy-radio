@@ -37,6 +37,7 @@ class EpisodeDaoTest {
         publishedAt: Long? = 100L,
         positionMs: Long = 0,
         title: String = "Episode $id",
+        season: Int? = null,
     ) = EpisodeEntity(
         id = id,
         podcastId = podcastId,
@@ -46,6 +47,7 @@ class EpisodeDaoTest {
         durationSeconds = 1800,
         description = "",
         positionMs = positionMs,
+        season = season,
     )
 
     private fun metadata(entity: EpisodeEntity) = EpisodeMetadata(
@@ -59,6 +61,7 @@ class EpisodeDaoTest {
         chaptersUrl = entity.chaptersUrl,
         transcriptUrl = entity.transcriptUrl,
         transcriptType = entity.transcriptType,
+        season = entity.season,
     )
 
     @Test
@@ -115,5 +118,50 @@ class EpisodeDaoTest {
     @Test
     fun `getPosition returns null for an unknown episode`() = runTest {
         assertThat(dao.getPosition("does-not-exist")).isNull()
+    }
+
+    @Test
+    fun `setStarred then observeStarred returns only starred episodes, across podcasts`() = runTest {
+        dao.insertIgnore(listOf(episode("e1", "p1"), episode("e2", "p1"), episode("e3", "p2")))
+
+        dao.setStarred("e1", true)
+        dao.setStarred("e3", true)
+
+        val starred = dao.observeStarred().first()
+        assertThat(starred.map { it.id }).containsExactly("e1", "e3")
+    }
+
+    @Test
+    fun `unstarring removes the episode from observeStarred`() = runTest {
+        dao.insertIgnore(listOf(episode("e1", "p1")))
+        dao.setStarred("e1", true)
+
+        dao.setStarred("e1", false)
+
+        assertThat(dao.observeStarred().first()).isEmpty()
+    }
+
+    @Test
+    fun `updateMetadata refreshes season, since it is feed-sourced like title and duration`() = runTest {
+        dao.insertIgnore(listOf(episode("e1", "p1")))
+
+        dao.updateMetadata(listOf(metadata(episode("e1", "p1", season = 3))))
+
+        val stored = dao.observeByPodcast("p1").first().single()
+        assertThat(stored.season).isEqualTo(3)
+    }
+
+    @Test
+    fun `updateMetadata never touches isStarred`() = runTest {
+        // Same regression class as the positionMs/localFilePath test above: isStarred is a user
+        // action, not feed-sourced, so a feed re-sync must never reset it.
+        dao.insertIgnore(listOf(episode("e1", "p1")))
+        dao.setStarred("e1", true)
+
+        dao.updateMetadata(listOf(metadata(episode("e1", "p1", title = "Updated Title"))))
+
+        val stored = dao.observeByPodcast("p1").first().single()
+        assertThat(stored.title).isEqualTo("Updated Title")
+        assertThat(stored.isStarred).isTrue()
     }
 }

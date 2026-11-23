@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -93,6 +94,7 @@ fun NowPlayingScreen(
     chapters: List<Chapter> = emptyList(),
     onChapterClick: ((Chapter) -> Unit)? = null,
     transcript: String? = null,
+    onBookmarkClick: (() -> Unit)? = null,
 ) {
     val extraColors = LocalEasyRadioColors.current
     val tints = extraColors.avatarTints
@@ -311,6 +313,11 @@ fun NowPlayingScreen(
                 if (onSleepTimerClick != null && onQueueClick != null) {
                     IconButton(onClick = onQueueClick) {
                         Icon(Icons.AutoMirrored.Filled.PlaylistPlay, contentDescription = "Up Next")
+                    }
+                }
+                if (onBookmarkClick != null) {
+                    IconButton(onClick = onBookmarkClick) {
+                        Icon(Icons.Filled.BookmarkAdd, contentDescription = "Add bookmark")
                     }
                 }
                 if (transcript != null) {

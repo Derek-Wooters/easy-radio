@@ -43,6 +43,7 @@ private class NoOpPodcastDao : PodcastDao {
     override suspend fun setAutoDownloadNewEpisodes(id: String, enabled: Boolean) {}
     override suspend fun setSkipFirstSeconds(id: String, seconds: Int) {}
     override suspend fun setSkipLastSeconds(id: String, seconds: Int) {}
+    override suspend fun setPlaybackSpeed(id: String, speed: Float) {}
 }
 
 /** Unlike [NoOpPodcastDao], actually mutates state -- needed to verify the Options tab's toggles. */
@@ -67,6 +68,9 @@ private class OptionsFakePodcastDao : PodcastDao {
     override suspend fun setSkipLastSeconds(id: String, seconds: Int) {
         state.update { list -> list.map { if (it.id == id) it.copy(skipLastSeconds = seconds) else it } }
     }
+    override suspend fun setPlaybackSpeed(id: String, speed: Float) {
+        state.update { list -> list.map { if (it.id == id) it.copy(playbackSpeed = speed) else it } }
+    }
 }
 
 private class OptionsFakeEpisodeDao : EpisodeDao {
@@ -79,12 +83,15 @@ private class OptionsFakeEpisodeDao : EpisodeDao {
     override suspend fun getByIds(ids: List<String>): List<EpisodeEntity> = emptyList()
     override fun observeDownloaded() = MutableStateFlow<List<EpisodeEntity>>(emptyList())
     override fun observeAll() = MutableStateFlow<List<EpisodeEntity>>(emptyList())
+    override suspend fun setStarred(episodeId: String, starred: Boolean) {}
+    override fun observeStarred() = MutableStateFlow<List<EpisodeEntity>>(emptyList())
 }
 
 /** Serves a single fixed episode for its podcast -- enough to render one Listen/Resume row. */
-private class SingleEpisodeFakeEpisodeDao(private val episode: EpisodeEntity) : EpisodeDao {
+private class SingleEpisodeFakeEpisodeDao(initial: EpisodeEntity) : EpisodeDao {
+    val state = MutableStateFlow(initial)
     override fun observeByPodcast(podcastId: String) =
-        MutableStateFlow(if (podcastId == episode.podcastId) listOf(episode) else emptyList())
+        state.map { if (podcastId == it.podcastId) listOf(it) else emptyList() }
     override suspend fun insertIgnore(episodes: List<EpisodeEntity>) {}
     override suspend fun updateMetadata(updates: List<EpisodeMetadata>) {}
     override suspend fun updatePosition(episodeId: String, positionMs: Long) {}
@@ -92,7 +99,28 @@ private class SingleEpisodeFakeEpisodeDao(private val episode: EpisodeEntity) : 
     override suspend fun updateLocalFilePath(episodeId: String, localFilePath: String?) {}
     override suspend fun getByIds(ids: List<String>): List<EpisodeEntity> = emptyList()
     override fun observeDownloaded() = MutableStateFlow<List<EpisodeEntity>>(emptyList())
-    override fun observeAll() = MutableStateFlow(listOf(episode))
+    override fun observeAll() = state.map { listOf(it) }
+    override suspend fun setStarred(episodeId: String, starred: Boolean) {
+        state.update { it.copy(isStarred = starred) }
+    }
+    override fun observeStarred() = state.map { if (it.isStarred) listOf(it) else emptyList() }
+}
+
+/** Serves a fixed list of episodes for its podcast -- enough to render a multi-episode list. */
+private class MultiEpisodeFakeEpisodeDao(initial: List<EpisodeEntity>) : EpisodeDao {
+    val state = MutableStateFlow(initial)
+    override fun observeByPodcast(podcastId: String) =
+        state.map { list -> list.filter { it.podcastId == podcastId }.sortedByDescending { it.publishedAtEpochMillis ?: 0L } }
+    override suspend fun insertIgnore(episodes: List<EpisodeEntity>) {}
+    override suspend fun updateMetadata(updates: List<EpisodeMetadata>) {}
+    override suspend fun updatePosition(episodeId: String, positionMs: Long) {}
+    override suspend fun getPosition(episodeId: String): Long? = null
+    override suspend fun updateLocalFilePath(episodeId: String, localFilePath: String?) {}
+    override suspend fun getByIds(ids: List<String>): List<EpisodeEntity> = emptyList()
+    override fun observeDownloaded() = MutableStateFlow<List<EpisodeEntity>>(emptyList())
+    override fun observeAll() = state
+    override suspend fun setStarred(episodeId: String, starred: Boolean) {}
+    override fun observeStarred() = MutableStateFlow<List<EpisodeEntity>>(emptyList())
 }
 
 /** Tracks updatePosition calls so replayAwareListen's behavior can be asserted directly. */
@@ -110,6 +138,8 @@ private class RecordingEpisodeDao : EpisodeDao {
     override suspend fun getByIds(ids: List<String>): List<EpisodeEntity> = emptyList()
     override fun observeDownloaded() = MutableStateFlow<List<EpisodeEntity>>(emptyList())
     override fun observeAll() = MutableStateFlow<List<EpisodeEntity>>(emptyList())
+    override suspend fun setStarred(episodeId: String, starred: Boolean) {}
+    override fun observeStarred() = MutableStateFlow<List<EpisodeEntity>>(emptyList())
 }
 
 @RunWith(RobolectricTestRunner::class)
@@ -202,6 +232,26 @@ class PodcastsScreenTest {
         assertThat(formatEpisodeDuration(45 * 60)).isEqualTo("45 min")
         assertThat(formatEpisodeDuration(2 * 3600)).isEqualTo("2 hr")
         assertThat(formatEpisodeDuration(2 * 3600 + 15 * 60)).isEqualTo("2 hr 15 min")
+    }
+
+    @Test
+    fun `episodeGroupKey groups by season when the feed published one`() {
+        assertThat(episodeGroupKey(episode(positionMs = 0, durationSeconds = 1_800).copy(season = 3)))
+            .isEqualTo("Season 3")
+    }
+
+    @Test
+    fun `episodeGroupKey falls back to publish year when no season is present`() {
+        val publishedIn2019 = episode(positionMs = 0, durationSeconds = 1_800).copy(
+            publishedAtEpochMillis = java.time.Instant.parse("2019-06-15T00:00:00Z").toEpochMilli(),
+        )
+
+        assertThat(episodeGroupKey(publishedIn2019)).isEqualTo("2019")
+    }
+
+    @Test
+    fun `episodeGroupKey is Unknown when there is neither a season nor a publish date`() {
+        assertThat(episodeGroupKey(episode(positionMs = 0, durationSeconds = 1_800))).isEqualTo("Unknown")
     }
 
     private fun repository(episodeDao: EpisodeDao) =
@@ -354,5 +404,214 @@ class PodcastsScreenTest {
         composeTestRule.onNodeWithText("Listen").performClick()
 
         assertThat(selectedPodcast?.skipFirstSeconds).isEqualTo(30)
+    }
+
+    @Test
+    fun `downloading on cellular with the warning enabled asks first, then downloads on confirm`() {
+        val podcast = Podcast(
+            id = "p1",
+            title = "Test Show",
+            author = "Author",
+            artworkUrl = null,
+            feedUrl = "https://example.com/feed.xml",
+        )
+        val episode = Episode(
+            id = "ep-1",
+            podcastId = "p1",
+            title = "Episode",
+            audioUrl = "https://example.com/ep1.mp3",
+            publishedAtEpochMillis = null,
+            durationSeconds = 600,
+        )
+        var downloadStarted = false
+        val repository = PodcastRepository(
+            itunesApi = NoOpItunesSearchApi(),
+            fetchFeed = { "" },
+            podcastDao = NoOpPodcastDao(),
+            episodeDao = SingleEpisodeFakeEpisodeDao(episode.toEntity()),
+            downloadFile = { _, _, _ -> downloadStarted = true; null },
+        )
+
+        composeTestRule.setContent {
+            PodcastsScreen(
+                repository = repository,
+                onEpisodeSelected = { _, _ -> },
+                initialPodcast = podcast,
+                warnBeforeCellularDownloads = true,
+                isOnWifi = { false },
+            )
+        }
+
+        composeTestRule.onNodeWithContentDescription("Download").performClick()
+
+        composeTestRule.onNodeWithText("Download over mobile data?").assertExists()
+        assertThat(downloadStarted).isFalse()
+
+        composeTestRule.onNodeWithText("Download").performClick()
+
+        assertThat(downloadStarted).isTrue()
+    }
+
+    @Test
+    fun `downloading on Wi-Fi never shows the cellular warning even when enabled`() {
+        val podcast = Podcast(
+            id = "p1",
+            title = "Test Show",
+            author = "Author",
+            artworkUrl = null,
+            feedUrl = "https://example.com/feed.xml",
+        )
+        val episode = Episode(
+            id = "ep-1",
+            podcastId = "p1",
+            title = "Episode",
+            audioUrl = "https://example.com/ep1.mp3",
+            publishedAtEpochMillis = null,
+            durationSeconds = 600,
+        )
+        var downloadStarted = false
+        val repository = PodcastRepository(
+            itunesApi = NoOpItunesSearchApi(),
+            fetchFeed = { "" },
+            podcastDao = NoOpPodcastDao(),
+            episodeDao = SingleEpisodeFakeEpisodeDao(episode.toEntity()),
+            downloadFile = { _, _, _ -> downloadStarted = true; null },
+        )
+
+        composeTestRule.setContent {
+            PodcastsScreen(
+                repository = repository,
+                onEpisodeSelected = { _, _ -> },
+                initialPodcast = podcast,
+                warnBeforeCellularDownloads = true,
+                isOnWifi = { true },
+            )
+        }
+
+        composeTestRule.onNodeWithContentDescription("Download").performClick()
+
+        composeTestRule.onNodeWithText("Download over mobile data?").assertDoesNotExist()
+        assertThat(downloadStarted).isTrue()
+    }
+
+    @Test
+    fun `tapping the star icon on an episode row toggles isStarred`() {
+        val podcast = Podcast(
+            id = "p1",
+            title = "Test Show",
+            author = "Author",
+            artworkUrl = null,
+            feedUrl = "https://example.com/feed.xml",
+        )
+        val episode = Episode(
+            id = "ep-1",
+            podcastId = "p1",
+            title = "Episode",
+            audioUrl = "https://example.com/ep1.mp3",
+            publishedAtEpochMillis = null,
+            durationSeconds = 600,
+        )
+        val episodeDao = SingleEpisodeFakeEpisodeDao(episode.toEntity())
+        val repository = PodcastRepository(
+            itunesApi = NoOpItunesSearchApi(),
+            fetchFeed = { "" },
+            podcastDao = NoOpPodcastDao(),
+            episodeDao = episodeDao,
+        )
+
+        composeTestRule.setContent {
+            PodcastsScreen(repository = repository, onEpisodeSelected = { _, _ -> }, initialPodcast = podcast)
+        }
+
+        composeTestRule.onNodeWithContentDescription("Star episode").assertExists()
+        composeTestRule.onNodeWithContentDescription("Star episode").performClick()
+        composeTestRule.waitForIdle()
+
+        assertThat(episodeDao.state.value.isStarred).isTrue()
+        composeTestRule.onNodeWithContentDescription("Unstar episode").assertExists()
+
+        composeTestRule.onNodeWithContentDescription("Unstar episode").performClick()
+        composeTestRule.waitForIdle()
+
+        assertThat(episodeDao.state.value.isStarred).isFalse()
+    }
+
+    @Test
+    fun `episodes spanning multiple seasons are shown under season headers`() {
+        val podcast = Podcast(
+            id = "p1",
+            title = "Test Show",
+            author = "Author",
+            artworkUrl = null,
+            feedUrl = "https://example.com/feed.xml",
+        )
+        val episodeDao = MultiEpisodeFakeEpisodeDao(
+            listOf(
+                Episode(
+                    id = "ep-s1", podcastId = "p1", title = "Season One Episode",
+                    audioUrl = "https://example.com/ep-s1.mp3", publishedAtEpochMillis = 100L,
+                    durationSeconds = 600, season = 1,
+                ).toEntity(),
+                Episode(
+                    id = "ep-s2", podcastId = "p1", title = "Season Two Episode",
+                    audioUrl = "https://example.com/ep-s2.mp3", publishedAtEpochMillis = 200L,
+                    durationSeconds = 600, season = 2,
+                ).toEntity(),
+            ),
+        )
+        val repository = PodcastRepository(
+            itunesApi = NoOpItunesSearchApi(),
+            fetchFeed = { "" },
+            podcastDao = NoOpPodcastDao(),
+            episodeDao = episodeDao,
+        )
+
+        composeTestRule.setContent {
+            PodcastsScreen(repository = repository, onEpisodeSelected = { _, _ -> }, initialPodcast = podcast)
+        }
+
+        composeTestRule.onNodeWithText("Season 1").assertExists()
+        composeTestRule.onNodeWithText("Season 2").assertExists()
+        composeTestRule.onNodeWithText("Season One Episode").assertExists()
+        composeTestRule.onNodeWithText("Season Two Episode").assertExists()
+    }
+
+    @Test
+    fun `a single season across all episodes shows no group header`() {
+        val podcast = Podcast(
+            id = "p1",
+            title = "Test Show",
+            author = "Author",
+            artworkUrl = null,
+            feedUrl = "https://example.com/feed.xml",
+        )
+        val episodeDao = MultiEpisodeFakeEpisodeDao(
+            listOf(
+                Episode(
+                    id = "ep-a", podcastId = "p1", title = "Episode A",
+                    audioUrl = "https://example.com/ep-a.mp3", publishedAtEpochMillis = 100L,
+                    durationSeconds = 600, season = 1,
+                ).toEntity(),
+                Episode(
+                    id = "ep-b", podcastId = "p1", title = "Episode B",
+                    audioUrl = "https://example.com/ep-b.mp3", publishedAtEpochMillis = 200L,
+                    durationSeconds = 600, season = 1,
+                ).toEntity(),
+            ),
+        )
+        val repository = PodcastRepository(
+            itunesApi = NoOpItunesSearchApi(),
+            fetchFeed = { "" },
+            podcastDao = NoOpPodcastDao(),
+            episodeDao = episodeDao,
+        )
+
+        composeTestRule.setContent {
+            PodcastsScreen(repository = repository, onEpisodeSelected = { _, _ -> }, initialPodcast = podcast)
+        }
+
+        composeTestRule.onNodeWithText("Episode A").assertExists()
+        composeTestRule.onNodeWithText("Episode B").assertExists()
+        composeTestRule.onNodeWithText("Season 1").assertDoesNotExist()
     }
 }

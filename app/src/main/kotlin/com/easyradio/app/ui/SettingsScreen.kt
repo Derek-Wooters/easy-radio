@@ -44,11 +44,13 @@ fun SettingsScreen(
     onThemeModeChange: (ThemeMode) -> Unit,
     onDownloadQualityChange: (DownloadQuality) -> Unit,
     onDownloadOverWifiOnlyChange: (Boolean) -> Unit,
+    onWarnBeforeCellularDownloadsChange: (Boolean) -> Unit = {},
     onSleepTimerMinutesChange: (Int) -> Unit,
     onSkipBackSecondsChange: (Int) -> Unit,
     onSkipForwardSecondsChange: (Int) -> Unit,
     onSkipSilenceEnabledChange: (Boolean) -> Unit = {},
     onVoiceBoostEnabledChange: (Boolean) -> Unit = {},
+    onSmartResumeEnabledChange: (Boolean) -> Unit = {},
     onManageDownloadsClick: (() -> Unit)? = null,
     listenedTodaySeconds: Long = 0L,
     listenedThisWeekSeconds: Long = 0L,
@@ -133,6 +135,18 @@ fun SettingsScreen(
             checked = settings.downloadOverWifiOnly,
             onCheckedChange = onDownloadOverWifiOnlyChange,
         )
+        SwitchRow(
+            label = "Warn on cellular downloads",
+            checked = settings.warnBeforeCellularDownloads,
+            onCheckedChange = onWarnBeforeCellularDownloadsChange,
+        )
+        Text(
+            text = "Confirms before a manual download over mobile data. \"Wi‑Fi only\" above already " +
+                "blocks auto-downloads on cellular outright, so this only applies to downloads you start yourself.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp),
+        )
         if (onManageDownloadsClick != null) {
             NavigationRow(label = "Manage downloads", onClick = onManageDownloadsClick)
         }
@@ -174,6 +188,17 @@ fun SettingsScreen(
             label = "Voice boost",
             checked = settings.voiceBoostEnabled,
             onCheckedChange = onVoiceBoostEnabledChange,
+        )
+        SwitchRow(
+            label = "Smart resume",
+            checked = settings.smartResumeEnabled,
+            onCheckedChange = onSmartResumeEnabledChange,
+        )
+        Text(
+            text = "Rewinds a few seconds when you resume a paused episode, so you can catch back up.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp),
         )
     }
 }

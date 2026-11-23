@@ -1,8 +1,11 @@
 package com.easyradio.core.database
 
+import com.easyradio.core.model.Bookmark
 import com.easyradio.core.model.Episode
 import com.easyradio.core.model.Podcast
 import com.easyradio.core.model.Chapter
+import com.easyradio.core.model.SmartPlaylist
+import com.easyradio.core.model.SmartPlaylistStatus
 import com.easyradio.core.network.podcast.ChaptersParser
 import com.easyradio.core.network.podcast.ItunesSearchApi
 import com.easyradio.core.network.podcast.OpmlSupport
@@ -24,6 +27,8 @@ class PodcastRepository(
     private val downloadFile: suspend (id: String, audioUrl: String, onProgress: (Float) -> Unit) -> String? = { _, _, _ -> null },
     private val deleteFile: (String) -> Unit = {},
     private val queueDao: QueueDao = NoOpQueueDao,
+    private val bookmarkDao: BookmarkDao = NoOpBookmarkDao,
+    private val smartPlaylistDao: SmartPlaylistDao = NoOpSmartPlaylistDao,
 ) {
     companion object {
         const val EPISODE_PAGE_SIZE = 50
@@ -84,6 +89,10 @@ class PodcastRepository(
 
     suspend fun setSkipLastSeconds(podcastId: String, seconds: Int) {
         podcastDao.setSkipLastSeconds(podcastId, seconds)
+    }
+
+    suspend fun setPlaybackSpeed(podcastId: String, speed: Float) {
+        podcastDao.setPlaybackSpeed(podcastId, speed)
     }
 
     suspend fun markPlayed(podcastId: String) {
@@ -246,6 +255,60 @@ class PodcastRepository(
 
     suspend fun lastPosition(episodeId: String): Long = episodeDao.getPosition(episodeId) ?: 0L
 
+    suspend fun setStarred(episodeId: String, starred: Boolean) {
+        episodeDao.setStarred(episodeId, starred)
+    }
+
+    /** Every starred episode across every podcast, newest first. */
+    fun starredEpisodes(): Flow<List<Episode>> =
+        episodeDao.observeStarred().map { list -> list.map { it.toEpisode() } }
+
+    suspend fun addBookmark(episodeId: String, positionMs: Long, note: String = "") {
+        bookmarkDao.insert(
+            BookmarkEntity(
+                id = java.util.UUID.randomUUID().toString(),
+                episodeId = episodeId,
+                positionMs = positionMs,
+                note = note,
+                createdAtEpochMillis = System.currentTimeMillis(),
+            ),
+        )
+    }
+
+    fun bookmarksFor(episodeId: String): Flow<List<Bookmark>> =
+        bookmarkDao.observeForEpisode(episodeId).map { list -> list.map { it.toBookmark() } }
+
+    suspend fun deleteBookmark(id: String) {
+        bookmarkDao.delete(id)
+    }
+
+    suspend fun createSmartPlaylist(
+        name: String,
+        podcastIds: Set<String> = emptySet(),
+        status: SmartPlaylistStatus = SmartPlaylistStatus.ANY,
+        downloadedOnly: Boolean = false,
+        starredOnly: Boolean = false,
+    ) {
+        smartPlaylistDao.upsert(
+            SmartPlaylist(
+                id = java.util.UUID.randomUUID().toString(),
+                name = name,
+                podcastIds = podcastIds,
+                status = status,
+                downloadedOnly = downloadedOnly,
+                starredOnly = starredOnly,
+                createdAtEpochMillis = System.currentTimeMillis(),
+            ).toEntity(),
+        )
+    }
+
+    fun smartPlaylists(): Flow<List<SmartPlaylist>> =
+        smartPlaylistDao.observeAll().map { list -> list.map { it.toSmartPlaylist() } }
+
+    suspend fun deleteSmartPlaylist(id: String) {
+        smartPlaylistDao.delete(id)
+    }
+
     suspend fun downloadEpisode(episode: Episode, onProgress: (Float) -> Unit = {}): Boolean {
         val path = downloadFile(episode.id, episode.audioUrl, onProgress) ?: return false
         episodeDao.updateLocalFilePath(episode.id, path)
@@ -283,4 +346,16 @@ private val NoOpQueueDao = object : QueueDao {
     override suspend fun upsertAll(items: List<QueueItemEntity>) {}
     override suspend fun remove(episodeId: String) {}
     override suspend fun maxPosition(): Int = -1
+}
+
+private val NoOpBookmarkDao = object : BookmarkDao {
+    override suspend fun insert(bookmark: BookmarkEntity) {}
+    override fun observeForEpisode(episodeId: String): Flow<List<BookmarkEntity>> = kotlinx.coroutines.flow.flowOf(emptyList())
+    override suspend fun delete(id: String) {}
+}
+
+private val NoOpSmartPlaylistDao = object : SmartPlaylistDao {
+    override suspend fun upsert(playlist: SmartPlaylistEntity) {}
+    override fun observeAll(): Flow<List<SmartPlaylistEntity>> = kotlinx.coroutines.flow.flowOf(emptyList())
+    override suspend fun delete(id: String) {}
 }

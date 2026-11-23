@@ -61,6 +61,10 @@ private class FakePodcastDao : PodcastDao {
     override suspend fun setSkipLastSeconds(id: String, seconds: Int) {
         state.update { list -> list.map { if (it.id == id) it.copy(skipLastSeconds = seconds) else it } }
     }
+
+    override suspend fun setPlaybackSpeed(id: String, speed: Float) {
+        state.update { list -> list.map { if (it.id == id) it.copy(playbackSpeed = speed) else it } }
+    }
 }
 
 private class FakeEpisodeDao : EpisodeDao {
@@ -115,6 +119,34 @@ private class FakeEpisodeDao : EpisodeDao {
     override fun observeDownloaded() = state.map { list -> list.filter { it.localFilePath != null } }
 
     override fun observeAll() = state
+
+    override suspend fun setStarred(episodeId: String, starred: Boolean) {
+        state.update { list -> list.map { if (it.id == episodeId) it.copy(isStarred = starred) else it } }
+    }
+
+    override fun observeStarred() = state.map { list -> list.filter { it.isStarred } }
+}
+
+private class FakeBookmarkDao : BookmarkDao {
+    val state = MutableStateFlow<List<BookmarkEntity>>(emptyList())
+    override suspend fun insert(bookmark: BookmarkEntity) {
+        state.update { list -> list.filterNot { it.id == bookmark.id } + bookmark }
+    }
+    override fun observeForEpisode(episodeId: String) = state.map { list -> list.filter { it.episodeId == episodeId } }
+    override suspend fun delete(id: String) {
+        state.update { list -> list.filterNot { it.id == id } }
+    }
+}
+
+private class FakeSmartPlaylistDao : SmartPlaylistDao {
+    val state = MutableStateFlow<List<SmartPlaylistEntity>>(emptyList())
+    override suspend fun upsert(playlist: SmartPlaylistEntity) {
+        state.update { list -> list.filterNot { it.id == playlist.id } + playlist }
+    }
+    override fun observeAll() = state.map { it.sortedBy { p -> p.createdAtEpochMillis } }
+    override suspend fun delete(id: String) {
+        state.update { list -> list.filterNot { it.id == id } }
+    }
 }
 
 private class FakeQueueDao : QueueDao {
@@ -263,6 +295,119 @@ class PodcastRepositoryTest {
         val subscribed = repository.subscribedPodcasts().first().first()
         assertThat(subscribed.skipFirstSeconds).isEqualTo(30)
         assertThat(subscribed.skipLastSeconds).isEqualTo(15)
+    }
+
+    @Test
+    fun `setPlaybackSpeed persists per podcast`() = runTest {
+        val podcastDao = FakePodcastDao()
+        val repository = PodcastRepository(FakeItunesSearchApi(), { feedXml }, podcastDao, FakeEpisodeDao())
+        repository.subscribe(testPodcast)
+
+        repository.setPlaybackSpeed(testPodcast.id, 1.5f)
+
+        val subscribed = repository.subscribedPodcasts().first().first()
+        assertThat(subscribed.playbackSpeed).isEqualTo(1.5f)
+    }
+
+    @Test
+    fun `setStarred persists and starredEpisodes reflects it`() = runTest {
+        val episodeDao = FakeEpisodeDao()
+        val repository = PodcastRepository(FakeItunesSearchApi(), { feedXml }, FakePodcastDao(), episodeDao)
+        repository.refreshEpisodes(testPodcast)
+        val episodeId = repository.episodesFor(testPodcast.id).first().first().id
+
+        repository.setStarred(episodeId, true)
+
+        val starred = repository.starredEpisodes().first()
+        assertThat(starred).hasSize(1)
+        assertThat(starred.first().id).isEqualTo(episodeId)
+        assertThat(repository.episodesFor(testPodcast.id).first().first().isStarred).isTrue()
+    }
+
+    @Test
+    fun `unstarring removes the episode from starredEpisodes`() = runTest {
+        val episodeDao = FakeEpisodeDao()
+        val repository = PodcastRepository(FakeItunesSearchApi(), { feedXml }, FakePodcastDao(), episodeDao)
+        repository.refreshEpisodes(testPodcast)
+        val episodeId = repository.episodesFor(testPodcast.id).first().first().id
+        repository.setStarred(episodeId, true)
+
+        repository.setStarred(episodeId, false)
+
+        assertThat(repository.starredEpisodes().first()).isEmpty()
+    }
+
+    @Test
+    fun `addBookmark persists and bookmarksFor reflects it, deleteBookmark removes it`() = runTest {
+        val episodeDao = FakeEpisodeDao()
+        val bookmarkDao = FakeBookmarkDao()
+        val repository = PodcastRepository(
+            itunesApi = FakeItunesSearchApi(),
+            fetchFeed = { feedXml },
+            podcastDao = FakePodcastDao(),
+            episodeDao = episodeDao,
+            bookmarkDao = bookmarkDao,
+        )
+        repository.refreshEpisodes(testPodcast)
+        val episodeId = repository.episodesFor(testPodcast.id).first().first().id
+
+        repository.addBookmark(episodeId, positionMs = 90_000L, note = "Great point here")
+
+        val bookmarks = repository.bookmarksFor(episodeId).first()
+        assertThat(bookmarks).hasSize(1)
+        assertThat(bookmarks.first().positionMs).isEqualTo(90_000L)
+        assertThat(bookmarks.first().note).isEqualTo("Great point here")
+
+        repository.deleteBookmark(bookmarks.first().id)
+
+        assertThat(repository.bookmarksFor(episodeId).first()).isEmpty()
+    }
+
+    @Test
+    fun `createSmartPlaylist persists its rules and smartPlaylists reflects it`() = runTest {
+        val smartPlaylistDao = FakeSmartPlaylistDao()
+        val repository = PodcastRepository(
+            itunesApi = FakeItunesSearchApi(),
+            fetchFeed = { "" },
+            podcastDao = FakePodcastDao(),
+            episodeDao = FakeEpisodeDao(),
+            smartPlaylistDao = smartPlaylistDao,
+        )
+
+        repository.createSmartPlaylist(
+            name = "Downloaded Favorites",
+            podcastIds = setOf("p1", "p2"),
+            status = com.easyradio.core.model.SmartPlaylistStatus.IN_PROGRESS,
+            downloadedOnly = true,
+            starredOnly = true,
+        )
+
+        val playlists = repository.smartPlaylists().first()
+        assertThat(playlists).hasSize(1)
+        val playlist = playlists.first()
+        assertThat(playlist.name).isEqualTo("Downloaded Favorites")
+        assertThat(playlist.podcastIds).containsExactly("p1", "p2")
+        assertThat(playlist.status).isEqualTo(com.easyradio.core.model.SmartPlaylistStatus.IN_PROGRESS)
+        assertThat(playlist.downloadedOnly).isTrue()
+        assertThat(playlist.starredOnly).isTrue()
+    }
+
+    @Test
+    fun `deleteSmartPlaylist removes it from smartPlaylists`() = runTest {
+        val smartPlaylistDao = FakeSmartPlaylistDao()
+        val repository = PodcastRepository(
+            itunesApi = FakeItunesSearchApi(),
+            fetchFeed = { "" },
+            podcastDao = FakePodcastDao(),
+            episodeDao = FakeEpisodeDao(),
+            smartPlaylistDao = smartPlaylistDao,
+        )
+        repository.createSmartPlaylist(name = "Unplayed")
+        val playlistId = repository.smartPlaylists().first().first().id
+
+        repository.deleteSmartPlaylist(playlistId)
+
+        assertThat(repository.smartPlaylists().first()).isEmpty()
     }
 
     @Test

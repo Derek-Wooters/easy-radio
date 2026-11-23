@@ -57,4 +57,14 @@ class MainActivityFormattingTest {
 
         assertThat(tagline).isEqualTo("The Daily · 0:00 left")
     }
+
+    @Test
+    fun `playbackSpeedIndexFor finds the matching entry`() {
+        assertThat(playbackSpeedIndexFor(1.5f)).isEqualTo(2)
+    }
+
+    @Test
+    fun `playbackSpeedIndexFor falls back to 1x's index for an unknown speed`() {
+        assertThat(playbackSpeedIndexFor(3.0f)).isEqualTo(0)
+    }
 }

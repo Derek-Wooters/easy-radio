@@ -31,5 +31,7 @@ class AppSettingsTest {
         assertThat(settings.skipForwardSeconds).isEqualTo(30)
         assertThat(settings.skipSilenceEnabled).isFalse()
         assertThat(settings.voiceBoostEnabled).isFalse()
+        assertThat(settings.smartResumeEnabled).isFalse()
+        assertThat(settings.warnBeforeCellularDownloads).isFalse()
     }
 }
