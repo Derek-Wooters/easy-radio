@@ -55,7 +55,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.easyradio.app.formatDuration
-import com.easyradio.core.media.formatBehindLive
 import com.easyradio.app.ui.theme.LocalEasyRadioColors
 import com.easyradio.core.model.Chapter
 
@@ -274,7 +273,7 @@ fun NowPlayingScreen(
                 }
             } else {
                 // One indicator slot: the red LIVE pill when on the live edge, replaced by a
-                // tappable "Go live" button (with how far behind) once on the buffered stream.
+                // tappable "Go live" button once on the buffered stream.
                 // Both are 1.5x the stock badge size (12sp text / 16x6dp padding).
                 val behindLive = behindLiveMs > 0L && onGoLive != null
                 val indicatorTextStyle = MaterialTheme.typography.labelMedium.copy(fontSize = 18.sp)
@@ -285,7 +284,7 @@ fun NowPlayingScreen(
                         contentPadding = PaddingValues(horizontal = 24.dp, vertical = 9.dp),
                         modifier = Modifier.height(42.dp),
                     ) {
-                        Text("Go live  ${formatBehindLive(behindLiveMs)}", style = indicatorTextStyle)
+                        Text("Go live", style = indicatorTextStyle)
                     }
                 } else {
                     Box(

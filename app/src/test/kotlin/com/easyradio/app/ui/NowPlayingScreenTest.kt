@@ -61,7 +61,7 @@ class NowPlayingScreenTest {
         }
 
         composeTestRule.onNodeWithText("LIVE").assertExists()
-        composeTestRule.onNodeWithText("Go live", substring = true).assertDoesNotExist()
+        composeTestRule.onNodeWithText("Go live").assertDoesNotExist()
     }
 
     @Test
@@ -77,7 +77,7 @@ class NowPlayingScreenTest {
         }
 
         composeTestRule.onNodeWithText("LIVE").assertDoesNotExist()
-        composeTestRule.onNodeWithText("Go live  -1:23").performClick()
+        composeTestRule.onNodeWithText("Go live").performClick()
         composeTestRule.waitForIdle()
 
         assert(wentLive) { "Expected Go live to fire onGoLive" }
