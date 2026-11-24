@@ -194,6 +194,19 @@ class PlaybackSessionControllerTest {
     }
 
     @Test
+    fun `startPlayback with a non-positive speed falls back to normal speed instead of crashing`() {
+        // Regression: radio-station requests carry no speed extra, which reached here as 0f and
+        // made PlaybackParameters throw, crashing the app on every station play.
+        val player = fakePlayer()
+        val sut = controller(player)
+
+        sut.startPlayback(Uri.parse("https://example.com/stream"), "KFAN FM", "Sports Talk", null, 0L, playbackSpeed = 0f)
+
+        verify { player.setPlaybackParameters(PlaybackParameters(1.0f)) }
+        verify { player.play() }
+    }
+
+    @Test
     fun `startPlayback immediately publishes the new title and artist as metadata`() {
         val player = fakePlayer()
         var metadata: MediaMetadataCompat? = null

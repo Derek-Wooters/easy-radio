@@ -417,7 +417,9 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
                 stationId = extras?.getString(EXTRA_STATION_ID),
                 podcastId = extras?.getString(EXTRA_PODCAST_ID),
                 skipLastSeconds = extras?.getInt(EXTRA_SKIP_LAST_SECONDS) ?: 0,
-                playbackSpeed = extras?.getFloat(EXTRA_PLAYBACK_SPEED) ?: 1.0f,
+                // Default explicitly: a missing key (e.g. every radio-station request) otherwise reads
+                // as 0f, not null, and PlaybackParameters(0f) throws.
+                playbackSpeed = extras?.getFloat(EXTRA_PLAYBACK_SPEED, 1.0f) ?: 1.0f,
             )
         }
 

@@ -264,7 +264,9 @@ class PlaybackSessionController(
         // whichever speed the previous item was playing at (PlaybackParameters is a player-level
         // setting, not tied to the media item), so applying it here avoids a moment of audio at
         // the wrong speed right as a new episode starts.
-        player.setPlaybackParameters(PlaybackParameters(playbackSpeed))
+        // A non-positive speed is invalid and makes PlaybackParameters throw; never let a bad
+        // value crash the service, just play at normal speed.
+        player.setPlaybackParameters(PlaybackParameters(if (playbackSpeed > 0f) playbackSpeed else 1.0f))
         player.setMediaItem(mediaItem, resumePositionMs)
         player.prepare()
         player.play()
