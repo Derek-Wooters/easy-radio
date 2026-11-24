@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarOutline
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -53,6 +54,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.easyradio.app.formatDuration
+import com.easyradio.core.media.formatBehindLive
 import com.easyradio.app.ui.theme.LocalEasyRadioColors
 import com.easyradio.core.model.Chapter
 
@@ -72,6 +74,8 @@ fun NowPlayingScreen(
     imageUrl: String?,
     tintSeed: String,
     isLive: Boolean,
+    behindLiveMs: Long = 0L,
+    onGoLive: (() -> Unit)? = null,
     isPlaying: Boolean,
     isBuffering: Boolean = false,
     progress: Float?,
@@ -250,18 +254,23 @@ fun NowPlayingScreen(
                     }
                 }
             } else {
+                val behindLive = behindLiveMs > 0L
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
                             .clip(RoundedCornerShape(50))
-                            .background(extraColors.liveBadgeContainer)
+                            .background(
+                                if (behindLive) MaterialTheme.colorScheme.secondaryContainer
+                                else extraColors.liveBadgeContainer,
+                            )
                             .padding(horizontal = 16.dp, vertical = 6.dp),
                     ) {
                         Text(
-                            text = "LIVE",
+                            text = if (behindLive) "BEHIND LIVE  ${formatBehindLive(behindLiveMs)}" else "LIVE",
                             style = MaterialTheme.typography.labelMedium,
-                            color = extraColors.liveBadgeContent,
+                            color = if (behindLive) MaterialTheme.colorScheme.onSecondaryContainer
+                            else extraColors.liveBadgeContent,
                         )
                     }
                     if (onFavoriteClick != null) {
@@ -272,6 +281,12 @@ fun NowPlayingScreen(
                                 tint = MaterialTheme.colorScheme.primary,
                             )
                         }
+                    }
+                }
+                if (behindLive && onGoLive != null) {
+                    // You're listening to the buffered stream, not what's on air right now.
+                    FilledTonalButton(onClick = onGoLive, modifier = Modifier.padding(top = 8.dp)) {
+                        Text("Go live")
                     }
                 }
             }

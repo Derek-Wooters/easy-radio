@@ -5,6 +5,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
 import org.junit.Rule
@@ -46,6 +47,40 @@ class NowPlayingScreenTest {
         composeTestRule.waitForIdle()
 
         assert(queueClicked) { "Expected the header queue icon click to fire onQueueClick" }
+    }
+
+    @Test
+    fun `radio shows plain LIVE and no Go live button when on the live edge`() {
+        composeTestRule.setContent {
+            NowPlayingScreen(
+                topLabel = "Live Radio", title = "KFAN FM 100.3", subtitle = "Sports", imageUrl = null,
+                tintSeed = "kfan", isLive = true, isPlaying = true, progress = null, positionLabel = null,
+                durationLabel = null, speedLabel = null, onCollapse = {}, onPlayPause = {},
+                behindLiveMs = 0L, onGoLive = {},
+            )
+        }
+
+        composeTestRule.onNodeWithText("LIVE").assertExists()
+        composeTestRule.onNodeWithText("Go live").assertDoesNotExist()
+    }
+
+    @Test
+    fun `radio behind live shows the offset and a Go live button that fires`() {
+        var wentLive = false
+        composeTestRule.setContent {
+            NowPlayingScreen(
+                topLabel = "Live Radio", title = "KFAN FM 100.3", subtitle = "Sports", imageUrl = null,
+                tintSeed = "kfan", isLive = true, isPlaying = true, progress = null, positionLabel = null,
+                durationLabel = null, speedLabel = null, onCollapse = {}, onPlayPause = {},
+                behindLiveMs = 83_000L, onGoLive = { wentLive = true },
+            )
+        }
+
+        composeTestRule.onNodeWithText("BEHIND LIVE  -1:23").assertExists()
+        composeTestRule.onNodeWithText("Go live").performClick()
+        composeTestRule.waitForIdle()
+
+        assert(wentLive) { "Expected Go live to fire onGoLive" }
     }
 
     @Test
