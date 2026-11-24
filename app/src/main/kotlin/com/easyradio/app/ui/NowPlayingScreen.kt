@@ -177,12 +177,30 @@ fun NowPlayingScreen(
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineSmall,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-            )
+            // The favorite star (radio only) sits inline with the title rather than off on its
+            // own row, so it reads as belonging to the station.
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                if (onFavoriteClick != null) {
+                    IconButton(onClick = onFavoriteClick) {
+                        Icon(
+                            if (isFavorite) Icons.Filled.Star else Icons.Filled.StarOutline,
+                            contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+            }
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodyLarge,
@@ -272,15 +290,6 @@ fun NowPlayingScreen(
                             color = if (behindLive) MaterialTheme.colorScheme.onSecondaryContainer
                             else extraColors.liveBadgeContent,
                         )
-                    }
-                    if (onFavoriteClick != null) {
-                        IconButton(onClick = onFavoriteClick) {
-                            Icon(
-                                if (isFavorite) Icons.Filled.Star else Icons.Filled.StarOutline,
-                                contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
-                                tint = MaterialTheme.colorScheme.primary,
-                            )
-                        }
                     }
                 }
                 if (behindLive && onGoLive != null) {
