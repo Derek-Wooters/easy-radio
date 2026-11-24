@@ -59,7 +59,6 @@ import com.easyradio.app.ui.theme.EasyRadioTheme
 import com.easyradio.core.media.PlaybackUiState
 import com.easyradio.core.model.Episode
 import com.easyradio.core.model.Podcast
-import com.easyradio.core.media.formatBehindLive
 import com.easyradio.core.media.isBehindLive
 import com.easyradio.core.model.RadioStation
 import com.easyradio.app.ui.rememberBehindLiveMs
@@ -319,6 +318,10 @@ class MainActivity : ComponentActivity() {
                 val playing = sessionConnection.uiState == PlaybackUiState.PLAYING || sessionConnection.uiState == PlaybackUiState.BUFFERING
                 val behindLiveMs = rememberBehindLiveMs(sessionConnection.liveOffset)
                 val behindLive = isBehindLive(behindLiveMs)
+                val goLive: () -> Unit = {
+                    sessionConnection.controller?.transportControls
+                        ?.sendCustomAction(com.easyradio.app.playback.ACTION_GO_LIVE, null)
+                }
                 val favoriteStationIds by favoriteStationRepository.favoriteIds()
                     .collectAsState(initial = emptySet())
                 val snackbarHostState = remember { SnackbarHostState() }
@@ -440,7 +443,8 @@ class MainActivity : ComponentActivity() {
                                 tagline = station.tagline,
                                 tintSeed = station.id,
                                 imageUrl = station.imageUrl,
-                                badgeText = if (behindLive) formatBehindLive(behindLiveMs) else "LIVE",
+                                badgeText = if (behindLive) "Go live" else "LIVE",
+                                onBadgeClick = if (behindLive) goLive else null,
                                 playbackState = sessionConnection.uiState,
                                 onPlayClick = { resumeOrStartStation(station) },
                                 onPauseClick = { sessionConnection.controller?.transportControls?.pause() },
@@ -498,10 +502,7 @@ class MainActivity : ComponentActivity() {
                                 tintSeed = station.id,
                                 isLive = true,
                                 behindLiveMs = if (behindLive) behindLiveMs else 0L,
-                                onGoLive = {
-                                    sessionConnection.controller?.transportControls
-                                        ?.sendCustomAction(com.easyradio.app.playback.ACTION_GO_LIVE, null)
-                                },
+                                onGoLive = goLive,
                                 isPlaying = playing,
                                 isBuffering = sessionConnection.uiState == PlaybackUiState.BUFFERING,
                                 progress = null,

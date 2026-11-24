@@ -31,7 +31,8 @@ import com.easyradio.core.media.PlaybackUiState
 /**
  * Persistent playback bar, shared across tabs so it stays visible whether a
  * radio station or a podcast episode is playing. [badgeText] (e.g. "LIVE") is
- * only shown for radio; pass null for podcast episodes. [progress] (0..1) draws
+ * only shown for radio; pass null for podcast episodes. When [onBadgeClick] is set the badge is
+ * a tappable button (radio's "Go live" while behind live) rather than a static indicator. [progress] (0..1) draws
  * a thin position bar along the top for seekable content (podcasts); pass null
  * for live radio.
  */
@@ -42,6 +43,7 @@ fun NowPlayingBar(
     tintSeed: String,
     imageUrl: String?,
     badgeText: String?,
+    onBadgeClick: (() -> Unit)? = null,
     playbackState: PlaybackUiState,
     onPlayClick: () -> Unit,
     onPauseClick: () -> Unit,
@@ -98,17 +100,23 @@ fun NowPlayingBar(
                 }
 
                 if (badgeText != null) {
+                    val actionable = onBadgeClick != null
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
                             .clip(RoundedCornerShape(50))
-                            .background(extraColors.liveBadgeContainer)
+                            .background(
+                                if (actionable) MaterialTheme.colorScheme.secondaryContainer
+                                else extraColors.liveBadgeContainer,
+                            )
+                            .then(if (onBadgeClick != null) Modifier.clickable(onClick = onBadgeClick) else Modifier)
                             .padding(horizontal = 12.dp, vertical = 4.dp),
                     ) {
                         Text(
                             text = badgeText,
                             style = MaterialTheme.typography.labelSmall,
-                            color = extraColors.liveBadgeContent,
+                            color = if (actionable) MaterialTheme.colorScheme.onSecondaryContainer
+                            else extraColors.liveBadgeContent,
                         )
                     }
                 }
