@@ -61,11 +61,11 @@ class NowPlayingScreenTest {
         }
 
         composeTestRule.onNodeWithText("LIVE").assertExists()
-        composeTestRule.onNodeWithText("Go live").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Go live", substring = true).assertDoesNotExist()
     }
 
     @Test
-    fun `radio behind live shows the offset and a Go live button that fires`() {
+    fun `radio behind live replaces the LIVE pill with a Go live button that fires`() {
         var wentLive = false
         composeTestRule.setContent {
             NowPlayingScreen(
@@ -76,8 +76,8 @@ class NowPlayingScreenTest {
             )
         }
 
-        composeTestRule.onNodeWithText("BEHIND LIVE  -1:23").assertExists()
-        composeTestRule.onNodeWithText("Go live").performClick()
+        composeTestRule.onNodeWithText("LIVE").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Go live  -1:23").performClick()
         composeTestRule.waitForIdle()
 
         assert(wentLive) { "Expected Go live to fire onGoLive" }

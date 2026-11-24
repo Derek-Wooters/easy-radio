@@ -53,6 +53,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.easyradio.app.formatDuration
 import com.easyradio.core.media.formatBehindLive
 import com.easyradio.app.ui.theme.LocalEasyRadioColors
@@ -272,30 +273,34 @@ fun NowPlayingScreen(
                     }
                 }
             } else {
-                val behindLive = behindLiveMs > 0L
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // One indicator slot: the red LIVE pill when on the live edge, replaced by a
+                // tappable "Go live" button (with how far behind) once on the buffered stream.
+                // Both are 1.5x the stock badge size (12sp text / 16x6dp padding).
+                val behindLive = behindLiveMs > 0L && onGoLive != null
+                val indicatorTextStyle = MaterialTheme.typography.labelMedium.copy(fontSize = 18.sp)
+                if (behindLive) {
+                    FilledTonalButton(
+                        onClick = onGoLive!!,
+                        shape = RoundedCornerShape(50),
+                        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 9.dp),
+                        modifier = Modifier.height(42.dp),
+                    ) {
+                        Text("Go live  ${formatBehindLive(behindLiveMs)}", style = indicatorTextStyle)
+                    }
+                } else {
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
+                            .height(42.dp)
                             .clip(RoundedCornerShape(50))
-                            .background(
-                                if (behindLive) MaterialTheme.colorScheme.secondaryContainer
-                                else extraColors.liveBadgeContainer,
-                            )
-                            .padding(horizontal = 16.dp, vertical = 6.dp),
+                            .background(extraColors.liveBadgeContainer)
+                            .padding(horizontal = 24.dp, vertical = 9.dp),
                     ) {
                         Text(
-                            text = if (behindLive) "BEHIND LIVE  ${formatBehindLive(behindLiveMs)}" else "LIVE",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = if (behindLive) MaterialTheme.colorScheme.onSecondaryContainer
-                            else extraColors.liveBadgeContent,
+                            text = "LIVE",
+                            style = indicatorTextStyle,
+                            color = extraColors.liveBadgeContent,
                         )
-                    }
-                }
-                if (behindLive && onGoLive != null) {
-                    // You're listening to the buffered stream, not what's on air right now.
-                    FilledTonalButton(onClick = onGoLive, modifier = Modifier.padding(top = 8.dp)) {
-                        Text("Go live")
                     }
                 }
             }
