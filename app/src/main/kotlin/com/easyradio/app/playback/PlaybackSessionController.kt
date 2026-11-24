@@ -1,6 +1,7 @@
 package com.easyradio.app.playback
 
 import android.net.Uri
+import android.os.SystemClock
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import androidx.media3.common.C
@@ -13,6 +14,7 @@ import com.easyradio.core.media.BrowseNode
 import com.easyradio.core.media.EpisodeEndAction
 import com.easyradio.core.media.EpisodeEndDecision
 import com.easyradio.core.media.IntroOutroSkip
+import com.easyradio.core.media.LiveEdgeTracker
 import com.easyradio.core.media.MediaBrowseTree
 import com.easyradio.core.model.CuratedRadioStations
 import com.easyradio.core.model.Episode
@@ -49,6 +51,7 @@ class PlaybackSessionController(
     private val onPlaybackStateChanged: (PlaybackStateCompat) -> Unit,
     private val onMetadataChanged: (MediaMetadataCompat) -> Unit,
     private val onPlaybackStarting: () -> Unit,
+    private val nowMs: () -> Long = { SystemClock.elapsedRealtime() },
 ) {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
@@ -86,6 +89,21 @@ class PlaybackSessionController(
     private var currentSkipLastSeconds: Int = 0
 
     private var positionSaveJob: Job? = null
+
+    // How far behind live the current radio station is (see LiveEdgeTracker). Only meaningful
+    // while currentStationId != null; reset whenever a station (re)starts, which is also exactly
+    // what "go live" does.
+    private val liveEdge = LiveEdgeTracker()
+
+    private class StationRequest(
+        val uri: Uri,
+        val title: String?,
+        val artist: String?,
+        val artworkUrl: String?,
+        val stationId: String,
+    )
+
+    private var lastStation: StationRequest? = null
 
     fun release() {
         scope.cancel()
@@ -150,13 +168,15 @@ class PlaybackSessionController(
             PlaybackStateCompat.ACTION_PLAY_FROM_URI
 
         val playbackSpeed = if (state == PlaybackStateCompat.STATE_PLAYING) player.playbackParameters.speed else 0f
-        onPlaybackStateChanged(
-            PlaybackStateCompat.Builder()
-                .setState(state, player.currentPosition, playbackSpeed)
-                .setBufferedPosition(player.bufferedPosition)
-                .setActions(actions)
-                .build(),
-        )
+        val builder = PlaybackStateCompat.Builder()
+            .setState(state, player.currentPosition, playbackSpeed)
+            .setBufferedPosition(player.bufferedPosition)
+            .setActions(actions)
+        if (currentStationId != null) {
+            liveEdge.onPlayingChanged(player.isPlaying, nowMs())
+            builder.setExtras(LiveOffsetExtras.toBundle(liveEdge.snapshot()))
+        }
+        onPlaybackStateChanged(builder.build())
     }
 
     /**
@@ -248,6 +268,8 @@ class PlaybackSessionController(
         currentPodcastId = podcastId
         sleepAtEndOfEpisode = false
         currentSkipLastSeconds = skipLastSeconds
+        liveEdge.reset()
+        lastStation = stationId?.let { StationRequest(uri, title, artist, artworkUrl, it) }
         restartPositionSaving(episodeId)
         publishMetadata()
         val mediaItem = MediaItem.Builder()
@@ -317,6 +339,23 @@ class PlaybackSessionController(
             podcastId = episode.podcastId,
             skipLastSeconds = podcast?.skipLastSeconds ?: 0,
             playbackSpeed = podcast?.playbackSpeed ?: 1.0f,
+        )
+    }
+
+    /**
+     * Rejoins the live edge of the current radio station by restarting its stream (a paused
+     * station otherwise resumes from the buffer, i.e. behind live). No-op if no station is
+     * current.
+     */
+    fun goLive() {
+        val station = lastStation ?: return
+        startPlayback(
+            uri = station.uri,
+            title = station.title,
+            artist = station.artist,
+            artworkUrl = station.artworkUrl,
+            resumePositionMs = 0L,
+            stationId = station.stationId,
         )
     }
 

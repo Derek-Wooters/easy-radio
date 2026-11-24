@@ -86,6 +86,12 @@ const val EXTRA_PLAYBACK_SPEED = "com.easyradio.app.EXTRA_PLAYBACK_SPEED"
 const val ACTION_SLEEP_AT_END_OF_EPISODE = "com.easyradio.app.ACTION_SLEEP_AT_END_OF_EPISODE"
 
 /**
+ * Custom action sent by [MainActivity]'s "Go live" button: restart the current radio station at
+ * the live edge, leaving the buffered (behind-live) position behind.
+ */
+const val ACTION_GO_LIVE = "com.easyradio.app.ACTION_GO_LIVE"
+
+/**
  * Hand-built [MediaSessionCompat]/[PlaybackStateCompat] session backing all playback surfaces,
  * replacing an earlier Media3 [androidx.media3.session.MediaLibraryService]-based
  * implementation. Media3's automatic translation into the legacy platform `PlaybackState` gave
@@ -428,8 +434,9 @@ class EasyRadioPlaybackService : MediaBrowserServiceCompat() {
         }
 
         override fun onCustomAction(action: String, extras: Bundle?) {
-            if (action == ACTION_SLEEP_AT_END_OF_EPISODE) {
-                sessionController.armSleepAtEndOfEpisode()
+            when (action) {
+                ACTION_SLEEP_AT_END_OF_EPISODE -> sessionController.armSleepAtEndOfEpisode()
+                ACTION_GO_LIVE -> sessionController.goLive()
             }
         }
     }

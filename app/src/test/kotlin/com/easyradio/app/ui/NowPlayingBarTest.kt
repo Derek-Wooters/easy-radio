@@ -43,6 +43,33 @@ class NowPlayingBarTest {
     }
 
     @Test
+    fun `a clickable badge fires onBadgeClick and does not fire onExpand`() {
+        var expanded = false
+        var wentLive = false
+
+        composeTestRule.setContent {
+            NowPlayingBar(
+                title = "KFAN FM 100.3",
+                tagline = "Audio Home For Minnesota Sports",
+                tintSeed = "kfan",
+                imageUrl = null,
+                badgeText = "Go live",
+                onBadgeClick = { wentLive = true },
+                playbackState = PlaybackUiState.PLAYING,
+                onPlayClick = {},
+                onPauseClick = {},
+                onExpand = { expanded = true },
+            )
+        }
+
+        composeTestRule.onNodeWithText("Go live").performClick()
+        composeTestRule.waitForIdle()
+
+        assert(wentLive) { "Expected the Go live badge to fire onBadgeClick" }
+        assert(!expanded) { "Tapping the badge must not also expand the bar" }
+    }
+
+    @Test
     fun `tapping the pause button fires onPauseClick and does not fire onExpand`() {
         var expanded = false
         var paused = false

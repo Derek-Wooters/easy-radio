@@ -59,7 +59,9 @@ import com.easyradio.app.ui.theme.EasyRadioTheme
 import com.easyradio.core.media.PlaybackUiState
 import com.easyradio.core.model.Episode
 import com.easyradio.core.model.Podcast
+import com.easyradio.core.media.isBehindLive
 import com.easyradio.core.model.RadioStation
+import com.easyradio.app.ui.rememberBehindLiveMs
 import com.easyradio.core.network.radiobrowser.RadioBrowserApiFactory
 import com.easyradio.core.network.radiobrowser.RadioStationRepository
 import kotlinx.coroutines.delay
@@ -314,6 +316,12 @@ class MainActivity : ComponentActivity() {
 
             EasyRadioTheme(darkTheme = settings.themeMode.resolveDarkTheme(isSystemInDarkTheme())) {
                 val playing = sessionConnection.uiState == PlaybackUiState.PLAYING || sessionConnection.uiState == PlaybackUiState.BUFFERING
+                val behindLiveMs = rememberBehindLiveMs(sessionConnection.liveOffset)
+                val behindLive = isBehindLive(behindLiveMs)
+                val goLive: () -> Unit = {
+                    sessionConnection.controller?.transportControls
+                        ?.sendCustomAction(com.easyradio.app.playback.ACTION_GO_LIVE, null)
+                }
                 val favoriteStationIds by favoriteStationRepository.favoriteIds()
                     .collectAsState(initial = emptySet())
                 val snackbarHostState = remember { SnackbarHostState() }
@@ -435,9 +443,10 @@ class MainActivity : ComponentActivity() {
                                 tagline = station.tagline,
                                 tintSeed = station.id,
                                 imageUrl = station.imageUrl,
-                                badgeText = "LIVE",
+                                badgeText = if (behindLive) "Go live" else "LIVE",
+                                onBadgeClick = if (behindLive) goLive else null,
                                 playbackState = sessionConnection.uiState,
-                                onPlayClick = { playStation(station) },
+                                onPlayClick = { resumeOrStartStation(station) },
                                 onPauseClick = { sessionConnection.controller?.transportControls?.pause() },
                                 onExpand = onExpand,
                             )
@@ -492,6 +501,8 @@ class MainActivity : ComponentActivity() {
                                 imageUrl = station.imageUrl,
                                 tintSeed = station.id,
                                 isLive = true,
+                                behindLiveMs = if (behindLive) behindLiveMs else 0L,
+                                onGoLive = goLive,
                                 isPlaying = playing,
                                 isBuffering = sessionConnection.uiState == PlaybackUiState.BUFFERING,
                                 progress = null,
@@ -499,7 +510,7 @@ class MainActivity : ComponentActivity() {
                                 durationLabel = null,
                                 speedLabel = null,
                                 onCollapse = onCollapse,
-                                onPlayPause = { if (playing) sessionConnection.controller?.transportControls?.pause() else playStation(station) },
+                                onPlayPause = { if (playing) sessionConnection.controller?.transportControls?.pause() else resumeOrStartStation(station) },
                                 onQueueClick = { showQueue = true; onCollapse() },
                                 isFavorite = station.id in favoriteStationIds,
                                 onFavoriteClick = {
@@ -697,6 +708,20 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+    }
+
+    /**
+     * Play on a station that's merely paused resumes its buffered stream (and keeps the "behind
+     * live" indicator honest, with an explicit Go live to rejoin) instead of silently jumping to
+     * live; only an idle/errored/dead session needs a fresh start.
+     */
+    private fun resumeOrStartStation(station: RadioStation) {
+        val controller = sessionConnection.controller
+        if (sessionConnection.uiState == PlaybackUiState.PAUSED && controller != null) {
+            controller.transportControls.play()
+        } else {
+            playStation(station)
+        }
     }
 
     private fun playStation(station: RadioStation) {

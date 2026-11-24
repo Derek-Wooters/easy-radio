@@ -147,13 +147,90 @@ class PlaybackSessionControllerTest {
         onPlaybackStateChanged: (PlaybackStateCompat) -> Unit = {},
         onMetadataChanged: (MediaMetadataCompat) -> Unit = {},
         onPlaybackStarting: () -> Unit = {},
+        nowMs: () -> Long = { 0L },
     ) = PlaybackSessionController(
         player = player,
         repository = repository,
         onPlaybackStateChanged = onPlaybackStateChanged,
         onMetadataChanged = onMetadataChanged,
         onPlaybackStarting = onPlaybackStarting,
+        nowMs = nowMs,
     )
+
+    @Test
+    fun `a paused station reports how far behind live it is`() {
+        var clock = 0L
+        var published: PlaybackStateCompat? = null
+        var playing = true
+        val player = mockk<Player>(relaxed = true)
+        every { player.playerError } returns null
+        every { player.playbackState } returns Player.STATE_READY
+        every { player.isPlaying } answers { playing }
+        every { player.playbackParameters } returns PlaybackParameters(1.0f)
+        val sut = controller(player, onPlaybackStateChanged = { published = it }, nowMs = { clock })
+        sut.startPlayback(Uri.parse("https://example.com/stream"), "KFAN FM", "Sports", null, 0L, stationId = "kfan")
+
+        clock = 1_000L
+        sut.publishPlaybackState() // playing: joined live
+        playing = false
+        clock = 10_000L
+        sut.publishPlaybackState() // paused
+        clock = 70_000L
+        playing = true
+        sut.publishPlaybackState() // resumed from the buffer
+
+        val offset = LiveOffsetExtras.fromBundle(published!!.extras)!!
+        assertThat(offset.behindMs(clock)).isEqualTo(60_000L)
+    }
+
+    @Test
+    fun `podcast episodes publish no live offset`() {
+        var published: PlaybackStateCompat? = null
+        val sut = controller(fakePlayer(), onPlaybackStateChanged = { published = it })
+        sut.startPlayback(Uri.parse("https://example.com/ep.mp3"), "Ep", "Pod", null, 0L, episodeId = "e1", podcastId = "p1")
+
+        sut.publishPlaybackState()
+
+        assertThat(LiveOffsetExtras.fromBundle(published!!.extras)).isNull()
+    }
+
+    @Test
+    fun `goLive restarts the current station and clears the offset`() {
+        var clock = 0L
+        var published: PlaybackStateCompat? = null
+        var playing = true
+        val player = mockk<Player>(relaxed = true)
+        every { player.playerError } returns null
+        every { player.playbackState } returns Player.STATE_READY
+        every { player.isPlaying } answers { playing }
+        every { player.playbackParameters } returns PlaybackParameters(1.0f)
+        val sut = controller(player, onPlaybackStateChanged = { published = it }, nowMs = { clock })
+        val uri = Uri.parse("https://example.com/stream")
+        sut.startPlayback(uri, "KFAN FM", "Sports", null, 0L, stationId = "kfan")
+        sut.publishPlaybackState()
+        playing = false
+        clock = 5_000L
+        sut.publishPlaybackState()
+        clock = 65_000L
+        playing = true
+        sut.publishPlaybackState()
+
+        sut.goLive()
+        sut.publishPlaybackState()
+
+        verify(exactly = 2) { player.setMediaItem(any(), 0L) }
+        assertThat(LiveOffsetExtras.fromBundle(published!!.extras)!!.behindMs(clock)).isEqualTo(0L)
+    }
+
+    @Test
+    fun `goLive does nothing when no station has played`() {
+        val player = fakePlayer()
+        val sut = controller(player)
+
+        sut.goLive()
+
+        verify(exactly = 0) { player.setMediaItem(any(), any<Long>()) }
+    }
 
     @Test
     fun `publishPlaybackState reports playing with position and buffered position`() {

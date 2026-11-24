@@ -6,6 +6,7 @@ import android.support.v4.media.session.PlaybackStateCompat
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.easyradio.core.media.LiveOffset
 import com.easyradio.core.media.PlaybackUiState
 
 /**
@@ -37,9 +38,14 @@ class SessionConnection(
     var uiState: PlaybackUiState by mutableStateOf(PlaybackUiState.IDLE)
         private set
 
+    /** How far behind live the current radio station is; null for podcasts/nothing playing. */
+    var liveOffset: LiveOffset? by mutableStateOf(null)
+        private set
+
     private val callback = object : MediaControllerCompat.Callback() {
         override fun onPlaybackStateChanged(state: PlaybackStateCompat?) {
             uiState = LegacyPlaybackStateMapper.toUiState(state?.state)
+            liveOffset = LiveOffsetExtras.fromBundle(state?.extras)
         }
 
         // The service can advance to the next queued episode on its own (auto-advance when one
@@ -57,6 +63,7 @@ class SessionConnection(
         // happened to be cached at connect time.
         override fun onSessionReady() {
             uiState = LegacyPlaybackStateMapper.toUiState(controller?.playbackState?.state)
+            liveOffset = LiveOffsetExtras.fromBundle(controller?.playbackState?.extras)
             onNowPlayingMediaIdChanged(controller?.metadata?.getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID))
         }
 
@@ -73,6 +80,7 @@ class SessionConnection(
         override fun onSessionDestroyed() {
             controller = null
             uiState = PlaybackUiState.IDLE
+            liveOffset = null
             this@SessionConnection.onSessionDestroyed()
         }
     }
@@ -90,6 +98,7 @@ class SessionConnection(
         // reopening the app after it was recreated showed no mini-player at all, since nothing
         // ever told MainActivity what was playing). Sync both immediately instead of waiting.
         uiState = LegacyPlaybackStateMapper.toUiState(newController.playbackState?.state)
+        liveOffset = LiveOffsetExtras.fromBundle(newController.playbackState?.extras)
         onNowPlayingMediaIdChanged(newController.metadata?.getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID))
     }
 

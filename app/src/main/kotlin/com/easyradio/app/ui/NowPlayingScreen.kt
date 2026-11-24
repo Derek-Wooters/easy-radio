@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarOutline
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -52,6 +53,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.easyradio.app.formatDuration
 import com.easyradio.app.ui.theme.LocalEasyRadioColors
 import com.easyradio.core.model.Chapter
@@ -72,6 +74,8 @@ fun NowPlayingScreen(
     imageUrl: String?,
     tintSeed: String,
     isLive: Boolean,
+    behindLiveMs: Long = 0L,
+    onGoLive: (() -> Unit)? = null,
     isPlaying: Boolean,
     isBuffering: Boolean = false,
     progress: Float?,
@@ -173,12 +177,30 @@ fun NowPlayingScreen(
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineSmall,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-            )
+            // The favorite star (radio only) sits inline with the title rather than off on its
+            // own row, so it reads as belonging to the station.
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                if (onFavoriteClick != null) {
+                    IconButton(onClick = onFavoriteClick) {
+                        Icon(
+                            if (isFavorite) Icons.Filled.Star else Icons.Filled.StarOutline,
+                            contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+            }
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodyLarge,
@@ -250,28 +272,34 @@ fun NowPlayingScreen(
                     }
                 }
             } else {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // One indicator slot: the red LIVE pill when on the live edge, replaced by a
+                // tappable "Go live" button once on the buffered stream.
+                // Both are 1.5x the stock badge size (12sp text / 16x6dp padding).
+                val behindLive = behindLiveMs > 0L && onGoLive != null
+                val indicatorTextStyle = MaterialTheme.typography.labelMedium.copy(fontSize = 18.sp)
+                if (behindLive) {
+                    FilledTonalButton(
+                        onClick = onGoLive!!,
+                        shape = RoundedCornerShape(50),
+                        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 9.dp),
+                        modifier = Modifier.height(42.dp),
+                    ) {
+                        Text("Go live", style = indicatorTextStyle)
+                    }
+                } else {
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
+                            .height(42.dp)
                             .clip(RoundedCornerShape(50))
                             .background(extraColors.liveBadgeContainer)
-                            .padding(horizontal = 16.dp, vertical = 6.dp),
+                            .padding(horizontal = 24.dp, vertical = 9.dp),
                     ) {
                         Text(
                             text = "LIVE",
-                            style = MaterialTheme.typography.labelMedium,
+                            style = indicatorTextStyle,
                             color = extraColors.liveBadgeContent,
                         )
-                    }
-                    if (onFavoriteClick != null) {
-                        IconButton(onClick = onFavoriteClick) {
-                            Icon(
-                                if (isFavorite) Icons.Filled.Star else Icons.Filled.StarOutline,
-                                contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
-                                tint = MaterialTheme.colorScheme.primary,
-                            )
-                        }
                     }
                 }
             }
